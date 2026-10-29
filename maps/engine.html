@@ -1,0 +1,350 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="/node_modules/maplibre-gl/dist/maplibre-gl.css">
+<style>
+@font-face { font-family: Oswald; src: url(/assets/fonts/Oswald.ttf); font-weight: 200 700; }
+@font-face { font-family: BeVN; src: url(/assets/fonts/BeVietnamPro-SemiBold.ttf); }
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #0c0b0a; }
+#map, #fx { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+#fx { pointer-events: none; }
+.maplibregl-ctrl-attrib, .maplibregl-ctrl-logo { display: none !important; }
+</style>
+<script src="/node_modules/maplibre-gl/dist/maplibre-gl.js"></script>
+</head><body><div id="map"></div><canvas id="fx" width="1920" height="1080"></canvas>
+<script>
+// Map scene engine: deterministic per-frame rendering for the headless recorder (scripts/mapscene.mjs).
+// Base: Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) draped on AWS Terrain Tiles (terrarium), darkened and desaturated.
+// Effects on a 2D canvas projected from lng/lat every frame: zone (dashed outline drawn on, then fill), arrow (grows,
+// glows, pulses), route (drawn on with moving unit markers), label (pops in with a leader line), pulse rings, marker.
+const RED = '#e0402f', AMBER = '#f0b040', BLUE = 'rgba(120,150,215,0.42)', WHITE = '#f3efe6';
+let map, scene, fx = document.getElementById('fx').getContext('2d');
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const ease = x => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+const lerp = (a, b, t) => a + (b - a) * t;
+
+window.setup = async (s) => {
+  scene = s;
+  const c0 = s.camera[0];
+  map = new maplibregl.Map({
+    container: 'map', interactive: false, attributionControl: false, fadeDuration: 0, preserveDrawingBuffer: true,
+    center: c0.center, zoom: c0.zoom, pitch: c0.pitch || 0, bearing: c0.bearing || 0, maxPitch: 70,
+    style: {
+      version: 8,
+      sources: {
+        s2: { type: 'raster', tileSize: 256, maxzoom: 15,
+              tiles: ['https://tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg'] },
+        dem: { type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 14,
+               tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'] },
+      },
+      layers: [
+        { id: 'bg', type: 'background', paint: { 'background-color': '#101210' } },
+        { id: 's2', type: 'raster', source: 's2', paint: {
+            'raster-saturation': s.saturation ?? -0.3, 'raster-brightness-max': s.brightness ?? 0.86,
+            'raster-contrast': 0.15, 'raster-fade-duration': 0 } },
+        { id: 'shade', type: 'hillshade', source: 'dem', paint: {
+            'hillshade-exaggeration': 0.5, 'hillshade-shadow-color': '#000000', 'hillshade-highlight-color': '#ffffff',
+            'hillshade-accent-color': '#000000' } },
+      ],
+      terrain: { source: 'dem', exaggeration: s.exaggeration ?? 2.6 },
+    },
+  });
+  await new Promise(r => map.once('load', r));
+  // 3D layers draped on / standing on the terrain: they get real perspective, unlike the 2D canvas overlay
+  const empty = { type: 'FeatureCollection', features: [] };
+  for (const id of ['zfill', 'zline', 'zext', 'aglow', 'abody', 'route']) map.addSource(id, { type: 'geojson', data: empty });
+  map.addLayer({ id: 'aglow', type: 'line', source: 'aglow', layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': ['get', 'color'], 'line-width': ['get', 'w'], 'line-blur': ['get', 'blur'], 'line-opacity': ['get', 'op'] } });
+  map.addLayer({ id: 'zfill', type: 'fill', source: 'zfill', paint: { 'fill-color': ['get', 'fill'], 'fill-opacity': ['get', 'op'] } });
+  map.addLayer({ id: 'zext', type: 'fill-extrusion', source: 'zext',
+    paint: { 'fill-extrusion-color': ['get', 'color'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-opacity': 0.32 } });
+  map.addLayer({ id: 'zline', type: 'line', source: 'zline', layout: { 'line-join': 'round' },
+    paint: { 'line-color': ['get', 'color'], 'line-width': 5, 'line-dasharray': [2.4, 1.6], 'line-opacity': ['get', 'op'] } });
+  map.addLayer({ id: 'route', type: 'line', source: 'route', layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': ['get', 'color'], 'line-width': 7, 'line-dasharray': [1.5, 1], 'line-opacity': ['get', 'op'] } });
+  map.addLayer({ id: 'abody', type: 'fill-extrusion', source: 'abody',
+    paint: { 'fill-extrusion-color': ['get', 'color'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': ['get', 'b'],
+             'fill-extrusion-opacity': 0.93, 'fill-extrusion-vertical-gradient': true } });
+  try { map.setSky({ 'sky-color': '#1d2329', 'horizon-color': '#6b747b', 'fog-color': '#4a535a', 'sky-horizon-blend': 0.7,
+                     'horizon-fog-blend': 0.55, 'fog-ground-blend': 0.75, 'atmosphere-blend': 0.6 }); } catch (e) {}
+  await document.fonts.load('700 44px Oswald'); await document.fonts.load('26px BeVN'); await document.fonts.ready;
+  return true;
+};
+
+// ---------- geo helpers (local metres around a point) for the 3D layers
+const RAD = Math.PI / 180, ER = 6378137;
+const toM = (ll, o) => [(ll[0] - o[0]) * RAD * ER * Math.cos(o[1] * RAD), (ll[1] - o[1]) * RAD * ER];
+const fromM = (m, o) => [o[0] + m[0] / (ER * Math.cos(o[1] * RAD)) / RAD, o[1] + m[1] / ER / RAD];
+function geoCurve(pts, bend = 0.15, n = 40) {
+  if (pts.length > 2) return pts;
+  const o = pts[0], a = [0, 0], b = toM(pts[1], o), c = [b[0] / 2 + b[1] * bend, b[1] / 2 - b[0] * bend], out = [];
+  for (let i = 0; i <= n; i++) { const t = i / n;
+    out.push(fromM([(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * c[0] + t * t * b[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * c[1] + t * t * b[1]], o)); }
+  return out;
+}
+function geoPartial(path, p) {
+  const o = path[0], m = path.map(q => toM(q, o)); let L = 0;
+  for (let i = 1; i < m.length; i++) L += Math.hypot(m[i][0] - m[i - 1][0], m[i][1] - m[i - 1][1]);
+  let want = L * clamp(p), acc = 0; const out = [path[0]];
+  for (let i = 1; i < m.length; i++) { const d = Math.hypot(m[i][0] - m[i - 1][0], m[i][1] - m[i - 1][1]);
+    if (acc + d >= want) { const f = (want - acc) / (d || 1); out.push(fromM([lerp(m[i - 1][0], m[i][0], f), lerp(m[i - 1][1], m[i][1], f)], o)); return out; }
+    acc += d; out.push(path[i]); }
+  return out;
+}
+function arrowPolygon(path, w) {
+  // tapered body + head as one polygon (metres around the start point)
+  const o = path[0], m = path.map(q => toM(q, o)), n = m.length; if (n < 3) return null;
+  const L = [], R = [], head = Math.min(w * 2.6, 0.35 * Math.hypot(m[n - 1][0] - m[0][0], m[n - 1][1] - m[0][1]));
+  let acc = 0, total = 0; for (let i = 1; i < n; i++) total += Math.hypot(m[i][0] - m[i - 1][0], m[i][1] - m[i - 1][1]);
+  let cut = n - 1; for (let i = n - 1, d = 0; i > 0; i--) { d += Math.hypot(m[i][0] - m[i - 1][0], m[i][1] - m[i - 1][1]); if (d >= head) { cut = i; break; } }
+  for (let i = 0; i <= cut; i++) {
+    if (i) acc += Math.hypot(m[i][0] - m[i - 1][0], m[i][1] - m[i - 1][1]);
+    const j = Math.min(i + 1, n - 1), k = Math.max(i - 1, 0), dx = m[j][0] - m[k][0], dy = m[j][1] - m[k][1], len = Math.hypot(dx, dy) || 1;
+    const hw = (w * 0.22 + w * 0.5 * acc / total); L.push([m[i][0] - dy / len * hw, m[i][1] + dx / len * hw]); R.push([m[i][0] + dy / len * hw, m[i][1] - dx / len * hw]);
+  }
+  const t = m[n - 1], bL = L[L.length - 1], bR = R[R.length - 1], cx = (bL[0] + bR[0]) / 2, cy = (bL[1] + bR[1]) / 2;
+  const sx = (bL[0] - cx) * 2.1, sy = (bL[1] - cy) * 2.1;
+  const ring = [...L, [cx + sx, cy + sy], t, [cx - sx, cy - sy], ...R.reverse(), L[0]].map(q => fromM(q, o));
+  return ring;
+}
+const FEAT = { zfill: [], zline: [], zext: [], aglow: [], abody: [], route: [] };
+const poly = (ring, props) => ({ type: 'Feature', properties: props, geometry: { type: 'Polygon', coordinates: [ring] } });
+const line = (coords, props) => ({ type: 'Feature', properties: props, geometry: { type: 'LineString', coordinates: coords } });
+let MPP = 30;  // metres per pixel at the camera centre, refreshed every frame
+function perspective(ll) {
+  // screen pixels per 1 km here vs. at the screen centre: things nearer the camera draw bigger
+  const a = P(ll), b = P(fromM([1000, 0], ll)), here = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  return clamp(here / (1000 / MPP), 0.45, 2.2);
+}
+
+function camAt(t) {
+  const K = scene.camera; if (t <= K[0].t) return K[0];
+  for (let i = 0; i < K.length - 1; i++) {
+    const a = K[i], b = K[i + 1];
+    if (t <= b.t) { const p = ease((t - a.t) / (b.t - a.t));
+      return { center: [lerp(a.center[0], b.center[0], p), lerp(a.center[1], b.center[1], p)], zoom: lerp(a.zoom, b.zoom, p),
+               pitch: lerp(a.pitch || 0, b.pitch || 0, p), bearing: lerp(a.bearing || 0, b.bearing || 0, p) }; }
+  }
+  return K[K.length - 1];
+}
+
+const P = ll => { const p = map.project(ll); return [p.x, p.y]; };
+
+function curve(pts, bend = 0.18, n = 48) {
+  // a smooth arc through start/end (quadratic, bent sideways) or a polyline when more than two points
+  if (pts.length > 2) return pts.map(P);
+  const [a, b] = pts.map(P), mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+  const dx = b[0] - a[0], dy = b[1] - a[1], cx = mx - dy * bend, cy = my + dx * bend, out = [];
+  for (let i = 0; i <= n; i++) { const t = i / n;
+    out.push([(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * cx + t * t * b[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * cy + t * t * b[1]]); }
+  return out;
+}
+
+function partial(path, p) {
+  const seg = []; let L = 0; for (let i = 1; i < path.length; i++) L += Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+  let want = L * clamp(p), acc = 0; seg.push(path[0]);
+  for (let i = 1; i < path.length; i++) {
+    const d = Math.hypot(path[i][0] - path[i - 1][0], path[i][1] - path[i - 1][1]);
+    if (acc + d >= want) { const f = (want - acc) / (d || 1); seg.push([lerp(path[i - 1][0], path[i][0], f), lerp(path[i - 1][1], path[i][1], f)]); return seg; }
+    acc += d; seg.push(path[i]);
+  }
+  return seg;
+}
+
+function stroke(path) { fx.beginPath(); path.forEach((q, i) => i ? fx.lineTo(q[0], q[1]) : fx.moveTo(q[0], q[1])); }
+
+function zone(e, t) {
+  // 3D: dashed outline drawn on along the ground, then a draped fill and a translucent standing block rise up
+  const p = (t - e.t) / (e.draw ?? 1.4); if (p <= 0) return;
+  const out = e.until ? clamp(1 - (t - e.until) / 0.8) : 1; if (out <= 0) return;
+  const ring = [...e.coords, e.coords[0]], col = e.color || WHITE;
+  FEAT.zline.push(line(geoPartial(ring, ease(p)), { color: col, op: out }));
+  const f = ease((t - e.t - (e.draw ?? 1.4) * 0.7) / 0.8) * out;
+  if (f > 0) {
+    FEAT.zfill.push(poly(ring, { fill: e.fill || 'rgba(120,150,215,1)', op: 0.42 * f }));
+    FEAT.zext.push(poly(ring, { color: e.wall || e.fill || '#7896d7', h: (e.height ?? 380) * f }));
+  }
+}
+
+function arrow(e, t) {
+  // 3D: a raised extruded arrow standing on the terrain + a pulsing glow draped under it
+  const p = ease((t - e.t) / (e.draw ?? 1.6)); if (p <= 0) return;
+  const out = e.until ? clamp(1 - (t - e.until) / 0.6) : 1; if (out <= 0.05) return;
+  const path = geoPartial(geoCurve(e.path, e.bend ?? 0.15), p); if (path.length < 4) return;
+  const col = e.color || RED, glow = 0.6 + 0.4 * Math.sin(Math.max(0, t - e.t - (e.draw ?? 1.6)) * 5);
+  const w = (e.width || 26) * MPP * 0.9;
+  FEAT.aglow.push(line(path, { color: col, w: (e.width || 26) * 2.2, blur: 26, op: 0.55 * glow * out }));
+  const ring = arrowPolygon(path, w);
+  if (ring) FEAT.abody.push(poly(ring, { color: col, h: (e.height ?? 520) * out, b: (e.lift ?? 120) * out }));
+}
+
+function route(e, t) {
+  const p = (t - e.t) / (e.draw ?? 2.5); if (p <= 0) return;
+  const out = e.until ? clamp(1 - (t - e.until) / 0.6) : 1; if (out <= 0) return;
+  const path = geoPartial(geoCurve(e.path, e.bend ?? 0.05), ease(p));
+  FEAT.aglow.push(line(path, { color: e.color || AMBER, w: 18, blur: 12, op: 0.6 * out }));
+  FEAT.route.push(line(path, { color: e.color || AMBER, op: out }));
+}
+
+function label(e, t) {
+  const a = ease((t - e.t) / 0.35); if (a <= 0) return;
+  const out = e.until ? clamp(1 - (t - e.until) / 0.5) : 1; if (out <= 0) return;
+  const [x, y] = P(e.at), dy = e.dy ?? -70, s = 0.85 + 0.15 * a;
+  fx.save(); fx.globalAlpha = a * out;
+  fx.strokeStyle = WHITE; fx.lineWidth = 2; fx.beginPath(); fx.moveTo(x, y); fx.lineTo(x, y + dy + 26); fx.stroke();
+  fx.fillStyle = WHITE; fx.fillRect(x - 6, y - 6, 12, 12);
+  fx.font = `700 ${Math.round(44 * s)}px Oswald`; const tw = fx.measureText(e.text.toUpperCase()).width;
+  fx.font = `${Math.round(26 * s)}px BeVN`; const sw = e.sub ? fx.measureText(e.sub).width : 0;
+  const bw = Math.max(tw, sw) + 36, bh = e.sub ? 100 : 66, bx = x - bw / 2, by = y + dy - bh + 26;
+  fx.fillStyle = 'rgba(14,13,12,0.88)'; fx.fillRect(bx, by, bw, bh);
+  if (e.accent) { fx.fillStyle = e.accent; fx.fillRect(bx, by, 6, bh); }
+  fx.fillStyle = WHITE; fx.textAlign = 'center'; fx.textBaseline = 'top';
+  fx.font = `700 ${Math.round(44 * s)}px Oswald`; fx.fillText(e.text.toUpperCase(), x, by + 6);
+  if (e.sub) { fx.font = `${Math.round(26 * s)}px BeVN`; fx.fillStyle = '#d8d2c6'; fx.fillText(e.sub, x, by + 62); }
+  fx.restore();
+}
+
+function pulse(e, t) {
+  if (t < e.t) return; const out = e.until ? clamp(1 - (t - e.until) / 0.5) : 1; if (out <= 0) return;
+  const [x, y] = P(e.at), col = e.color || RED;
+  fx.save();
+  const g = fx.createRadialGradient(x, y, 0, x, y, 70); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)');
+  fx.globalAlpha = 0.55 * out; fx.fillStyle = g; fx.beginPath(); fx.arc(x, y, 70, 0, 7); fx.fill();
+  for (let i = 0; i < 3; i++) { const ph = ((t - e.t) * 0.9 + i / 3) % 1;
+    fx.globalAlpha = (1 - ph) * out; fx.strokeStyle = col; fx.lineWidth = 4; fx.beginPath(); fx.arc(x, y, 12 + ph * 90, 0, 7); fx.stroke(); }
+  fx.restore();
+}
+
+// ---------- illustrated units and fire (vector, drawn per frame; deterministic pseudo-random)
+const rnd = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+
+function soldier(x, y, s, ph, col, dir) {
+  fx.save(); fx.translate(x, y); fx.scale(dir * s / 30, s / 30);
+  fx.shadowColor = 'rgba(0,0,0,0.7)'; fx.shadowBlur = 6; fx.fillStyle = col;
+  const a = Math.sin(ph) * 0.55;                                   // stride
+  fx.lineCap = 'round'; fx.lineWidth = 6; fx.strokeStyle = col;
+  fx.beginPath(); fx.moveTo(0, -8); fx.lineTo(Math.sin(a) * 12, 12); fx.moveTo(0, -8); fx.lineTo(-Math.sin(a) * 12, 12); fx.stroke();
+  fx.lineWidth = 2.2; fx.strokeStyle = '#141410';
+  fx.beginPath(); fx.ellipse(0, -18, 7, 12, 0.15, 0, 7); fx.fill(); fx.stroke();            // torso
+  fx.beginPath(); fx.roundRect(-13, -27, 8, 14, 2); fx.fill(); fx.stroke();                 // pack
+  fx.beginPath(); fx.arc(2, -34, 6, 0, 7); fx.fill(); fx.stroke();                          // head
+  fx.beginPath(); fx.ellipse(2, -37, 8.5, 4.5, 0, Math.PI, 0); fx.fill(); fx.stroke();      // helmet
+  fx.lineWidth = 3; fx.strokeStyle = '#1d1d18'; fx.beginPath(); fx.moveTo(-4, -12); fx.lineTo(14, -32); fx.stroke(); // rifle
+  fx.restore();
+}
+
+function tank(x, y, s, ang, col) {
+  fx.save(); fx.translate(x, y); fx.rotate(ang); fx.scale(s / 40, s / 40);
+  fx.shadowColor = 'rgba(0,0,0,0.75)'; fx.shadowBlur = 10; fx.strokeStyle = '#141410'; fx.lineWidth = 2.5;
+  fx.fillStyle = '#26261f'; fx.beginPath(); fx.roundRect(-26, -17, 52, 8, 3); fx.roundRect(-26, 9, 52, 8, 3); fx.fill();
+  fx.fillStyle = col; fx.beginPath(); fx.roundRect(-24, -12, 48, 24, 5); fx.fill(); fx.stroke();
+  fx.beginPath(); fx.arc(-2, 0, 10, 0, 7); fx.fill(); fx.stroke();
+  fx.lineWidth = 4; fx.strokeStyle = '#1b1b16'; fx.beginPath(); fx.moveTo(6, 0); fx.lineTo(40, 0); fx.stroke();
+  fx.restore();
+}
+
+function gun(x, y, s, dir, col, flash) {
+  fx.save(); fx.translate(x, y); fx.scale(dir * s / 40, s / 40);
+  fx.shadowColor = 'rgba(0,0,0,0.75)'; fx.shadowBlur = 8; fx.strokeStyle = '#141410'; fx.lineWidth = 2.5; fx.fillStyle = col;
+  fx.beginPath(); fx.moveTo(-30, 8); fx.lineTo(-6, -2); fx.lineTo(-4, 4); fx.closePath(); fx.fill(); fx.stroke();   // trail
+  fx.beginPath(); fx.roundRect(-10, -10, 22, 14, 3); fx.fill(); fx.stroke();                                    // cradle
+  fx.save(); fx.translate(4, -6); fx.rotate(-0.55); fx.beginPath(); fx.roundRect(0, -3, 40, 6, 2); fx.fill(); fx.stroke(); fx.restore();
+  fx.fillStyle = '#1e1e19'; fx.beginPath(); fx.arc(0, 8, 8, 0, 7); fx.fill(); fx.stroke();                     // wheel
+  if (flash > 0) {                                                                                              // muzzle blast
+    const mx = 4 + Math.cos(-0.55) * 44, my = -6 + Math.sin(-0.55) * 44;
+    fx.shadowColor = '#ffcf70'; fx.shadowBlur = 40 * flash; fx.fillStyle = `rgba(255,214,120,${flash})`;
+    fx.beginPath(); for (let k = 0; k < 10; k++) { const r = k % 2 ? 7 : 22 * flash + 8, a = k * Math.PI / 5;
+      fx.lineTo(mx + Math.cos(a) * r, my + Math.sin(a) * r); } fx.closePath(); fx.fill();
+  }
+  fx.restore();
+}
+
+function explosion(x, y, age, size) {
+  if (age < 0 || age > 1.6) return;
+  fx.save();
+  const f = clamp(1 - age / 0.25);                                  // flash
+  if (f > 0) { const g = fx.createRadialGradient(x, y, 0, x, y, size * 1.6); g.addColorStop(0, `rgba(255,240,200,${f})`);
+    g.addColorStop(0.4, `rgba(255,140,40,${0.8 * f})`); g.addColorStop(1, 'rgba(255,80,20,0)'); fx.fillStyle = g;
+    fx.beginPath(); fx.arc(x, y, size * 1.6, 0, 7); fx.fill(); }
+  const r = clamp(age / 0.6); fx.strokeStyle = `rgba(255,170,90,${0.8 * (1 - r)})`; fx.lineWidth = 3;
+  fx.beginPath(); fx.ellipse(x, y, size * (0.4 + 1.8 * r), size * (0.2 + 0.9 * r), 0, 0, 7); fx.stroke();       // ground ring
+  for (let k = 0; k < 4; k++) { const s = clamp((age - 0.08 * k) / 1.4); if (s <= 0) continue;                   // smoke
+    fx.fillStyle = `rgba(60,58,54,${0.55 * (1 - s)})`; fx.beginPath();
+    fx.arc(x + (k - 1.5) * size * 0.35, y - s * size * 1.4 - k * 3, size * (0.35 + 0.6 * s), 0, 7); fx.fill(); }
+  fx.restore();
+}
+
+function column(e, t) {
+  // units travelling along a path (soldiers walk, tanks drive), one after another, slightly staggered sideways
+  const out = e.until ? clamp(1 - (t - e.until) / 0.6) : 1; if (t < e.t || out <= 0) return;
+  // positions live on the ground (lng/lat) and sizes follow perspective, so near units are bigger than far ones
+  const full = geoCurve(e.path, e.bend ?? 0.15), p = clamp((t - e.t) / (e.travel ?? 4));
+  const units = [];
+  for (let i = 0; i < (e.n || 5); i++) {
+    const q = p * (e.reach ?? 0.85) - i * (e.gap ?? 0.07); if (q <= 0.01) continue;
+    const seg = geoPartial(full, q), ll = seg[seg.length - 1], ll0 = seg[Math.max(0, seg.length - 3)];
+    const o = toM(ll, ll0), len = Math.hypot(o[0], o[1]) || 1, side = (i % 2 ? 1 : -1) * (e.spread ?? 10) * MPP;
+    const at = fromM([-o[1] / len * side, o[0] / len * side], ll);
+    const [x, y] = P(at), [x0, y0] = P(ll0), k = perspective(at);
+    units.push({ x, y, k, ang: Math.atan2(y - P(fromM([-o[1] / len * side, o[0] / len * side], ll0))[1], x - P(fromM([-o[1] / len * side, o[0] / len * side], ll0))[0]), i });
+  }
+  units.sort((a, b) => a.y - b.y);                                  // far (higher on screen) first
+  fx.save(); fx.globalAlpha = out;
+  for (const u of units) {
+    if (e.unit === 'tank') tank(u.x, u.y, (e.size || 34) * u.k, u.ang, e.color || '#b8433a');
+    else soldier(u.x, u.y, (e.size || 34) * u.k, t * 9 + u.i * 1.7, e.color || '#b8433a', Math.cos(u.ang) >= 0 ? 1 : -1);
+  }
+  fx.restore();
+}
+
+function battery(e, t) {
+  // guns around a point firing glowing shells along arcs to a target area; impacts burst on landing
+  const out = e.until ? clamp(1 - (t - e.until) / 0.6) : 1; if (t < e.t || out <= 0) return;
+  const [bx, by] = P(e.at), [tx, ty] = P(e.target), n = e.n || 3, every = e.every || 1.1, fly = e.fly || 0.9;
+  const dir = tx >= bx ? 1 : -1, pop = ease((t - e.t) / 0.4), kb = perspective(e.at), kt = perspective(e.target);
+  const spreadM = (e.spread || 90) * MPP;
+  fx.save(); fx.globalAlpha = out;
+  for (let g = 0; g < n; g++) {
+    const [gx, gy] = P(fromM([(g - (n - 1) / 2) * 46 * MPP, -(g % 2) * 18 * MPP], e.at));
+    let flash = 0;
+    for (let k = 0; k < 40; k++) {
+      const fire = e.t + 0.4 + k * every + g * every / n; if (fire > t) break;
+      const age = t - fire; flash = Math.max(flash, clamp(1 - age / 0.18));
+      const [ix, iy] = P(fromM([(rnd(g * 97 + k) - 0.5) * spreadM, (rnd(g * 31 + k * 7) - 0.5) * spreadM], e.target));
+      if (age < fly) {                                             // shell in flight: tracer with a fading tail
+        for (let j = 0; j < 6; j++) { const u = clamp(age / fly - j * 0.025); if (u <= 0) break;
+          const x = lerp(gx, ix, u), y = lerp(gy, iy, u) - Math.sin(u * Math.PI) * (e.arc || 160);
+          fx.fillStyle = `rgba(255,${200 - j * 20},${120 - j * 15},${1 - j / 6})`; fx.shadowColor = '#ffb050'; fx.shadowBlur = 14;
+          fx.beginPath(); fx.arc(x, y, 8 - j, 0, 7); fx.fill(); }
+      } else explosion(ix, iy, age - fly, (e.boom || 26) * kt);
+    }
+    fx.globalAlpha = out * pop; gun(gx, gy, (e.size || 40) * kb * (0.8 + 0.2 * pop), dir, e.color || '#9a463b', flash); fx.globalAlpha = out;
+  }
+  fx.restore();
+}
+
+function impacts(e, t) {
+  const out = e.until ? clamp(1 - (t - e.until) / 0.6) : 1; if (t < e.t || out <= 0) return;
+  fx.save(); fx.globalAlpha = out; const sM = (e.spread || 160) * MPP;
+  for (let k = 0; k < 60; k++) { const when = e.t + k * (e.every || 0.35) + rnd(k) * 0.2; if (when > t) break;
+    const ll = fromM([(rnd(k * 13) - 0.5) * sM, (rnd(k * 29) - 0.5) * sM], e.at), [x, y] = P(ll);
+    explosion(x, y, t - when, (e.size || 22) * perspective(ll)); }
+  fx.restore();
+}
+
+const DRAW = { zone, arrow, route, label, pulse, column, battery, impacts };
+
+window.renderAt = async (t) => {
+  const c = camAt(t);
+  map.jumpTo({ center: c.center, zoom: c.zoom, pitch: c.pitch, bearing: c.bearing });
+  MPP = 40075016.686 * Math.cos(c.center[1] * RAD) / (512 * Math.pow(2, c.zoom));
+  for (const k in FEAT) FEAT[k] = [];
+  const GEO = new Set(['zone', 'arrow', 'route']);
+  for (const e of scene.layers) if (GEO.has(e.kind)) DRAW[e.kind](e, t);          // 3D layers -> GeoJSON
+  for (const k in FEAT) map.getSource(k).setData({ type: 'FeatureCollection', features: FEAT[k] });
+  await new Promise(r => { if (map.loaded() && map.areTilesLoaded()) { map.once('render', r); map.triggerRepaint(); } else map.once('idle', r); setTimeout(r, 15000); });
+  await new Promise(r => { if (map.areTilesLoaded()) { map.once('render', r); map.triggerRepaint(); } else map.once('idle', r); setTimeout(r, 15000); });
+  fx.clearRect(0, 0, 1920, 1080);
+  for (const e of scene.layers) if (!GEO.has(e.kind)) DRAW[e.kind]?.(e, t);    // labels, units, fire on the 2D canvas
+  return true;
+};
+</script></body></html>

@@ -1,0 +1,14 @@
+{
+ "title": "Dien Bien Phu 1954",
+ "language": "en",
+ "pacing": {"lead_in": 1.5, "tail": 2.0},
+ "video": {"width": 1920, "height": 1080, "fps": 24},
+ "qa": {"stt_model": "scribe_v1", "stt_min_match": 0.97},
+ "voice": {
+  "_comment": "only for the ElevenLabs TTS fallback (input/<job>/script.txt without WAV/SRT)",
+  "voice_id": "",
+  "model": "eleven_multilingual_v2",
+  "lead_in": 2.0,
+  "tail": 2.0
+ }
+}

@@ -1,0 +1,7 @@
+numpy>=1.26,<3
+soundfile>=0.12,<1
+Pillow>=10,<13
+pytest>=8,<9
+# planned stages
+# librosa>=0.10    music beat grid (docs/MUSIC.md)
+# mercantile>=1.2  map tile maths (docs/MEDIA.md#maps)

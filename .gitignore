@@ -1,0 +1,37 @@
+.venv/
+__pycache__/
+node_modules/
+projects/
+output/
+input/*
+!input/README.md
+!input/job.example.json
+*.log
+
+# Local API keys: never commit
+key_*.txt
+*.key
+.env
+
+# user key file (never commit or print)
+key.txt
+
+# AI84 API doc contains the user's API key: never commit
+*AI84*.txt
+*ai84*.txt
+
+# heavy / generated media: keep out of git (licence logs stay)
+*.mp4
+*.webm
+*.mov
+*.mkv
+*.wav
+*.mp3
+*.m4a
+*.flac
+assets/sfx/**
+!assets/sfx/**/
+!assets/sfx/LICENSES.md
+assets/music/**
+!assets/music/**/
+!assets/music/LICENSES.md
