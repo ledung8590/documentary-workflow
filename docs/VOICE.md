@@ -54,7 +54,7 @@ The key comes from env `AI84_API_KEY` or the user's AI84 doc file; it is never p
 
 ## AI84 voice: one job per sentence + Whisper timing (default, `tts JOB`)
 Quality first: every sentence is its own AI84 eleven_v4 job, so it gets its own emotion tag, its own speed (0.93 somber … 1.05 urgent) and any per-emotion settings in `voice.settings`. Up to `voice.workers` (default 4) jobs at once; each clip is cached, so a rerun resumes. Slow: ~10 sentences/min, about 2 h for a 65-min film.
-- **Whisper timing:** the Whisper worker (below) starts loading before the first job, transcribes each clip as it lands, gives it real character timings (OmniVoice logic) and exits at the end to free VRAM. Clips voiced earlier without timings get them on the next `tts --run`. `voice.srt` then uses OmniVoice's splitting and cue timing. Poorly heard sentences are listed after the run.
+- **Whisper timing:** once every clip is in, the Whisper worker (below) loads (a few seconds; it does not hold VRAM through hours of voicing), gives each clip real character timings (OmniVoice logic) and exits to free VRAM. Clips voiced earlier without timings get them on the next `tts --run`. `voice.srt` then uses OmniVoice's splitting and cue timing. Poorly heard sentences are listed after the run.
 
 ## Chunked AI84 + Whisper (opt-in: `voice.chunked: true`)
 Faster but lower quality, kept for when speed matters more: one AI84 job carries one speed and one set of settings, so per-sentence speed is restored afterwards by time-stretching and per-emotion settings cannot be applied. `tts` then sends **chunks**:

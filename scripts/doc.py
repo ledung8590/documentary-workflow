@@ -460,8 +460,9 @@ def tts(job, do_run=False, mock=False, only=None):
 
 def tts_ai84(d, cfg, voice, sents, todo, do_run):
     """Default voice path (quality first): one AI84 eleven_v4 job per sentence, with its own emotion tag, speed and
-    settings (about 1 AI84 credit/char). Whisper (OmniVoice logic) loads while the first jobs render, gives each clip real
-    character timings for the SRT as it lands, and exits at the end to free VRAM. AI84's own transcript is never used."""
+    settings (about 1 AI84 credit/char). When every clip is in, Whisper (OmniVoice logic) loads (a few seconds: it does not
+    sit in VRAM through hours of voicing), gives each clip real character timings for the SRT, and exits to free VRAM.
+    AI84's own transcript is never used."""
     import ai84
     reqs = [(s, *v4_request(s, voice)) for s in todo]
     print(f'{len(todo)} sentences to voice via AI84 {voice["model"]} / {voice.get("voice_name") or voice["voice_id"]}, '
@@ -473,7 +474,6 @@ def tts_ai84(d, cfg, voice, sents, todo, do_run):
     if not voice.get('voice_id'):
         sys.exit('brief.json voice.voice_id is empty (no default voice for this language): set one')
     import whisper_align as WA
-    worker = WA.WhisperWorker(voice, log=lambda m: print('  ' + m, flush=True))  # loading while AI84 renders
     lang = (voice.get('language_code') or cfg.get('language') or 'auto')[:2]
 
     def one(req):
@@ -502,24 +502,26 @@ def tts_ai84(d, cfg, voice, sents, todo, do_run):
     # a few jobs in flight at once (AI84 allows 60 POST/min); each sentence is cached, so a rerun resumes
     from concurrent.futures import ThreadPoolExecutor, as_completed
     total, failed, weak = 0, [], []
-    try:
-        with ThreadPoolExecutor(max_workers=int(voice.get('workers', 4))) as pool:
-            futs = {pool.submit(one, r): r[0]['id'] for r in reqs}
-            for k, f in enumerate(as_completed(futs), 1):
-                try:
-                    s, cost = f.result()
-                except RuntimeError as e:
-                    failed.append(futs[f]); print(f'  {futs[f]} FAILED: {e}', flush=True); continue
-                total += cost or 0
+    with ThreadPoolExecutor(max_workers=int(voice.get('workers', 4))) as pool:
+        futs = {pool.submit(one, r): r[0]['id'] for r in reqs}
+        for k, f in enumerate(as_completed(futs), 1):
+            try:
+                s, cost = f.result()
+            except RuntimeError as e:
+                failed.append(futs[f]); print(f'  {futs[f]} FAILED: {e}', flush=True); continue
+            total += cost or 0
+            print(f'  [{k}/{len(reqs)}] {s["id"]} ok ({cost} AI84 credits)', flush=True)
+    # every clip without Whisper timings (this run's, and older runs') is timed now, then the model is released
+    untimed = [s for s in sents if clip_paths(d, s, voice)[1].exists()
+               and not read(clip_paths(d, s, voice)[1]).get('alignment') and not read(clip_paths(d, s, voice)[1]).get('mock')]
+    if untimed:
+        print(f'Whisper timing for {len(untimed)} clips', flush=True)
+        worker = WA.WhisperWorker(voice, log=lambda m: print('  ' + m, flush=True))
+        try:
+            for s in untimed:
                 w = align(s); weak += [w] if w else []
-                print(f'  [{k}/{len(reqs)}] {s["id"]} ok ({cost} AI84 credits)', flush=True)
-        # clips voiced earlier without Whisper timings (older runs) get them now
-        for s in sents:
-            m = clip_paths(d, s, voice)[1]
-            if m.exists() and not read(m).get('alignment') and not read(m).get('mock'):
-                w = align(s); weak += [w] if w else []
-    finally:
-        worker.close()
+        finally:
+            worker.close()
     print(f'done, {total} AI84 credits' + (f'; {len(failed)} failed, rerun to retry: {",".join(failed)}' if failed else ''))
     if weak:
         print(f'{len(weak)} poorly heard sentences (check by ear, fix the text or redo with --only):'); [print('  ' + w) for w in weak]
