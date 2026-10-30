@@ -20,7 +20,7 @@ input/<name>.wav + <name>.srt  (AI84/MiniMax voice, Whisper SRT; default)
  6 media/maps  ─► media/*, maps/*, video+overlay clips, LICENSES.md rows                [planned]
  7 music       ─► shared mood beds (ElevenLabs Music; Suno manual), beats, clips on beats[planned]
  8 sfx         ─► word-anchored sfx clips                                               [planned]
- 9 studio      ─► human edits + review_notes in timeline.json (web UI + MCP)            [planned]
+ 9 studio      ─► human edits + review_notes in timeline.json (web UI + MCP)            [built]
 10 render/mix  ─► render/picture.mp4, audio/mix.wav (−14 LUFS), output/<id>/video.mp4   [planned]
 11 qa          ─► qa/qa.json: black, freeze, loudness, STT match                       [built]
 ```
@@ -38,7 +38,7 @@ documentary-workflow/
  tests/      test_pipeline.py test_pacing.py (offline)
  examples/   example-dien-bien-phu/script.txt
  input/  projects/  output/  licenses/
- studio/     (planned) server + UI + mcp_server.py
+ studio/     server.py (web UI + API) · mcp_server.py · core.py · jobs.py · ui/
 ```
 
 ## Build order for the remaining stages

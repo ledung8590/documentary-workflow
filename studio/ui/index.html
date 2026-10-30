@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Studio phim tài liệu</title>
+<link rel="stylesheet" href="/ui/style.css">
+</head>
+<body>
+<header id="top">
+  <div class="brand">▣ Studio</div>
+  <div class="proj"><b id="projTitle">…</b><span id="projMeta" class="muted"></span></div>
+  <span id="verPill" class="pill" title="Số lần đã ghi timeline (bạn + agent); xem tab Lịch sử">bản –</span>
+  <div class="grow"></div>
+  <span id="saveState" class="pill">…</span>
+  <button id="btnAgent" title="Agent (Claude Code qua MCP)">✦ Agent</button>
+  <button id="btnNotesMode" title="Chế độ góp ý (C)">◎ Góp ý</button>
+  <button id="btnMedia" title="Kho media">▦ Kho media</button>
+  <button id="btnHelp" title="Phím tắt">⌨</button>
+  <button id="btnExport" class="primary" title="Xuất bản ra output/">⇪ Xuất bản</button>
+</header>
+
+<main id="mid">
+  <aside id="side">
+    <nav id="tabs">
+      <button data-tab="media" class="on">Media</button>
+      <button data-tab="audio">Âm thanh</button>
+      <button data-tab="text">Chữ</button>
+      <button data-tab="speech">Lời nói</button>
+      <button data-tab="record">Quay</button>
+      <button data-tab="motion">Chuyển động</button>
+      <button data-tab="effects">Hiệu ứng</button>
+      <button data-tab="trans">Chuyển cảnh</button>
+      <button data-tab="color">Màu</button>
+      <button data-tab="notes">Góp ý <span id="noteCount" class="badge">0</span></button>
+      <button data-tab="build">Bản dựng</button>
+      <button data-tab="log">Lịch sử</button>
+    </nav>
+    <section id="panel" class="tab on"></section>
+  </aside>
+
+  <section id="viewer">
+    <div id="stage">
+      <div id="frameBox">
+        <canvas id="frame" width="1280" height="720"></canvas>
+        <video id="vid" muted playsinline preload="none"></video>
+        <div id="noteLayer"></div>
+        <div id="subHint"><span>bấm để sửa phụ đề</span></div>
+        <div id="frameTag"></div>
+        <div id="draftTag" class="hidden">xem nháp · chưa lưu</div>
+      </div>
+    </div>
+    <div id="transport">
+      <span id="tc" class="tc">0:00:00:00</span>
+      <button id="bBack5" title="Lùi 5 giây (Shift+←)">«</button>
+      <button id="bPrev" title="Lùi 1 khung (←)">‹</button>
+      <button id="bPlay" class="play" title="Phát / dừng (Space)">▶</button>
+      <button id="bNext" title="Tới 1 khung (→)">›</button>
+      <button id="bFwd5" title="Tới 5 giây (Shift+→)">»</button>
+      <span id="durTxt" class="muted mono"></span>
+      <label class="chk" title="Khi phát, đoạn chưa sửa hình lấy từ render/picture.mp4 (mượt). Đoạn đã sửa hình dựng trực tiếp từ timeline."><input type="checkbox" id="smooth" checked> Hình mượt</label>
+      <div class="grow"></div>
+      <div id="meter" title="Độ to tức thời (LUFS, K-weighting, ở mức của bản xuất) và đỉnh (dBFS)">
+        <span class="lbl">MASTER</span>
+        <canvas id="meterBar" width="200" height="14"></canvas>
+        <span id="meterTxt" class="mono">– LUFS</span>
+      </div>
+      <button id="bMeasure" title="Đo độ to tích hợp ±15 s quanh đầu phát (ở mức bản xuất)">Đo đoạn</button>
+    </div>
+  </section>
+
+  <aside id="insp">
+    <div class="insp-head"><b>Thuộc tính</b><div class="grow"></div><span id="selInfo" class="muted"></span></div>
+    <section id="inspBody"></section>
+  </aside>
+</main>
+
+<section id="timeline">
+  <div id="tlbar">
+    <button id="bUndo" title="Hoàn tác (Ctrl+Z)">↶</button>
+    <button id="bRedo" title="Làm lại (Ctrl+Shift+Z)">↷</button>
+    <button id="bSplit" title="Tách clip tại đầu phát (S)">✂</button>
+    <button id="bDelete" title="Xoá clip đang chọn (Delete)">🗑</button>
+    <button id="bAddFx" title="Thêm track hiệu ứng">＋ Track hiệu ứng</button>
+    <label class="chk" title="Hút vào câu, từ, đầu phát và mép clip (giữ Alt để tắt tạm)"><input type="checkbox" id="snap" checked> Hút mốc</label>
+    <span id="hint" class="muted">Kéo thân clip để dời, kéo mép để cắt · Shift/Ctrl+click chọn nhiều · kéo media từ panel thả vào track.</span>
+    <div class="grow"></div>
+    <button id="bZoomOut" title="Thu nhỏ (-)">−</button>
+    <input id="zoom" type="range" min="0" max="100" value="55">
+    <button id="bZoomIn" title="Phóng to (+)">+</button>
+    <button id="bFit" title="Xem toàn phim">⤢</button>
+  </div>
+  <div id="tlbody">
+    <div id="heads"></div>
+    <div id="lanes"><canvas id="overview" height="22"></canvas><div id="laneScroll"><canvas id="tl"></canvas></div><div id="tip"></div></div>
+  </div>
+</section>
+
+<div id="noteBox" class="pop hidden">
+  <textarea id="noteText" placeholder="Muốn sửa gì ở chỗ này? (Enter xuống dòng · Ctrl+Enter lưu)"></textarea>
+  <div class="row"><div class="grow"></div><button id="noteCancel">Huỷ</button><button id="noteSave" class="primary">Lưu góp ý</button></div>
+</div>
+
+<div id="subBox" class="pop hidden">
+  <div class="row" style="margin-bottom:6px"><b>Sửa phụ đề</b><span id="subMeta" class="muted mono" style="font-size:11px"></span><div class="grow"></div><button id="subClose" title="Đóng (Esc)">✕</button></div>
+  <textarea id="subText" placeholder="Nội dung phụ đề (Enter = xuống dòng · Ctrl+Enter lưu)"></textarea>
+  <div class="row" style="margin:6px 0;font-size:12px">
+    <span class="muted">Từ</span><input id="subStart" type="number" step="0.04" style="width:84px"><button id="subStartNow" title="Lấy giờ đầu phát">⌖</button>
+    <span class="muted">đến</span><input id="subEnd" type="number" step="0.04" style="width:84px"><button id="subEndNow" title="Lấy giờ đầu phát">⌖</button>
+  </div>
+  <div id="subOrig" class="muted" style="font-size:11px;margin-bottom:6px"></div>
+  <div class="row"><button id="subHide" title="Không hiện câu này">Ẩn câu</button><button id="subReset" title="Về chữ/giờ gốc từ voice.srt">Khôi phục gốc</button><div class="grow"></div><button id="subSave" class="primary">Lưu</button></div>
+</div>
+
+<div id="modal" class="hidden"><div class="card"><div class="row"><b id="modalTitle"></b><div class="grow"></div><button id="modalClose">✕</button></div><div id="modalBody"></div></div></div>
+<div id="toast"></div>
+<audio id="auPreview" preload="none"></audio>
+<script src="/ui/app.js"></script>
+</body>
+</html>

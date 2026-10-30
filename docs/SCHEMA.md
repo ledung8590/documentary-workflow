@@ -44,3 +44,13 @@ Rules
 - Unanchored clips stay where they are when the voice changes (`assemble` reports how many).
 - `review_notes.status`: `open` → `doing` → `done`. Only the user closes a note as `done` after looking, unless they say otherwise.
 - Overlay `type` set: `date_tag lower_third title_card stat quote calendar map_annot black` (renderer templates, planned). `title_card`, `quote`, `black` mark intentional dark/still stretches for QA.
+
+## Studio fields (optional; scripts/render_fx.py)
+- Video clip `color`: `{exposure, brightness, contrast, saturation, temperature, tint, gamma, shadows, highlights, fade, sepia}` (neutral 0, or 1 for contrast/saturation/gamma).
+- Video clip `motion`: `{"type": "push"|"pull", "dx"}` (classic) or `{"type": "custom", "from": {"zoom", "x", "y"}, "to": {...}, "ease": "smooth|linear|in|out", "shake": 0..1}` or `{"type": "none"}`.
+- Video clip `transition_in.type`: `fade dip dip_white wipe_left wipe_right wipe_up wipe_down slide_left slide_right slide_up slide_down zoom blur circle_open circle_close radial pixelize`.
+- Tracks with `"kind": "fx"` (ids `fx`, `fx2`…; `"hidden": true` = off) hold effect clips `{"type", "start", "end", "params", "opacity", "fade_in", "fade_out", "label"}`; types and default params in `render_fx.EFFECTS`; `media_overlay.params` = `{src, blend, scale, x, y, size, speed, loop}`.
+- Overlay `type: "text"`: props `text x y size font color align stroke stroke_color shadow box box_color anim upper line_gap`.
+- Top-level `subtitle_style`: `{size, y, color, upper, stroke, stroke_color, shadow, box, box_color, box_pad, box_radius, font}` (box = background opacity 0..1).
+- Top-level `subtitle_overrides`: `{"<cue start in ms>": {"text", "start", "end"}}`: studio edits of single burned-in cues; `voice/voice.srt` stays as assembled, `"text": ""` hides a cue.
+- Audio clip `mute: true` leaves it out of the mix.

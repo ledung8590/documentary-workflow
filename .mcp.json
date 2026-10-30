@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "documentary-studio": {
+      "type": "stdio",
+      "command": ".venv\\Scripts\\python.exe",
+      "args": ["studio\\mcp_server.py"]
+    }
+  }
+}

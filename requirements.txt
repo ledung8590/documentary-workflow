@@ -2,6 +2,7 @@ numpy>=1.26,<3
 soundfile>=0.12,<1
 Pillow>=10,<13
 pytest>=8,<9
+moderngl>=5.10,<6  # GPU frame compositor (scripts/render_gl.py); optional, CPU fallback without it
 # planned stages
 # librosa>=0.10    music beat grid (docs/MUSIC.md)
 # mercantile>=1.2  map tile maths (docs/MEDIA.md#maps)

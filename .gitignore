@@ -35,3 +35,7 @@ assets/sfx/**
 assets/music/**
 !assets/music/**/
 !assets/music/LICENSES.md
+
+# studio: last opened project (MCP default)
+studio/.last_project
+studio/settings.json

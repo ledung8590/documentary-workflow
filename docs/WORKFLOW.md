@@ -39,8 +39,8 @@ Per chapter mood, beds from the shared ElevenLabs Music library (`assets/music/<
 ## 8. SFX [planned: `doc.py sfx`]
 Word-anchored one-shots from the shared ElevenLabs SFX library (`docs/SOUND.md`); sparse, under the voice.
 
-## 9. Studio review [planned: `doc.py studio`]
-Open `timeline.json` in the local studio (`docs/STUDIO.md`). The user may drag clips and leave review notes; the agent reads `review_notes`, fixes, marks them done.
+## 9. Studio review [built: `doc.py studio <job>`]
+Open `timeline.json` in the local studio (`docs/STUDIO.md`). The user may drag clips and leave review notes; the agent reads them with the `documentary-studio` MCP tools (`list_review_notes`), fixes with `update_clips`, checks with `render_frame`/`render_preview`, sets the note to `doing` with a reply. The user exports (new file, never over `video.mp4`).
 
 ## 10. Render and mix [planned: `doc.py render`, `doc.py mix`]
 ffmpeg compositor: 1920×1080, fps from brief (24 default), H.264 High, AAC 48 kHz. Mix voice-led, music ducked, −14 LUFS, ≤ −1 dBTP.

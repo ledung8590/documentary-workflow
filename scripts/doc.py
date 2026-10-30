@@ -789,7 +789,6 @@ PLANNED = {
     'maps': 'terrain + satellite map stills/moves with attribution (docs/MEDIA.md#maps)',
     'music': 'Suno tracks per mood -> beat grid -> cuts on beats (docs/MUSIC.md)',
     'sfx': 'SFX on exact words via anchors (docs/SOUND.md)',
-    'studio': 'open timeline.json in the local studio (docs/STUDIO.md)',
 }
 
 
@@ -813,6 +812,7 @@ def main():
     s = ms.add_parser('strip'); s.add_argument('tag'); s.add_argument('k', type=int); s.add_argument('--every', type=float, default=3.0)
     q = sub.add_parser('build'); q.add_argument('job'); q.add_argument('--only', choices=('picture', 'mix', 'all'), default='all')
     q = sub.add_parser('voice'); q.add_argument('job'); q.add_argument('--run', action='store_true'); q.add_argument('--only')
+    q = sub.add_parser('studio'); q.add_argument('job'); q.add_argument('--port', default='5280'); q.add_argument('--no-browser', action='store_true')
     for c in PLANNED:
         sub.add_parser(c).add_argument('job', nargs='?')
     a = ap.parse_args()
@@ -826,6 +826,8 @@ def main():
         return build(a.job, a.only)
     if a.cmd == 'voice':
         return voice_gen(a.job, a.run, a.only)
+    if a.cmd == 'studio':  # web studio + review notes (docs/STUDIO.md); the agent side is studio/mcp_server.py
+        return subprocess.call([sys.executable, str(ROOT / 'studio' / 'server.py'), a.job, '--port', a.port] + (['--no-browser'] if a.no_browser else []))
     if a.cmd in PLANNED:
         sys.exit(f'{a.cmd}: not built yet - planned: {PLANNED[a.cmd]}')
     {'doctor': lambda: doctor(), 'ingest': lambda: ingest(a.input), 'split': lambda: split(a.job), 'pace': lambda: pace(a.job),
