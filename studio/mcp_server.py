@@ -71,9 +71,10 @@ TOOLS = [
                                                                           'width': {'type': 'number', 'description': 'default 960'}}}},
     {'name': 'export',
      'description': 'Start the export in the background: re-render only the picture ranges that changed (spliced into '
-                    'render/picture.mp4), the same voice-led mix (-14 LUFS) and mux as doc.py build, to a NEW file '
-                    'output/<id>/video-studio-<time>.mp4 (video.mp4 is never overwritten). Audio-only edits take ~7 min '
-                    'for a 65-min film. Only export when the user asked for it. Returns a job id for get_job.',
+                    'render/picture.mp4), the same voice-led mix (-14 LUFS) and mux as doc.py build. The first export of '
+                    'a film writes output/<id>/video.mp4; later ones write video-studio-<time>.mp4 (video.mp4 is never '
+                    'overwritten). Audio-only edits take ~10 min for a 65-min film. Only export when the user asked for it '
+                    '(workflow stage 10 is a hard stop for the user\'s review). Returns a job id for get_job.',
      'inputSchema': {'type': 'object', 'properties': {'project': PROJ}}},
     {'name': 'effect_catalog',
      'description': 'Every effect type with default params and ranges, blend modes, transitions, motion presets, colour '
@@ -184,7 +185,8 @@ def export(a):
     tl, _ = proj.read(); d = C.dirty_ranges(proj, tl)
     jid = C.start_job(proj, 'export', {})
     return {'job': jid, 'picture': 'full render' if d is None else (f'{len(d)} dirty range(s) re-render' if d else 'reuse picture.mp4 (audio only)'),
-            'output': f'output/{proj.id}/video-studio-<time>.mp4', 'next': 'poll get_job with this id'}
+            'output': f'output/{proj.id}/' + ('video-studio-<time>.mp4' if (proj.out_dir / 'video.mp4').exists() else 'video.mp4'),
+            'next': 'poll get_job with this id'}
 
 
 def effect_catalog(a):

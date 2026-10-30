@@ -17,12 +17,13 @@ input/<name>.wav + <name>.srt  (AI84/MiniMax voice, Whisper SRT; default)
  5 assemble    ─► voice/voice.wav, voice.srt (cues retimed), words.json (approx),
                   timeline.json (anchored clips retimed)                                [built]
    fallback: input/<job>/script.txt → split → tts (ElevenLabs, dry run) → assemble      [built]
- 6 media/maps  ─► media/*, maps/*, video+overlay clips, LICENSES.md rows                [planned]
- 7 music       ─► shared mood beds (ElevenLabs Music; Suno manual), beats, clips on beats[planned]
- 8 sfx         ─► word-anchored sfx clips                                               [planned]
- 9 studio      ─► human edits + review_notes in timeline.json (web UI + MCP)            [built]
-10 render/mix  ─► render/picture.mp4, audio/mix.wav (−14 LUFS), output/<id>/video.mp4   [planned]
-11 qa          ─► qa/qa.json: black, freeze, loudness, STT match                       [built]
+ 6 media       ─► archival photos/film (media search/pick), scenes, overlays, LICENSES  [built; maps planned]
+ 7 music       ─► shared mood beds placed per chapter (doc.py ops / update_clips)     [built; beat grid planned]
+ 8 sfx         ─► word-anchored sfx clips from the shared library                     [built]
+ 9 draft       ─► render/picture.mp4 (GPU, doc.py build --only picture)               [built]
+10 STUDIO STOP ─► user reviews in the studio, notes, agent fixes over MCP, approval   [built]
+11 export      ─► dirty ranges re-rendered, mix −14 LUFS, output/<id>/video.mp4       [built]
+12 qa          ─► qa/qa.json: black, freeze, loudness, STT match                       [built]
 ```
 Every stage reads/writes files in the project folder only; `timeline.json` is the shared contract (docs/SCHEMA.md). Paying stages dry-run by default.
 

@@ -2,6 +2,10 @@
 
 When the user says `/gendoc`, `$gendoc`, `/genvideo` or asks to produce a documentary from input, execute `docs/WORKFLOW.md` as far as the built stages go. Do not merely explain the workflow.
 
+- **Goal:** historical-analysis documentaries built from **real, licensed archival** photos, film and maps. `projects/nguoi-gac-dem` was a one-off fiction run with the user's own AI images: never copy its method or per-project scripts.
+- **Review gate:** after the draft render, open the studio (`doc.py studio JOB`) and **stop**. The user reviews, leaves notes and approves; only then export, QA and deliver (WORKFLOW stage 10). Never produce the final video before that, unless the user explicitly asks to skip the review.
+- Timeline edits go through the studio store: `doc.py ops JOB ops.json` or the `documentary-studio` MCP tools (`update_clips`). Never hand-edit timeline.json while the studio may be open.
+
 Style: real archival photos and film, real terrain/satellite maps with attribution, supplied narration re-paced with emotion-led pauses, music beds (ElevenLabs Music, optional Suno) cut on the beat, sparse word-synced SFX, editorial overlays (date tags, lower thirds, stat cards, typewriter quotes, map annotations). It is the sibling of `history-video-workflow` (chibi animation); do not mix their assets or engines.
 
 - **Input is a narration script** `input/<name>.txt`.

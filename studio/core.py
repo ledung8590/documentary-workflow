@@ -1077,8 +1077,8 @@ def splice(proj, tl, ranges, log=print):
 
 
 def export(proj, log=print):
-    """Studio export: picture (re-render only the edited ranges), the same voice-led mix and mux as doc.py build, to a
-    new file output/<id>/video-studio-<time>.mp4 (the delivered video.mp4 is never overwritten)."""
+    """Studio export: picture (re-render only the edited ranges), the same voice-led mix and mux as doc.py build.
+    The first export writes output/<id>/video.mp4; once it exists, exports go to video-studio-<time>.mp4 (never over it)."""
     import render as R
     tl, tag = proj.read()
     if tl.get('mock_voice'):
@@ -1100,7 +1100,8 @@ def export(proj, log=print):
     log('mix (voice-led, two-pass loudnorm)')
     aud = proj.d / 'render' / 'mix.wav'
     n = R.mix(proj.d, tl, aud)
-    out = proj.out_dir / f'video-studio-{time.strftime("%Y%m%d-%H%M")}.mp4'
+    first = proj.out_dir / 'video.mp4'  # the film's first export is the deliverable name; later ones never overwrite it
+    out = first if not first.exists() else proj.out_dir / f'video-studio-{time.strftime("%Y%m%d-%H%M")}.mp4'
     log(f'mux -> {out}')
     R.mux(proj.picture, aud, out)
     write_credits(proj, tl, out.parent)

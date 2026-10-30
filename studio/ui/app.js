@@ -1173,7 +1173,7 @@ PANELS.build = el => {
     el.append(h('p', {}, `Hình đã sửa ở ${dirty.length} đoạn (${tot.toFixed(1)} s): chỉ dựng lại các đoạn này rồi ghép vào picture.mp4, sau đó trộn lại toàn bộ tiếng.`));
     for (const [x, y] of dirty.slice(0, 30)) el.append(h('div', { class: 'rng' }, `${tc(x)} → ${tc(y)}`, h('button', { onclick: () => seek(x) }, 'Xem'), h('button', { onclick: () => fillRange(x - 1, Math.min(y + 1, x + 179)) }, 'Xem trước')));
   } else el.append(h('p', {}, 'Hình chưa đổi: xuất nhanh = trộn lại tiếng rồi ghép vào picture.mp4, không dựng khung hình.'));
-  el.append(h('p', { class: 'muted', style: 'font-size:12px' }, `Ra file mới output/${S.proj.id}/video-studio-<giờ>.mp4. Không ghi đè video.mp4.`), h('button', { class: 'primary', style: 'width:100%', onclick: doExport }, '⇪ Xuất bản'));
+  el.append(h('p', { class: 'muted', style: 'font-size:12px' }, `Lần xuất đầu tiên ra output/${S.proj.id}/video.mp4; các lần sau ra video-studio-<giờ>.mp4, không ghi đè video.mp4.`), h('button', { class: 'primary', style: 'width:100%', onclick: doExport }, '⇪ Xuất bản'));
   const cfgBox = h('div', {});
   el.append(sec('Tốc độ dựng'), cfgBox);
   api('/api/settings').then(({ body: c }) => {
@@ -1231,7 +1231,7 @@ function openPreview(j) {
 async function doExport() {
   const dirty = S.dirty || [];
   const what = !S.proj.picture ? 'dựng TOÀN BỘ hình (rất lâu)' : dirty.length ? `dựng lại ${dirty.length} đoạn hình đã sửa, ghép vào picture.mp4, trộn lại tiếng` : 'chỉ trộn lại tiếng rồi ghép vào picture.mp4';
-  if (!confirm(`Xuất bản ${S.proj.id}?\n\nSẽ ${what}.\nFile mới: output/${S.proj.id}/video-studio-<giờ>.mp4 (không ghi đè video.mp4).`)) return;
+  if (!confirm(`Xuất bản ${S.proj.id}?\n\nSẽ ${what}.\nRa output/${S.proj.id}/video.mp4 nếu chưa có, có rồi thì video-studio-<giờ>.mp4 (không ghi đè video.mp4).`)) return;
   try { const { body } = await api('/api/export', { method: 'POST' }); toast('Bắt đầu xuất bản: ' + body.job); switchTab('build'); pollJobs(); }
   catch (e) { toast(e.message, true); }
 }

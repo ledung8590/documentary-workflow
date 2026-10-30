@@ -785,10 +785,22 @@ def build(job, what):
         print(f'video -> {out}\nnext: doc.py qa {job} --video "{out}" and inspect frames')
 
 
+def ops(job, file, why):
+    """Apply timeline clip ops (the studio's format, docs/STUDIO.md / studio/core.apply_ops) from a JSON file: same store
+    as the studio and its MCP server (ETag lock, history, moved clips re-anchored to the nearest word)."""
+    sys.path.insert(0, str(ROOT / 'studio'))
+    import core as C
+    proj = C.Project(job_dir(job).name)
+    lst = json.loads(Path(file).read_text(encoding='utf-8'))
+    try:
+        log, tag = proj.transact(lambda tl: C.apply_ops(tl, lst if isinstance(lst, list) else lst['ops'], proj.anchors()), who='agent', why=why)
+    except (C.OpError, C.Conflict) as e:
+        sys.exit(f'ops not applied (timeline unchanged): {e}')
+    print('\n'.join(log)); print(f'timeline.json saved (etag {tag})')
+
+
 PLANNED = {
     'maps': 'terrain + satellite map stills/moves with attribution (docs/MEDIA.md#maps)',
-    'music': 'Suno tracks per mood -> beat grid -> cuts on beats (docs/MUSIC.md)',
-    'sfx': 'SFX on exact words via anchors (docs/SOUND.md)',
 }
 
 
@@ -812,6 +824,7 @@ def main():
     s = ms.add_parser('strip'); s.add_argument('tag'); s.add_argument('k', type=int); s.add_argument('--every', type=float, default=3.0)
     q = sub.add_parser('build'); q.add_argument('job'); q.add_argument('--only', choices=('picture', 'mix', 'all'), default='all')
     q = sub.add_parser('voice'); q.add_argument('job'); q.add_argument('--run', action='store_true'); q.add_argument('--only')
+    q = sub.add_parser('ops'); q.add_argument('job'); q.add_argument('file'); q.add_argument('--why', default='doc.py ops')
     q = sub.add_parser('studio'); q.add_argument('job'); q.add_argument('--port', default='5280'); q.add_argument('--no-browser', action='store_true')
     for c in PLANNED:
         sub.add_parser(c).add_argument('job', nargs='?')
@@ -826,6 +839,8 @@ def main():
         return build(a.job, a.only)
     if a.cmd == 'voice':
         return voice_gen(a.job, a.run, a.only)
+    if a.cmd == 'ops':
+        return ops(a.job, a.file, a.why)
     if a.cmd == 'studio':  # web studio + review notes (docs/STUDIO.md); the agent side is studio/mcp_server.py
         return subprocess.call([sys.executable, str(ROOT / 'studio' / 'server.py'), a.job, '--port', a.port] + (['--no-browser'] if a.no_browser else []))
     if a.cmd in PLANNED:

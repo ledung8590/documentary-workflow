@@ -1,6 +1,6 @@
 # Canonical /gendoc procedure
 
-Run from the workspace root with `.venv/Scripts/python.exe` (PY). Built stages are marked **[built]**; the others are **[planned]**: say so plainly and stop there, do not improvise a substitute. Every paying command dry-runs first; ask the user before `--run`.
+Run from the workspace root with `.venv/Scripts/python.exe` (PY). Built stages are marked **[built]**; the others are **[planned]**: say so plainly and stop there, do not improvise a substitute. Stage 10 is a hard stop: the user reviews in the studio before any final output. Every paying command dry-runs first; ask the user before `--run`.
 
 ## 1. Ingest [built]
 `PY scripts/doc.py doctor` (setup: `powershell -ExecutionPolicy Bypass -File scripts/setup.ps1`). Then `PY scripts/doc.py ingest`.
@@ -30,23 +30,36 @@ If the user (or STT QA) finds a misread unit, ask them to regenerate exactly tha
 ## 5. Assemble [built]
 `PY scripts/doc.py assemble JOB` rebuilds `voice/voice.wav` with the designed gaps and any replacements, fails if a spliced edge is not silent, retimes every SRT cue (`voice/voice.srt`), writes approximate word onsets (`voice/words.json`), and creates/updates `timeline.json`. Clips anchored to units (`U###`) or cues (`{"cue": N}`) are retimed, so pictures, music and SFX stay synced after any later pacing change. Report the new duration. Listen to `voice.wav` where a playback tool exists; otherwise say you did not listen.
 
-## 6. Scenes and media [planned: `doc.py media`]
-Turn the per-unit video slots into scenes (a new shot every ~3–6 s; merge/split slots, keep anchors). For each scene write a media need, search licensed sources (`docs/MEDIA.md`), download into `media/`, log licence rows, set `src`, motion (Ken Burns / pan / hold), grade (archival B&W, sepia), caption + credit line. Maps from terrain + satellite tiles (`docs/MEDIA.md#maps`) with annotations on the overlay track.
+## 6. Scenes and archival media [built: `doc.py media`, `doc.py ops`; maps planned]
+Real, licensed archival material only (`docs/MEDIA.md`); this workflow is for historical-analysis films. (`projects/nguoi-gac-dem` was a one-off fiction run with the user's own AI images: never use it as the model.)
+1. Turn the per-sentence video slots into scenes, a new shot every ~3–6 s. Merge, split and trim slots with timeline ops (`doc.py ops JOB ops.json`, or the studio MCP tool `update_clips`): moved clips are re-anchored to the nearest word, so later voice changes still retime them.
+2. For each scene write the media need, then `doc.py media JOB search "query" --tag T [--kind photo|video]` and look at the contact sheet `qa/media-T.jpg`.
+3. `doc.py media JOB pick SLOT T K --caption "what it really shows"` downloads the file, sets `src`/`kind`/`credit` and appends the `LICENSES.md` row. A photo of another place or date gets "(illustrative)" / "(minh hoạ)" in its caption.
+4. Per scene, as needed: motion (Ken Burns presets or custom `motion`), grade, `transition_in`, colour (`docs/SCHEMA.md#studio-fields`).
+5. Overlays on the `overlay` track: date tags, lower thirds, callouts, title/question/chapter/stat/quote cards, free text.
+Maps (terrain + satellite tiles) are **planned**: say so; until then use licensed archival maps found with `media search`.
 
-## 7. Music [planned: `doc.py music`]
-Per chapter mood, beds from the shared ElevenLabs Music library (`assets/music/<mood>/`; generate missing moods only after a dry run with tracks, durations and credits, and the user's yes) or user-supplied Suno Pro files; never sunoapi.org or other unofficial Suno APIs (see `docs/MUSIC.md`), beat grid, cuts and swells aligned to beats nearest the anchored story beats; ducked under voice.
+## 7. Music [built: shared library + placement; beat grid planned]
+Per chapter, pick a mood bed from `assets/music/<mood>/` and place it on the `music` track with `doc.py ops` / `update_clips` (`add` with `src`, `start`, `end`, `gain_db`, `fade_in`, `fade_out`, `in`; anchored automatically to the nearest word). Missing moods: `PY scripts/music_elevenlabs.py MOOD --seconds 90 --prompt "..."` dry-runs with the live balance; `--run` only after the user's yes (`docs/MUSIC.md`). Suno only as the user's manual Pro downloads. Beat-grid snapping (librosa) is **planned**: cut on phrase ends by ear instead. Rerun `assemble` after placing music if sentence starts should land on beats.
 
-## 8. SFX [planned: `doc.py sfx`]
-Word-anchored one-shots from the shared ElevenLabs SFX library (`docs/SOUND.md`); sparse, under the voice.
+## 8. SFX [built: shared library + placement]
+Word-anchored one-shots from `assets/sfx/<type>/` on the `sfx` track (`add` with the event's time: the anchor goes to the word naming it), plus field sound of archival film on `original` (`docs/SOUND.md`). Sparse, under the voice; cards get an audible hit. New SFX types only via `scripts/sfx_elevenlabs.py` dry run and the user's yes.
 
-## 9. Studio review [built: `doc.py studio <job>`]
-Open `timeline.json` in the local studio (`docs/STUDIO.md`). The user may drag clips and leave review notes; the agent reads them with the `documentary-studio` MCP tools (`list_review_notes`), fixes with `update_clips`, checks with `render_frame`/`render_preview`, sets the note to `doing` with a reply. The user exports (new file, never over `video.mp4`).
+## 9. Draft render [built: `doc.py build JOB --only picture`]
+Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py`; ~10–12 min for a 65-min film, CPU fallback). Not a deliverable: it is what the studio plays and splices into. Self-check a few frames (cards, maps, transitions) before the review.
 
-## 10. Render and mix [planned: `doc.py render`, `doc.py mix`]
-ffmpeg compositor: 1920×1080, fps from brief (24 default), H.264 High, AAC 48 kHz. Mix voice-led, music ducked, −14 LUFS, ≤ −1 dBTP.
+## 10. Studio review: STOP and wait for the user [built: `doc.py studio JOB` or `Studio.bat`]
+**Mandatory gate: never produce the final output before the user approves in the studio.**
+1. Start the studio for the job (`PY scripts/doc.py studio JOB`, http://localhost:5280/). Tell the user it is open, what to check (pictures and captions, cards, music/SFX levels, subtitles) and how: play, press C to leave notes, drag clips, edit subtitles by clicking them.
+2. **End the turn and wait.** Do not export, do not continue to QA.
+3. On each round: `list_review_notes` → fix with `update_clips` (or `doc.py ops`) → check with `render_frame` / `render_preview` → `set_note_status` doing + reply. Only the user marks notes done.
+4. Continue only when the user says the film is approved (in chat) or exports it with **Xuất bản**.
 
-## 11. QA [built: `doc.py qa`]
-`PY scripts/doc.py qa JOB --video FILE` — black, freeze (flags anything not on an intentional card), loudness, true peak. `--stt` dry-runs; with the user's OK `--stt --run` transcribes with ElevenLabs Scribe and compares words with the SRT/script (target ≥ 97 %; judge names/spellings rather than hiding them). Then inspect real frames at every flagged time, transitions, maps and text cards. Record what was and was not checked.
+## 11. Export [built: studio **Xuất bản**, or the MCP tool `export` when the user asks]
+Re-renders only the picture ranges changed in review (spliced into `render/picture.mp4`), runs the voice-led mix (−14 LUFS, ≤ −1 dBTP) and muxes. The first export of a film writes `output/<id>/video.mp4` with `LICENSES.md` and `credits.txt`; later exports write `video-studio-<time>.mp4` and never overwrite `video.mp4`. (`doc.py build JOB` still does picture + mix + mux in one go without review: only when the user asks to skip the studio.)
 
-## 12. Deliver
-`output/<id>/video.mp4`, `LICENSES.md`, `credits.txt` (description-ready attribution), `qa.json`. Never upload.
+## 12. QA [built: `doc.py qa`]
+`PY scripts/doc.py qa JOB --video FILE` on the exported file: black, freeze (flags anything not on an intentional card), loudness, true peak. `--stt` dry-runs; with the user's OK `--stt --run` transcribes with ElevenLabs Scribe and compares words with the SRT/script (target ≥ 97 %; judge names/spellings rather than hiding them). Then inspect real frames at every flagged time, transitions, maps and text cards. Record what was and was not checked.
+
+## 13. Deliver
+`output/<id>/video.mp4` (or the approved `video-studio-<time>.mp4`), `LICENSES.md`, `credits.txt` (description-ready attribution), `qa.json`. Never upload.

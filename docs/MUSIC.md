@@ -1,4 +1,4 @@
-# Music (stage 7, planned)
+# Music (stage 7: shared library + placement built; beat grid planned)
 
 ## Source: ElevenLabs Music (default, official API)
 - Same `ELEVENLABS_API_KEY` as SFX.

@@ -1,4 +1,4 @@
-# SFX (stage 8, planned)
+# SFX (stage 8: shared library + placement built)
 
 Library: reuse `../history-video-workflow/assets/sfx/` (ElevenLabs Sound Effects, Starter commercial licence confirmed 2026-10-30, per-file `LICENSES.md`). Copy, do not regenerate; new types are generated only after a dry run and the user's OK.
 
