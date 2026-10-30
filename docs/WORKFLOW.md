@@ -19,7 +19,7 @@ Read the whole narration (SRT text, a chunk at a time for long films). Write `pr
 
 ## 3a. Script jobs (default): sentences, emotion, voice [built]
 1. Run `split JOB`. The agent reviews every sentence's `emotion`, and may set `tag` (v4 audio tag), `say` (spoken form of numbers or names) or a locked `pause_after`.
-2. Run `tts JOB` (dry run: characters ≈ AI84 credits), then `tts JOB --run`. One AI84 job per sentence; the result is cached, so `--only S004` redoes a single sentence.
+2. Run `tts JOB` (dry run: characters ≈ AI84 credits), then `tts JOB --run`. Sentences go to AI84 in chunks (one job per chapter, emotion tags inline); Whisper (OmniVoice logic, started before the jobs and released after) aligns the script and cuts the chunks back into sentence clips with real word timings (`docs/VOICE.md#chunked-ai84--whisper-default-for-ai84-voices-tts-job`). Results are cached; `--only S004` redoes one sentence's chunk. Read the list of poorly heard sentences it prints.
 3. Run `assemble JOB`. It trims each clip, applies the emotion pauses, lands each sentence start on a music beat once a music clip is in the timeline (rerun assemble after placing music), writes `voice.wav`, writes a generated subtitle SRT (≤ 42 characters per cue), and retimes the timeline.
 4. Check with `qa --stt --run`.
 

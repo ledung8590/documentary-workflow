@@ -377,16 +377,18 @@ def clip_key(s, voice):
     return digest(tts_text(s, voice), voice['voice_id'], voice['model'], voice.get('language_code'), settings)
 
 
-def clip_paths(d, s, voice, mock=False):
-    key = ('mock-' if mock else '') + clip_key(s, voice)
+def clip_paths(d, s, voice, mock=False, cut=None):
+    """cut: a clip cut from a chunked AI84 job (voice.chunked, the default for AI84): 'c-' key, WAV."""
+    cut = voice.get('provider') == 'ai84' and voice.get('chunked', True) if cut is None else cut
+    key = ('mock-' if mock else 'c-' if cut else '') + clip_key(s, voice)
     base = d / 'voice' / 'clips' / f'{s["id"]}-{key}'
-    return base.with_suffix('.mp3' if not mock else '.wav'), base.with_suffix('.json')
+    return base.with_suffix('.wav' if mock or cut else '.mp3'), base.with_suffix('.json')
 
 
 def current_clip(d, s, voice):
-    """Real clip if present, else a mock clip; (audio, meta) paths or None."""
-    for mock in (False, True):
-        a, m = clip_paths(d, s, voice, mock)
+    """Real clip (chunk-cut or per-sentence) if present, else a mock clip; (audio, meta) paths or None."""
+    for mock, cut in ((False, True), (False, False), (True, False)):
+        a, m = clip_paths(d, s, voice, mock, cut)
         if a.exists() and m.exists():
             return a, m
     return None
@@ -415,13 +417,16 @@ def tts(job, do_run=False, mock=False, only=None):
     cfg, data = read(d / 'brief.json'), read(d / 'sentences.json')
     voice, sents = cfg['voice'], data['sentences']
     want = set(only.split(',')) if only else None
-    todo = [s for s in sents if (not want or s['id'] in want) and not clip_paths(d, s, voice, mock)[0].exists()]
+    cur = {s['id']: current_clip(d, s, voice) for s in sents}  # missing, or only a mock where a real clip is wanted
+    todo = [s for s in sents if (not want or s['id'] in want) and (not cur[s['id']] or (not mock and read(cur[s['id']][1]).get('mock')))]
     if mock:
         for s in todo:
             mock_clip(s, *clip_paths(d, s, voice, True))
         print(f'{len(todo)} mock clips written (not deliverable; real TTS replaces them)')
         return
     if voice.get('provider') == 'ai84':
+        if voice.get('chunked', True):
+            return tts_ai84_chunked(d, cfg, voice, data, todo, do_run)
         return tts_ai84(d, voice, todo, do_run)
     cost = sum(credits(s['text'], voice['model']) for s in todo)
     print(f'{len(todo)}/{len(sents)} sentences to generate, {sum(len(s["text"]) for s in todo)} chars, '
@@ -492,6 +497,126 @@ def tts_ai84(d, voice, todo, do_run):
     mark(d, 'tts', model=voice['model'], provider='ai84')
 
 
+def voice_chunks(voice, data):
+    """Consecutive sentences grouped for one AI84 job each: one chunk per chapter (AI84 is fastest with long texts), split
+    further only if voice.chunk_chars (default 0 = no limit) would be exceeded. Each sentence keeps its own emotion tag
+    inside the chunk text."""
+    starts = {c['sentence'] for c in data.get('chapters', []) if c.get('sentence')}
+    limit = int(voice.get('chunk_chars') or 0); chunks, cur, n = [], [], 0
+    for s in data['sentences']:
+        tagged = v4_request(s, voice)[0]
+        if cur and (s['id'] in starts or (limit and n + len(tagged) + 1 > limit)):
+            chunks.append(cur); cur, n = [], 0
+        cur.append(s); n += len(tagged) + 1
+    if cur:
+        chunks.append(cur)
+    return chunks
+
+
+def chunk_request(sents, voice):
+    """(tagged text for AI84, spoken text without tags, [(start, end) char span of each sentence in it], settings).
+    A new paragraph starts a new line (a longer natural pause to cut in)."""
+    tagged, plain, spans = '', '', []
+    for k, s in enumerate(sents):
+        sep = '' if k == 0 else ('\n' if s.get('paragraph') != sents[k - 1].get('paragraph') else ' ')
+        tg = v4_request(s, voice)[0]; sp = s.get('say') or spoken(s['text'])
+        tagged += sep + tg; plain += sep; spans.append((len(plain), len(plain) + len(sp))); plain += sp
+    speeds = sorted(V4_SPEED.get(s['emotion'], 1.0) for s in sents)
+    settings = {'stability': 0.5, 'similarity_boost': 0.8, 'style': 0.35, 'speed': speeds[len(speeds) // 2], 'use_speaker_boost': True}
+    return tagged, plain, spans, settings
+
+
+def tts_ai84_chunked(d, cfg, voice, data, todo, do_run):
+    """Fast voice path: one AI84 eleven_v4 job per chunk (chapter / ~2500 chars, emotion tag inline per sentence),
+    Whisper (OmniVoice logic) aligns the script to the audio, then the chunk is cut back into one clip per sentence at
+    the quietest point between sentences, with real character timings. The Whisper model starts loading before the
+    first AI84 job is sent and is released (process exit) when the last chunk is cut. AI84's own transcript is never
+    used. Per-sentence mode: brief voice.chunked = false."""
+    import ai84, whisper_align as WA
+    want = {s['id'] for s in todo}
+    chunks = [c for c in voice_chunks(voice, data) if any(s['id'] in want for s in c)]
+    reqs = []
+    for i, cs in enumerate(chunks, 1):
+        tagged, plain, spans, settings = chunk_request(cs, voice)
+        key = digest(tagged, voice['voice_id'], voice['model'], voice.get('language_code'), settings)
+        reqs.append({'n': i, 'sents': cs, 'tagged': tagged, 'plain': plain, 'spans': spans, 'settings': settings,
+                     'audio': d / 'voice' / 'chunks' / f'{cs[0]["id"]}-{key}.mp3'})
+    chars = sum(len(r['tagged']) for r in reqs)
+    print(f'{len(todo)} sentences in {len(reqs)} AI84 jobs (one per chapter'
+          f'{", max " + str(voice["chunk_chars"]) + " chars" if voice.get("chunk_chars") else ""}) via {voice["model"]} / {voice.get("voice_name") or voice["voice_id"]}: {chars} chars (~same in AI84 credits)')
+    for r in reqs[:3]:
+        print(f'  {r["sents"][0]["id"]}..{r["sents"][-1]["id"]} ({len(r["tagged"])} chars): {r["tagged"][:110]}...')
+    if not do_run:
+        print('dry run: add --run (Whisper medium loads first, then the AI84 jobs go out)'); return
+    if not voice.get('voice_id'):
+        sys.exit('brief.json voice.voice_id is empty (no default voice for this language): set one')
+    (d / 'voice' / 'chunks').mkdir(parents=True, exist_ok=True)
+    worker = WA.WhisperWorker(voice, log=lambda m: print('  ' + m, flush=True))  # loading while AI84 renders
+    lang = (voice.get('language_code') or cfg.get('language') or 'auto')[:2]
+
+    def gen(r):
+        if not r['audio'].exists():
+            _, cost = ai84.tts(r['tagged'], voice['voice_id'], voice['model'], r['settings'], voice.get('language_code'), r['audio'],
+                               deadline=1800)
+            write(r['audio'].with_suffix('.json'), {'tagged': r['tagged'], 'credit_cost': cost, 'sentences': [s['id'] for s in r['sents']]})
+            return r, cost
+        return r, 0
+
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    total, failed, weak = 0, [], []
+    try:
+        with ThreadPoolExecutor(max_workers=int(voice.get('workers', 4))) as pool:
+            futs = {pool.submit(gen, r): r for r in reqs}
+            for f in as_completed(futs):
+                r = futs[f]
+                try:
+                    r, cost = f.result(); total += cost or 0
+                    weak += cut_chunk(d, voice, r, worker, lang)
+                    print(f'  chunk {r["n"]}/{len(reqs)} {r["sents"][0]["id"]}..{r["sents"][-1]["id"]} ok ({cost} credits), '
+                          f'cut into {len(r["sents"])} clips', flush=True)
+                except RuntimeError as e:
+                    failed.append(r['sents'][0]['id']); print(f'  chunk {r["n"]} FAILED: {e}', flush=True)
+    finally:
+        worker.close()
+    print(f'done, {total} AI84 credits' + (f'; {len(failed)} chunks failed, rerun to retry (finished chunks are cached)' if failed else ''))
+    if weak:
+        print('CHECK THESE SENTENCES (little of the script was heard: skipped or misread by the voice?):\n  ' + '\n  '.join(weak))
+    if not failed:
+        mark(d, 'tts', model=voice['model'], provider='ai84', chunked=True, weak=len(weak))
+
+
+def cut_chunk(d, voice, r, worker, lang):
+    """Whisper the chunk, align the script, cut one clip per sentence. Returns warnings for poorly heard sentences."""
+    import difflib
+    import whisper_align as WA
+    words = worker.transcribe(r['audio'], lang, r['audio'].with_suffix('.whisper.json'))
+    times = WA.char_times(r['plain'], words)
+    if times is None:
+        raise RuntimeError(f'whisper heard nothing in {r["audio"].name}')
+    spans = [(times[a], times[b - 1] + 0.08) for a, b in r['spans']]
+    x = load_audio(r['audio']); cuts = [0] + WA.cut_points(x, SR, spans) + [len(x)]
+    heard = ' '.join(w['word'] for w in words).lower(); weak = []
+    for k, s in enumerate(r['sents']):
+        a, b = cuts[k], cuts[k + 1]; t0 = a / SR
+        seg_words = [{**w, 'start': w['start'] - t0, 'end': w['end'] - t0} for w in words if t0 - 0.05 <= w['start'] < b / SR]
+        ct = WA.char_times(s['text'], seg_words) if seg_words else None
+        if ct is None:  # nothing heard in this piece: spread its characters over it
+            ct = [i / max(1, len(s['text'])) * (b - a) / SR for i in range(len(s['text']))]
+        sp = r['plain'][r['spans'][k][0]:r['spans'][k][1]].lower()
+        ratio = difflib.SequenceMatcher(None, sp, ' '.join(w['word'] for w in seg_words).lower(), autojunk=False).ratio()
+        if ratio < (0.6 if len(sp) >= 15 else 0.34):  # one-word sentences are judged loosely: Whisper often merges them
+            weak.append(f'{s["id"]} ({ratio:.0%} heard): {s["text"][:80]}')
+        audio, meta = clip_paths(d, s, voice, cut=True)
+        save_wav(audio, x[a:b])
+        ends = ct[1:] + [ct[-1] + 0.08]
+        write(meta, {'text': s['text'], 'spoken': v4_request(s, voice)[0], 'emotion': s['emotion'], 'provider': 'ai84', 'model': voice['model'],
+                     'voice_id': voice['voice_id'], 'chunk': r['audio'].name, 'heard_ratio': round(ratio, 3),
+                     'alignment': {'characters': list(s['text']), 'character_start_times_seconds': [round(v, 3) for v in ct],
+                                   'character_end_times_seconds': [round(v, 3) for v in ends], 'source': 'whisper'}})
+    del heard
+    return weak
+
+
 def approx_words(text, dur):
     """Word onsets spread by character count over the trimmed clip (when the provider gives no alignment)."""
     toks = [m for m in re.finditer(r'\S+', text)]
@@ -547,6 +672,26 @@ def words_from(alignment, shift, limit):
     return words
 
 
+def srt_cues(sents, timing, char_t, lang=None):
+    """Subtitle cues. Sentences with Whisper character timings use OmniVoice's splitting (sentence ends, phrase marks,
+    42 chars) and cue timing rules; others fall back to word-timed 42-char cues."""
+    import whisper_align as WA
+    cjk = (lang or '') in ('zh', 'ja', 'ko', 'th')
+    spans = []
+    for s in sents:
+        ts = char_t.get(s['id'])
+        if not ts:
+            spans += subtitle_cues(s['text'], timing[s['id']]['start'], timing[s['id']]['end'], timing[s['id']]['words']); continue
+        pos = 0
+        for part in WA.split_subtitles(s['text'], is_cjk=cjk):
+            i = s['text'].find(part, pos)
+            if i < 0:
+                i = pos
+            j = min(len(ts), i + len(part)); pos = j
+            spans.append((ts[i], ts[j - 1], part))
+    return WA.cue_times(spans, cjk)
+
+
 def srt_time(t):
     ms = int(round(t * 1000)); h, ms = divmod(ms, 3600000); m, ms = divmod(ms, 60000); s, ms = divmod(ms, 1000)
     return f'{h:02d}:{m:02d}:{s:02d},{ms:03d}'
@@ -570,6 +715,7 @@ def assemble(job):
             m = load_audio((d / c['src']).resolve(), 22050)
             beats += [c['start'] + b - c.get('in', 0.0) for b in PACE.beat_grid(m, 22050)]
     t, pieces, timing, edge_bad, mocked = float(voice['lead_in']), [], {}, [], False
+    char_t = {}  # sentence id -> absolute time of each character (Whisper-aligned clips)
     for k, s in enumerate(sents):
         if k and beats and sents[k - 1]['pause_after'] >= 0.3:
             t = PACE.snap(t, beats)  # sentence starts land on the music's beat
@@ -589,6 +735,9 @@ def assemble(job):
         clip_out = d / 'voice' / 'trimmed' / f'{s["id"]}.wav'
         save_wav(clip_out, y)
         ws = words_from(meta.get('alignment'), a / SR, dur) or approx_words(s['text'], dur)
+        al = meta.get('alignment')
+        if al and al.get('character_start_times_seconds') and len(al['characters']) == len(s['text']):
+            char_t[s['id']] = [t + min(dur, max(0.0, v - a / SR)) for v in al['character_start_times_seconds']]
         timing[s['id']] = {'start': round(t, 4), 'end': round(t + dur, 4), 'src': str(clip_out.relative_to(d)).replace('\\', '/'),
                            'words': [{**w, 'start': round(t + w['start'], 3), 'end': round(t + w['end'], 3)} for w in ws],
                            'approx_words': not meta.get('alignment')}
@@ -601,7 +750,7 @@ def assemble(job):
     save_wav(d / 'voice' / 'voice.wav', track)
     write(d / 'voice' / 'timing.json', {'mock': mocked, 'lead_in': voice['lead_in'], 'duration': duration, 'sentences': timing})
     write(d / 'voice' / 'words.json', [{'sentence': k, 'i': i, **w} for k, v in timing.items() for i, w in enumerate(v['words'])])
-    cues = [c for s in sents for c in subtitle_cues(s['text'], timing[s['id']]['start'], timing[s['id']]['end'], timing[s['id']]['words'])]
+    cues = srt_cues(sents, timing, char_t, cfg.get('language'))
     srt = [f'{i + 1}\n{srt_time(a)} --> {srt_time(b)}\n{txt}\n' for i, (a, b, txt) in enumerate(cues)]
     (d / 'voice' / 'voice.srt').write_text('\n'.join(srt), encoding='utf-8')  # generated SRT: no external app needed
     old = read(d / 'timeline.json') if (d / 'timeline.json').exists() else None

@@ -51,3 +51,14 @@ The key comes from env `AI84_API_KEY` or the user's AI84 doc file; it is never p
 
 ## Optional fallback: ElevenLabs TTS (mode "tts")
 `input/<job>/script.txt` without WAV/SRT → `split` (sentences.json) → `tts` (dry run; `--run` costs credits, ask first; `--mock` for offline timing tests, never deliverable) → `assemble`. Script markup: `# chapter`, blank line = paragraph, `{somber}` emotion, `[pause 2.5]`. Delivery per emotion and costs: `scripts/elevenlabs.py`. ElevenLabs is otherwise used only for SFX and temporary music.
+
+## Chunked AI84 + Whisper (default for AI84 voices, `tts JOB`)
+Per-sentence jobs were slow (~10 sentences/min: ~2 h for a 65-min film). Now `tts` sends **chunks**:
+- **Chunks:** consecutive sentences, one chunk per chapter (AI84 recommends long texts: faster), split further only past `voice.chunk_chars` (default 0 = no limit). Each sentence keeps its own emotion tag inline (`[dramatic] …`), a new paragraph starts a new line. Up to `voice.workers` (default 4) AI84 jobs at once; finished chunks are cached in `voice/chunks/`, so a rerun resumes.
+- **Whisper first:** the Whisper worker (`scripts/whisper_worker.py`, faster-whisper, the medium model from TOOL SY, CUDA float16) starts loading **before** the first AI84 job goes out (the model takes ~15 s to load). Each chunk is transcribed as soon as it arrives (~11× real time on the RTX 4070 Ti SUPER). When the last chunk is cut the worker exits, which releases its GPU memory.
+- **Same logic as OmniVoice Playground** (`scripts/whisper_align.py`): the script's own text is aligned 100 % to Whisper's words character by character (difflib blocks ≥ 3 chars, interpolation). AI84's transcript is never used.
+- **Cut into sentences:** each boundary goes into a real pause of the chunk. Pauses are matched to the predicted boundaries in order by dynamic programming, so one-word sentences heard as one ("Gạo. Muối. Đèn.") still split at their own pauses. Each sentence becomes a clip in `voice/clips/` with real character timings. `assemble` then trims it, adds the emotion pauses, writes `words.json` (real word onsets, no longer approximate) and `voice.srt` with OmniVoice's subtitle splitting and cue timing.
+- **Check:** sentences where little of the script was heard (skipped or misread by the voice) are listed after the run. Redo them with `tts JOB --only S123 --run` after fixing the text, or set `voice.chunked: false` to fall back to one job per sentence.
+- **Settings in `brief.json` → `voice`:** `chunked` (true), `chunk_chars` (0 = no limit), `workers` (4), `whisper_python` (a Python with faster-whisper; auto-detected: this venv, the user's Python 3.13/3.12, OmniVoice's backend venv), `whisper_model` (default: TOOL SY's medium, else `medium`).
+- Tested without credits on 30 real sentences glued into one chunk: 29/29 cuts inside the right pause, every clip edge below −40 dB, subtitle splitting identical to OmniVoice on 461/461 texts.
+
