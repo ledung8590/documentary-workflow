@@ -41,7 +41,7 @@ def main():
     except urllib.error.HTTPError as e:
         sys.exit(f'HTTP {e.code}: {e.read()[:500].decode("utf-8", "replace")}')
     after = subscription()
-    cost = (after['used'] - before['used']) if after and before else None
+    cost = (after['used'] - before['used']) if after and before and 'used' in after and 'used' in before else None
     print(f'saved {path} ({path.stat().st_size // 1024} KB); measured cost: {cost} credits')
     lic = OUT / 'LICENSES.md'
     if not lic.exists():

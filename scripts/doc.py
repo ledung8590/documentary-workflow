@@ -440,16 +440,30 @@ def tts_ai84(d, voice, todo, do_run):
         print('dry run: add --run'); return
     if not voice.get('voice_id'):
         sys.exit('brief.json voice.voice_id is empty (no default voice for this language): set one')
-    total = 0
-    for s, text, settings in reqs:
+    def one(req):
+        s, text, settings = req
         audio, meta = clip_paths(d, s, voice)
         audio.parent.mkdir(parents=True, exist_ok=True)
         _, cost = ai84.tts(text, voice['voice_id'], voice['model'], settings, voice.get('language_code'), audio)
         write(meta, {'text': s['text'], 'spoken': text, 'emotion': s['emotion'], 'provider': 'ai84', 'model': voice['model'],
                      'voice_id': voice['voice_id'], 'credit_cost': cost, 'alignment': None})
-        total += cost or 0
-        print(f'  {s["id"]} ok ({cost} AI84 credits)')
-    print(f'done, {total} AI84 credits')
+        return s['id'], cost
+
+    # a few jobs in flight at once (AI84 allows 60 POST/min); each sentence is cached, so a rerun resumes
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    total, failed = 0, []
+    with ThreadPoolExecutor(max_workers=int(voice.get('workers', 4))) as pool:
+        futs = {pool.submit(one, r): r[0]['id'] for r in reqs}
+        for k, f in enumerate(as_completed(futs), 1):
+            try:
+                sid, cost = f.result()
+            except RuntimeError as e:
+                failed.append(futs[f]); print(f'  {futs[f]} FAILED: {e}', flush=True); continue
+            total += cost or 0
+            print(f'  [{k}/{len(reqs)}] {sid} ok ({cost} AI84 credits)', flush=True)
+    print(f'done, {total} AI84 credits' + (f'; {len(failed)} failed, rerun to retry: {",".join(failed)}' if failed else ''))
+    if failed:
+        return
     mark(d, 'tts', model=voice['model'], provider='ai84')
 
 
@@ -619,6 +633,22 @@ def qa(job, video, stt=False, do_run=False):
     lufs = re.findall(r'I:\s+(-?[\d.]+) LUFS', err); peak = re.findall(r'Peak:\s+(-?[\d.]+) dBFS', err)
     report['lufs'] = float(lufs[-1]) if lufs else None
     report['true_peak'] = float(peak[-1]) if peak else None
+    # card sound: a title/chapter card must land on an audible hit (two films shipped with card hits 20-35 dB under
+    # the voice, "silent" cards), and every card must have an SFX cue starting inside it (quote cards: the typing)
+    sfx = [c['start'] for t in tl['tracks'] if t['id'] == 'sfx' for c in t['clips']]
+    report['cards'] = []
+    for t in tl['tracks']:
+        for c in t['clips'] if t['id'] == 'overlay' else []:
+            if c.get('type') not in ('title_card', 'chapter', 'quote'):
+                continue
+            a = subprocess.run(['ffmpeg', '-hide_banner', '-ss', f'{c["start"]:.3f}', '-t', '1.6', '-i', str(video), '-vn', '-af',
+                                'astats=measure_perchannel=none:measure_overall=RMS_level', '-f', 'null', '-'],
+                               capture_output=True, text=True, errors='replace').stderr
+            rms = re.findall(r'RMS level dB: (-?[\d.]+|-inf)', a)
+            rms = float(rms[-1]) if rms and rms[-1] != '-inf' else -99.0
+            cue = any(c['start'] - 0.8 <= s <= c['start'] + 1.5 for s in sfx)
+            ok = cue and (c['type'] == 'quote' or rms >= -20.0)
+            report['cards'].append({'type': c['type'], 'start': round(c['start'], 2), 'rms_db': round(rms, 1), 'sfx_cue': cue, 'ok': ok})
     if stt:
         from elevenlabs import stt as transcribe
         cfg = read(d / 'brief.json')
@@ -639,6 +669,9 @@ def qa(job, video, stt=False, do_run=False):
     bad_freeze = [f for f in report['freeze'] if not f['expected']]
     print(f'loudness {report["lufs"]} LUFS (target -14), true peak {report["true_peak"]} dBFS (max -1)')
     print(f'black {len(black)} ({len(bad_black)} unexpected), freeze {len(freeze_s)} ({len(bad_freeze)} unexpected)')
+    bad_cards = [c for c in report['cards'] if not c['ok']]
+    print(f'card sound: {len(report["cards"]) - len(bad_cards)}/{len(report["cards"])} cards land on an audible SFX cue'
+          + ''.join(f'\n  SILENT {c["type"]} at {c["start"]} s: {c["rms_db"]} dB RMS, cue {c["sfx_cue"]}' for c in bad_cards))
     if 'stt_match' in report:
         print(f'STT word match {report["stt_match"]:.1%}; diffs in qa/qa.json (judge names/spellings, do not hide)')
     print('Automated checks only. Inspect the flagged frames yourself before delivering.')

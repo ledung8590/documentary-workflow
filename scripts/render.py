@@ -344,6 +344,28 @@ def card_quote(d, pr, lt, out):
         d.text((150, y + 120), pr['source'], font=font('body', 26), fill=(205, 190, 170, int(220 * out)))
 
 
+def read_srt(path):
+    """[(start, end, text)] from an SRT file (burned-in subtitles)."""
+    out = []
+    for block in Path(path).read_text(encoding='utf-8-sig').replace('\r\n', '\n').strip().split('\n\n'):
+        rows = block.split('\n')
+        tm = next((r for r in rows if '-->' in r), None)
+        if not tm:
+            continue
+        a, b = [sum(float(x) * m for x, m in zip(s.strip().replace(',', '.').split(':'), (3600, 60, 1))) for s in tm.split('-->')]
+        out.append((a, b, ' '.join(rows[rows.index(tm) + 1:]).strip()))
+    return out
+
+
+def subtitle_layer(text):
+    """Burned-in subtitle: Be Vietnam Pro SemiBold, off-white with a dark outline, bottom centre."""
+    lay = Image.new('RGBA', (W, H)); d = ImageDraw.Draw(lay); f = font('body', 46)
+    w = d.textlength(text, font=f); x, y = (W - w) / 2, H - 128
+    d.text((x + 3, y + 3), text, font=f, fill=(0, 0, 0, 150))
+    d.text((x, y), text, font=f, fill=OFFWHITE + (255,), stroke_width=3, stroke_fill=(10, 9, 8, 235))
+    return lay
+
+
 def credit_layer(text):
     lay = Image.new('RGBA', (W, H)); d = ImageDraw.Draw(lay); f = font('body', 22)
     text = text[:180]; w = d.textlength(text, font=f)
@@ -361,6 +383,8 @@ def picture(d, tl, out):
     overlays = sorted([c for tr in tl['tracks'] if tr['id'] == 'overlay' for c in tr['clips'] if 'start' in c],
                       key=lambda o: o.get('type') in ('date_tag', 'lower_third', 'callout'))  # cards under the small overlays
     clay = {}
+    subs = read_srt(d / 'voice' / 'voice.srt') if (tl.get('fx') or {}).get('subtitles') else []
+    si, slay = 0, {}
     ff = subprocess.Popen(['ffmpeg', '-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(fps),
                            '-i', '-', '-c:v', 'libx264', '-preset', 'medium', '-crf', '17', '-pix_fmt', 'yuv420p',
                            '-movflags', '+faststart', str(out)], stdin=subprocess.PIPE)
@@ -405,6 +429,13 @@ def picture(d, tl, out):
             if line:
                 clay.setdefault(line, credit_layer(line)); frame.alpha_composite(clay[line])
         frame.alpha_composite(lay)
+        while si < len(subs) and subs[si][1] <= t:
+            si += 1
+        if not covered and si < len(subs) and subs[si][0] <= t:
+            txt = subs[si][2]
+            if txt not in slay:
+                slay = {txt: subtitle_layer(txt)}  # one cue at a time: keep only the current layer
+            frame.alpha_composite(slay[txt])
         ff.stdin.write(finish(np.asarray(frame.convert('RGB')), i).tobytes())
         if i % (fps * 10) == 0:
             print(f'  frame {i}/{n}', flush=True)
@@ -438,7 +469,7 @@ def mix(d, tl, out, target=-14.0, tp=-1.5):
                 continue
             gain = c.get('gain_db', {'video': -20, 'original': -18, 'music': -16, 'sfx': -9}[tr['id']])
             dur = max(0.05, c.get('end', c['start'] + 2) - c['start'])
-            ins += ['-i', str(p)]
+            ins += (['-stream_loop', '-1'] if c.get('loop') else []) + ['-i', str(p)]  # loop: short ambience under a long span
             ms = int(c['start'] * 1000)
             fi, fo = c.get('fade_in', 0.15 if tr['id'] != 'sfx' else 0.005), c.get('fade_out', 0.3)
             # music beds often build from near-silence (measured: -31 LUFS intro, -12 at the climax): even them out
@@ -462,11 +493,14 @@ def mix(d, tl, out, target=-14.0, tp=-1.5):
     mixin += ''.join(f'[b{j}]' for j, _ in hits)
     n_in = 1 + bool(beds) + len(hits)
     if n_in > 1:
-        fc.append(f'{mixin}amix=inputs={n_in}:normalize=0:duration=first[pre]')
+        # card hits can stack above the voice peaks: limit them so the loudnorm pass below stays linear
+        fc.append(f'{mixin}amix=inputs={n_in}:normalize=0:duration=first,alimiter=limit=0.89:attack=2:release=80:level=disabled[pre]')
     else:
         fc.append('[v]anull[pre]')
     pre = out.with_name('premix.wav')
-    subprocess.run(['ffmpeg', '-v', 'error', '-y', *ins, '-filter_complex', ';'.join(fc), '-map', '[pre]', '-ar', '48000',
+    graph = out.with_name('mix_graph.txt')  # a film with ~100 cues overflows the Windows 32k command line inline
+    graph.write_text(';\n'.join(fc), encoding='utf-8')
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', *ins, '-filter_complex_script', str(graph), '-map', '[pre]', '-ar', '48000',
                     '-c:a', 'pcm_s24le', str(pre)], check=True)
     meas = subprocess.run(['ffmpeg', '-hide_banner', '-i', str(pre), '-af', f'loudnorm=I={target}:TP={tp}:LRA=11:print_format=json',
                            '-f', 'null', '-'], capture_output=True, text=True).stderr

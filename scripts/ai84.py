@@ -4,7 +4,7 @@ Key lookup (never printed or written anywhere): env AI84_API_KEY, Windows user e
 `xi-api-key:` value inside the user's "Tài liệu api AI84.PRO.txt" in the workspace root (the user's own file,
 gitignored together with key.txt).
 """
-import json, os, re, sys, time, urllib.error, urllib.parse, urllib.request
+import json, os, random, re, sys, time, urllib.error, urllib.parse, urllib.request
 from pathlib import Path
 
 from common import ROOT
@@ -35,13 +35,13 @@ def _req(method, path, body=None, timeout=60):
     data = json.dumps(body).encode() if body is not None else None
     r = urllib.request.Request(BASE + path, data=data, method=method,
                                headers={'xi-api-key': key(), 'Content-Type': 'application/json', 'User-Agent': 'documentary-workflow/0.1'})
-    for attempt in range(6):
+    for attempt in range(30):  # a lost poll loses a job already paid for: keep backing off on 429 instead of giving up
         try:
             with urllib.request.urlopen(r, timeout=timeout) as resp:
                 return json.loads(resp.read())
         except urllib.error.HTTPError as e:
             if e.code == 429:
-                time.sleep(float(e.headers.get('Retry-After') or 5)); continue
+                time.sleep(float(e.headers.get('Retry-After') or 5) + random.uniform(0, 3) + min(attempt, 10)); continue
             if e.code >= 500 and method == 'GET':
                 time.sleep(3); continue
             raise RuntimeError(f'AI84 HTTP {e.code}: {e.read()[:300].decode("utf-8", "replace")}') from None
@@ -61,7 +61,7 @@ def tts(text, voice_id, model='eleven_v4', settings=None, language_code=None, ou
     job = _req('POST', '/v2/text-to-speech/async', body)
     jid, cost, t0 = job['job_id'], job.get('credit_cost'), time.time()
     while time.time() - t0 < deadline:
-        time.sleep(2.5)
+        time.sleep(4.0)
         j = _req('GET', f'/v2/text-to-speech/async/{jid}')['job']
         if j['status'] == 'done':
             req = urllib.request.Request(j['audioUrl'], headers={'User-Agent': 'documentary-workflow/0.1'})
