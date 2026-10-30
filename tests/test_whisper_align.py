@@ -54,3 +54,12 @@ def test_cuts_land_in_the_pauses_even_when_predictions_are_off():
     assert len(cuts) == 4
     for c, (a, b) in zip(cuts, bounds):
         assert a <= c / SR <= b, (c / SR, a, b)
+
+
+def test_emotion_speed_stretches_a_cut_clip():
+    import doc
+    x = tone(2.0)
+    assert doc.stretch_speech(x, 1.0) is x
+    for speed in (0.93, 1.05):
+        y = doc.stretch_speech(x, speed)
+        assert abs(len(y) / SR - 2.0 / speed) < 0.05, (speed, len(y) / SR)

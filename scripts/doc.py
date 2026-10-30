@@ -378,8 +378,8 @@ def clip_key(s, voice):
 
 
 def clip_paths(d, s, voice, mock=False, cut=None):
-    """cut: a clip cut from a chunked AI84 job (voice.chunked, the default for AI84): 'c-' key, WAV."""
-    cut = voice.get('provider') == 'ai84' and voice.get('chunked', True) if cut is None else cut
+    """cut: a clip cut from a chunked AI84 job (opt-in voice.chunked): 'c-' key, WAV."""
+    cut = voice.get('provider') == 'ai84' and voice.get('chunked', False) if cut is None else cut
     key = ('mock-' if mock else 'c-' if cut else '') + clip_key(s, voice)
     base = d / 'voice' / 'clips' / f'{s["id"]}-{key}'
     return base.with_suffix('.wav' if mock or cut else '.mp3'), base.with_suffix('.json')
@@ -425,9 +425,9 @@ def tts(job, do_run=False, mock=False, only=None):
         print(f'{len(todo)} mock clips written (not deliverable; real TTS replaces them)')
         return
     if voice.get('provider') == 'ai84':
-        if voice.get('chunked', True):
+        if voice.get('chunked', False):
             return tts_ai84_chunked(d, cfg, voice, data, todo, do_run)
-        return tts_ai84(d, voice, todo, do_run)
+        return tts_ai84(d, cfg, voice, sents, todo, do_run)
     cost = sum(credits(s['text'], voice['model']) for s in todo)
     print(f'{len(todo)}/{len(sents)} sentences to generate, {sum(len(s["text"]) for s in todo)} chars, '
           f'~{cost} credits with {voice["model"]}')
@@ -458,8 +458,10 @@ def tts(job, do_run=False, mock=False, only=None):
     mark(d, 'tts', model=voice['model'])
 
 
-def tts_ai84(d, voice, todo, do_run):
-    """Default voice path: one AI84 eleven_v4 job per sentence, emotion tag in front (about 1 AI84 credit/char)."""
+def tts_ai84(d, cfg, voice, sents, todo, do_run):
+    """Default voice path (quality first): one AI84 eleven_v4 job per sentence, with its own emotion tag, speed and
+    settings (about 1 AI84 credit/char). Whisper (OmniVoice logic) loads while the first jobs render, gives each clip real
+    character timings for the SRT as it lands, and exits at the end to free VRAM. AI84's own transcript is never used."""
     import ai84
     reqs = [(s, *v4_request(s, voice)) for s in todo]
     print(f'{len(todo)} sentences to voice via AI84 {voice["model"]} / {voice.get("voice_name") or voice["voice_id"]}, '
@@ -470,31 +472,60 @@ def tts_ai84(d, voice, todo, do_run):
         print('dry run: add --run'); return
     if not voice.get('voice_id'):
         sys.exit('brief.json voice.voice_id is empty (no default voice for this language): set one')
+    import whisper_align as WA
+    worker = WA.WhisperWorker(voice, log=lambda m: print('  ' + m, flush=True))  # loading while AI84 renders
+    lang = (voice.get('language_code') or cfg.get('language') or 'auto')[:2]
+
     def one(req):
         s, text, settings = req
         audio, meta = clip_paths(d, s, voice)
         audio.parent.mkdir(parents=True, exist_ok=True)
         _, cost = ai84.tts(text, voice['voice_id'], voice['model'], settings, voice.get('language_code'), audio)
-        write(meta, {'text': s['text'], 'spoken': text, 'emotion': s['emotion'], 'provider': 'ai84', 'model': voice['model'],
-                     'voice_id': voice['voice_id'], 'credit_cost': cost, 'alignment': None})
-        return s['id'], cost
+        rec = {'text': s['text'], 'spoken': text, 'emotion': s['emotion'], 'provider': 'ai84', 'model': voice['model'],
+               'voice_id': voice['voice_id'], 'credit_cost': cost, 'alignment': None}
+        write(meta, rec)
+        return s, cost
+
+    def align(s):
+        """Real character timings of a finished clip (Whisper, OmniVoice logic); a warning if little of it was heard."""
+        audio, meta = clip_paths(d, s, voice); rec = read(meta)
+        words = worker.transcribe(audio, lang, audio.with_suffix('.whisper.json'))
+        sp = s.get('say') or spoken(s['text'])
+        ratio = difflib.SequenceMatcher(None, sp.lower(), ' '.join(w['word'] for w in words).lower(), autojunk=False).ratio()
+        ct = WA.char_times(s['text'], words) if words else None
+        if ct:
+            rec['alignment'] = {'characters': list(s['text']), 'character_start_times_seconds': [round(v, 3) for v in ct],
+                                'character_end_times_seconds': [round(v, 3) for v in ct[1:] + [ct[-1] + 0.08]], 'source': 'whisper'}
+        rec['heard_ratio'] = round(ratio, 3); write(meta, rec)
+        return f'{s["id"]} ({ratio:.0%} heard): {s["text"][:80]}' if ratio < (0.6 if len(sp) >= 15 else 0.34) else None
 
     # a few jobs in flight at once (AI84 allows 60 POST/min); each sentence is cached, so a rerun resumes
     from concurrent.futures import ThreadPoolExecutor, as_completed
-    total, failed = 0, []
-    with ThreadPoolExecutor(max_workers=int(voice.get('workers', 4))) as pool:
-        futs = {pool.submit(one, r): r[0]['id'] for r in reqs}
-        for k, f in enumerate(as_completed(futs), 1):
-            try:
-                sid, cost = f.result()
-            except RuntimeError as e:
-                failed.append(futs[f]); print(f'  {futs[f]} FAILED: {e}', flush=True); continue
-            total += cost or 0
-            print(f'  [{k}/{len(reqs)}] {sid} ok ({cost} AI84 credits)', flush=True)
+    total, failed, weak = 0, [], []
+    try:
+        with ThreadPoolExecutor(max_workers=int(voice.get('workers', 4))) as pool:
+            futs = {pool.submit(one, r): r[0]['id'] for r in reqs}
+            for k, f in enumerate(as_completed(futs), 1):
+                try:
+                    s, cost = f.result()
+                except RuntimeError as e:
+                    failed.append(futs[f]); print(f'  {futs[f]} FAILED: {e}', flush=True); continue
+                total += cost or 0
+                w = align(s); weak += [w] if w else []
+                print(f'  [{k}/{len(reqs)}] {s["id"]} ok ({cost} AI84 credits)', flush=True)
+        # clips voiced earlier without Whisper timings (older runs) get them now
+        for s in sents:
+            m = clip_paths(d, s, voice)[1]
+            if m.exists() and not read(m).get('alignment') and not read(m).get('mock'):
+                w = align(s); weak += [w] if w else []
+    finally:
+        worker.close()
     print(f'done, {total} AI84 credits' + (f'; {len(failed)} failed, rerun to retry: {",".join(failed)}' if failed else ''))
+    if weak:
+        print(f'{len(weak)} poorly heard sentences (check by ear, fix the text or redo with --only):'); [print('  ' + w) for w in weak]
     if failed:
         return
-    mark(d, 'tts', model=voice['model'], provider='ai84')
+    mark(d, 'tts', model=voice['model'], provider='ai84', weak=len(weak))
 
 
 def voice_chunks(voice, data):
@@ -521,15 +552,26 @@ def chunk_request(sents, voice):
         sep = '' if k == 0 else ('\n' if s.get('paragraph') != sents[k - 1].get('paragraph') else ' ')
         tg = v4_request(s, voice)[0]; sp = s.get('say') or spoken(s['text'])
         tagged += sep + tg; plain += sep; spans.append((len(plain), len(plain) + len(sp))); plain += sp
-    speeds = sorted(V4_SPEED.get(s['emotion'], 1.0) for s in sents)
-    settings = {'stability': 0.5, 'similarity_boost': 0.8, 'style': 0.35, 'speed': speeds[len(speeds) // 2], 'use_speaker_boost': True}
+    # one job has one speed: it is read at 1.0 and each cut clip gets its own emotion speed afterwards (stretch_speech)
+    settings = {'stability': 0.5, 'similarity_boost': 0.8, 'style': 0.35, 'speed': 1.0, 'use_speaker_boost': True}
     return tagged, plain, spans, settings
 
 
+def stretch_speech(x, speed):
+    """Per-sentence emotion speed on a clip cut from a chunk read at 1.0: Rubber Band time-stretch (pitch and formants
+    kept), the same 0.93-1.05 range eleven_v4's own speed setting gave each sentence when it was sent alone."""
+    if abs(speed - 1.0) < 0.005 or not len(x):
+        return x
+    raw = run(['ffmpeg', '-v', 'error', '-f', 'f32le', '-ar', str(SR), '-ac', '1', '-i', '-', '-af',
+               f'rubberband=tempo={speed}:formant=preserved:pitchq=quality:window=standard:transients=mixed',
+               '-f', 'f32le', '-'], input=np.ascontiguousarray(x, np.float32).tobytes()).stdout
+    return np.frombuffer(raw, np.float32).copy()
+
+
 def tts_ai84_chunked(d, cfg, voice, data, todo, do_run):
-    """Fast voice path: one AI84 eleven_v4 job per chunk (chapter / ~2500 chars, emotion tag inline per sentence),
+    """Fast voice path: one AI84 eleven_v4 job per chunk (one per chapter, emotion tag inline per sentence, read at speed 1.0),
     Whisper (OmniVoice logic) aligns the script to the audio, then the chunk is cut back into one clip per sentence at
-    the quietest point between sentences, with real character timings. The Whisper model starts loading before the
+    the quietest point between sentences, with real character timings; each clip then gets its own emotion speed. The Whisper model starts loading before the
     first AI84 job is sent and is released (process exit) when the last chunk is cut. AI84's own transcript is never
     used. Per-sentence mode: brief voice.chunked = false."""
     import ai84, whisper_align as WA
@@ -607,10 +649,12 @@ def cut_chunk(d, voice, r, worker, lang):
         if ratio < (0.6 if len(sp) >= 15 else 0.34):  # one-word sentences are judged loosely: Whisper often merges them
             weak.append(f'{s["id"]} ({ratio:.0%} heard): {s["text"][:80]}')
         audio, meta = clip_paths(d, s, voice, cut=True)
-        save_wav(audio, x[a:b])
+        speed = v4_request(s, voice)[1]['speed']
+        save_wav(audio, stretch_speech(x[a:b], speed))
+        ct = [v / speed for v in ct]
         ends = ct[1:] + [ct[-1] + 0.08]
         write(meta, {'text': s['text'], 'spoken': v4_request(s, voice)[0], 'emotion': s['emotion'], 'provider': 'ai84', 'model': voice['model'],
-                     'voice_id': voice['voice_id'], 'chunk': r['audio'].name, 'heard_ratio': round(ratio, 3),
+                     'voice_id': voice['voice_id'], 'chunk': r['audio'].name, 'heard_ratio': round(ratio, 3), 'speed': speed,
                      'alignment': {'characters': list(s['text']), 'character_start_times_seconds': [round(v, 3) for v in ct],
                                    'character_end_times_seconds': [round(v, 3) for v in ends], 'source': 'whisper'}})
     del heard
