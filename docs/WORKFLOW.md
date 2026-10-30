@@ -1,5 +1,7 @@
 # Canonical /gendoc procedure
 
+Fiction over the user's own images is a different path: `/gentruyen`, `docs/STORY_MODE.md`.
+
 Run from the workspace root with `.venv/Scripts/python.exe` (PY). Built stages are marked **[built]**; the others are **[planned]**: say so plainly and stop there, do not improvise a substitute. Stage 10 is a hard stop: the user reviews in the studio before any final output. Every paying command dry-runs first; ask the user before `--run`.
 
 ## 1. Ingest [built]

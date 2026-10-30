@@ -117,16 +117,41 @@ def discover(folder):
     return jobs
 
 
-def ingest(folder):
-    found = discover(folder)
+def story_title(name):
+    """A readable default title from an input name: '86. MẬT DANH ... I Truyện' -> 'Mật danh ...' (agent shortens it)."""
+    t = re.sub(r'^\s*\d+\s*[.)-]\s*', '', name)
+    t = re.split(r'\s+[I|]\s+', t)[0].strip()
+    return t[:1].upper() + t[1:].lower() if t.isupper() else t
+
+
+def ingest(folder, story=False, only=None):
+    """story: fiction narrated over the user's images (docs/STORY_MODE.md, /gentruyen); only: name substring filter."""
+    if story:
+        import story as STORY
+        found = [(Path(folder), j['name'], None, None, j['script'], j) for j in STORY.discover(folder)]
+    else:
+        found = [f + (None,) for f in discover(folder)]
+    if only:
+        found = [f for f in found if only.lower() in f[1].lower()]
     if not found:
-        sys.exit(f'no narration (name.wav + name.srt) or script in {folder} (see input/README.md)')
-    for d, name, srt, audio, script in found:
+        sys.exit(f'no {"story (script + image folder)" if story else "narration (name.wav + name.srt) or script"} in {folder}'
+                 f'{" matching " + only if only else ""} (see input/README.md)')
+    for d, name, srt, audio, script, st in found:
         cfg_file = d / 'job.json' if d != Path(folder) else Path(folder) / f'{name}.json'
         cfg = merge(DEFAULTS, read(cfg_file) if cfg_file.exists() else {})
         cfg['mode'] = 'narration' if srt else 'tts'
+        if st:
+            cfg['genre'] = 'story'
+            cfg['title'] = cfg.get('title') or story_title(name)
+            cfg['story'] = merge({'images': str(st['images']), 'srt': str(st['srt']) if st['srt'] else None,
+                                  'prompts': str(st['prompts']) if st['prompts'] else None, 'grade': 'archival'}, cfg.get('story') or {})
+            print(f'{name}: story, {st["count"]} images' + (f', image timing from {st["srt"].name}' if st['srt'] else ', no image SRT (images spread evenly)'))
         job = slug(cfg.get('id') or name)[:60]
         p = PROJECTS / job
+        if st:
+            cfg_file = Path(folder) / f'{name}.json' if (Path(folder) / f'{name}.json').exists() else st['images'] / 'job.json'
+            if cfg_file.exists():
+                cfg = merge(cfg, read(cfg_file))
         if srt:  # originals stay where they are; size+mtime identify the audio (40-min WAVs are large)
             st_a = audio.stat()
             h = digest(srt.read_text(encoding='utf-8-sig'), str(audio), st_a.st_size, int(st_a.st_mtime))
@@ -785,6 +810,22 @@ def build(job, what):
         print(f'video -> {out}\nnext: doc.py qa {job} --video "{out}" and inspect frames')
 
 
+def story_build(job):
+    """Story mode: images, cards, music and card SFX into timeline.json (after assemble), via the studio store."""
+    import story as STORY
+    sys.path.insert(0, str(ROOT / 'studio'))
+    import core as C
+    d = job_dir(job); brief = read(d / 'brief.json')
+    if brief.get('genre') != 'story':
+        sys.exit(f'{job} is not a story job (ingest --story)')
+    timing = read(d / 'voice' / 'timing.json')['sentences']
+    sj = read(d / 'sentences.json')
+    proj = C.Project(d.name)
+    res, tag = proj.transact(lambda tl: STORY.build(d, tl, brief, timing, sj['sentences'], sj.get('chapters', [])), who='agent', why='story build')
+    mark(d, 'story', summary=res)
+    print(f'timeline.json saved (etag {tag}). Next: doc.py build {job} --only picture, then doc.py studio {job} (review stop).')
+
+
 def ops(job, file, why):
     """Apply timeline clip ops (the studio's format, docs/STUDIO.md / studio/core.apply_ops) from a JSON file: same store
     as the studio and its MCP server (ETag lock, history, moved clips re-anchored to the nearest word)."""
@@ -810,6 +851,8 @@ def main():
     sub = ap.add_subparsers(dest='cmd', required=True)
     sub.add_parser('doctor')
     q = sub.add_parser('ingest'); q.add_argument('--input', default=str(ROOT / 'input'))
+    q.add_argument('--story', action='store_true', help='fiction over your own images (docs/STORY_MODE.md)'); q.add_argument('--only')
+    q = sub.add_parser('story'); q.add_argument('job')
     for c in ('split', 'pace', 'assemble', 'status'):
         sub.add_parser(c).add_argument('job')
     q = sub.add_parser('tts'); q.add_argument('job'); q.add_argument('--run', action='store_true')
@@ -839,13 +882,15 @@ def main():
         return build(a.job, a.only)
     if a.cmd == 'voice':
         return voice_gen(a.job, a.run, a.only)
+    if a.cmd == 'story':
+        return story_build(a.job)
     if a.cmd == 'ops':
         return ops(a.job, a.file, a.why)
     if a.cmd == 'studio':  # web studio + review notes (docs/STUDIO.md); the agent side is studio/mcp_server.py
         return subprocess.call([sys.executable, str(ROOT / 'studio' / 'server.py'), a.job, '--port', a.port] + (['--no-browser'] if a.no_browser else []))
     if a.cmd in PLANNED:
         sys.exit(f'{a.cmd}: not built yet - planned: {PLANNED[a.cmd]}')
-    {'doctor': lambda: doctor(), 'ingest': lambda: ingest(a.input), 'split': lambda: split(a.job), 'pace': lambda: pace(a.job),
+    {'doctor': lambda: doctor(), 'ingest': lambda: ingest(a.input, a.story, a.only), 'split': lambda: split(a.job), 'pace': lambda: pace(a.job),
      'assemble': lambda: assemble(a.job), 'status': lambda: status(a.job),
      'tts': lambda: tts(a.job, a.run, a.mock, a.only), 'qa': lambda: qa(a.job, a.video, a.stt, a.run)}[a.cmd]()
 

@@ -3,6 +3,7 @@
 When the user says `/gendoc`, `$gendoc`, `/genvideo` or asks to produce a documentary from input, execute `docs/WORKFLOW.md` as far as the built stages go. Do not merely explain the workflow.
 
 - **Goal:** historical-analysis documentaries built from **real, licensed archival** photos, film and maps. `projects/nguoi-gac-dem` was a one-off fiction run with the user's own AI images: never copy its method or per-project scripts.
+- **Story mode** (`/gentruyen`, `docs/STORY_MODE.md`) is the separate path for fiction over the user's own images (`ingest --story`, `doc.py story`). Never mix the two: archival films never use the user's AI images, stories never get archival search or fact-check labels.
 - **Review gate:** after the draft render, open the studio (`doc.py studio JOB`) and **stop**. The user reviews, leaves notes and approves; only then export, QA and deliver (WORKFLOW stage 10). Never produce the final video before that, unless the user explicitly asks to skip the review.
 - Timeline edits go through the studio store: `doc.py ops JOB ops.json` or the `documentary-studio` MCP tools (`update_clips`). Never hand-edit timeline.json while the studio may be open.
 
