@@ -79,6 +79,23 @@ def grade(a, kind):
 
 _vig = None
 _grain = None
+_hf = None
+
+
+def hf_grain(a, t):
+    """AutoVeo3 HyperFrames "Film grain" exactly: the Chromium-rendered fractalNoise tile (assets/fx/grain_tile.png,
+    scripts/grain_tile.mjs) tiled at 200 px, layer opacity 0.09, background-position stepping 0,0 -> 50,-30 ->
+    -20,40 every 0.05 s (CSS `grainAnim 0.15s steps(3)`). Applied to the picture under the text overlays."""
+    global _hf
+    if _hf is None:
+        tile = np.asarray(Image.open(ROOT / 'assets' / 'fx' / 'grain_tile.png').convert('RGBA'), np.float32) / 255
+        _hf = []
+        for ox, oy in ((0, 0), (50, -30), (-20, 40)):
+            yy = (np.arange(H)[:, None] - oy) % 200; xx = (np.arange(W)[None, :] - ox) % 200
+            t4 = tile[yy, xx]; al = t4[..., 3:4] * 0.09
+            _hf.append((1 - al, t4[..., :3] * 255 * al))
+    keep, add = _hf[int(t / 0.05) % 3]
+    return np.clip(a * keep + add, 0, 255).astype(np.uint8)
 
 
 def finish(a, i):
@@ -375,6 +392,8 @@ def picture(d, tl, out):
             a = (t - c['start']) / tr.get('dur', 0.4); cur = (prev * (1 - a) + cur * a).astype(np.uint8)
         if tr.get('type') == 'dip' and t - c['start'] < tr.get('dur', 0.5):
             cur = (cur * ((t - c['start']) / tr.get('dur', 0.5))).astype(np.uint8)
+        if (tl.get('fx') or {}).get('grain'):
+            cur = hf_grain(cur, t)
         frame = Image.fromarray(cur).convert('RGBA')
         covered = False
         lay = Image.new('RGBA', (W, H))

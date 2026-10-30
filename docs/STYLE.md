@@ -60,3 +60,12 @@ Reference: `Chiến Dịch Điện Biên Phủ 1954.mp4` (154.5 s, 24 fps, −14
 - One music bed per section, ducked under the voice; it swells in designed pauses and on cards.
 - Sparse SFX: artillery on artillery shots, a typewriter clack on typed cards, a low hit on chapter cards.
 - Archival film sound is used only when it is real field sound. **Clip audio is muted by default:** many uploads carry their own music, which is a copyright risk.
+
+## Optional film grain (AutoVeo3 HyperFrames look)
+- `timeline.json` `"fx": {"grain": true}` turns on the exact HyperFrames "Film grain" from AutoVeo3 (`core/whisk_hf_engine.py`, `_CSS_GRAIN`).
+- How it is drawn:
+  - a fractalNoise tile (baseFrequency 0.75, 4 octaves, desaturated, 200 px), rendered by Chromium (`scripts/grain_tile.mjs`);
+  - layer opacity 0.09;
+  - the noise jumps through 3 positions every 0.15 s.
+- It sits on the picture, under the text overlays.
+- This is the only grain allowed. The earlier synthetic per-pixel grain was rejected by the user.
