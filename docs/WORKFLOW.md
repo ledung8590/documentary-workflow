@@ -63,9 +63,12 @@ Word-anchored one-shots from `assets/sfx/<type>/` on the `sfx` track (`add` with
 - Every `quote` overlay: `typewriter/el_03` from card start + 0.7 s for chars/cps (`render.card_quote`), stopping on the last character, then `typebell`. Gain about -6 (≈10 dB under the voice above 400 Hz).
 - Every JS scene that uses `L.typed`: `jsscene.mjs --typing` spans → typewriter on each span.
 - Every chapter card: whoosh + chapterhit + subdrop + `cardslam` (mid/high layer); every question card: `cardslam` + impact; title cards: revswell + titlehit.
+- Every JS scene that draws gunfire, cannon shots, bursts or a charge gets one sound per visible flash or burst, in sync with the frame. Write a per-scene table of events (nominal scene seconds, scaled to the shot) and use `gunshot`, `rifles`, `artillery`, `shellburst`, `mgburst`. The user caught silent firing in film 74's Dreyse/Chassepot graphic (2026-11-01).
+- No callout or date tag over a JS scene that has its own labels: the text overlaps. Burned-in subtitles step aside under such scenes: set `"hide_subtitles": true` on the video clip (render.hide_under_text). Keep scene text above y ≈ 860 anyway (user review 2026-11-01).
 - Grep the sfx track for each quote overlay's start before opening the studio. New SFX types only via `scripts/sfx_elevenlabs.py` dry run and the user's yes.
 
 ## 9. Draft render [built: `doc.py build JOB --only picture`]
+First run `PY scripts/fontcheck.py JOB`. It must pass. A character missing from its font renders as an empty box: in film 74, "→" was missing from Oswald. The check covers overlays, subtitles, JS scenes and map labels. The house fonts cover vi/en/de/fr/es completely, including ä ö ü ß ẞ „ “ « » – —. Subtitles use `military` (Saira Condensed Bold) for every language.
 Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py`) in 3 parallel parts with NVENC encoding, the same path as the studio's whole-picture render (`core.render_range`, ~157 fps: ~10–12 min for a 65-min film; x264/CPU fallback), and saves the render state so studio exports only re-render edited ranges. (Before 2026-10-31 `build` rendered in one process with x264 at ~31 fps: 3–4× slower.) Not a deliverable: it is what the studio plays and splices into. Self-check a few frames (cards, maps, transitions) before the review.
 
 ## 10. Studio review: STOP and wait for the user [built: `doc.py studio JOB` or `Studio.bat`]
@@ -95,6 +98,7 @@ Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py
   - Keep the bottom-right corner clear for YouTube's timestamp. It must read at 320×180.
   - Template: `projects/85-…/thumbnail.py`.
 - **Names.** Rename the video and the thumbnail to the input script's file name, e.g. `85. Soviets Make … Fa.mp4` and `.jpg`. Copy `description_youtube.txt` next to them.
+- **Tags.** End `description_youtube.txt` with a `TAGS` block. It holds 7 YouTube tags in the script's language, comma-separated on one line, under 500 characters: the topic, the war or event, the key people, and the genre (e.g. "Militärgeschichte"). The user pastes this line into YouTube's tag field (user request, 2026-11-01). Also give the tags in the chat when delivering.
 - **Then ask the user whether the video is uploaded.** Do not build the evidence pack before they say so.
 
 ## 14. Evidence pack (after the user confirms the upload)

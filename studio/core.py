@@ -715,6 +715,7 @@ class Framer:
         p = self.proj.d / 'voice' / 'voice.srt'
         text_ov = [(o['start'], o['end']) for tr in tl['tracks'] if tr['id'] == 'overlay' for o in tr['clips']
                    if o.get('type') in self.R.SUB_HIDE and 'start' in o]  # subtitles hide under these (render.hide_under_text)
+        text_ov += [(c['start'], c['end']) for tr in tl['tracks'] if tr['id'] == 'video' for c in tr['clips'] if c.get('hide_subtitles')]
         m = (p.stat().st_mtime if p.exists() else 0, json.dumps(tl.get('subtitle_overrides') or {}, sort_keys=True), json.dumps(text_ov))
         if not self._subs or self._subs[0] != m:
             s = self.R.subtitles(self.proj.d, tl)

@@ -197,12 +197,15 @@ def ingest(folder, story=False, only=None):
 # ---------------------------------------------------------------- split
 def split(job):
     d = job_dir(job); need_mode(d, 'tts')
-    sents, chapters = SENT.parse((d / 'script.txt').read_text(encoding='utf-8'))
+    sents, chapters = SENT.parse((d / 'script.txt').read_text(encoding='utf-8'), read(d / 'brief.json').get('language'))
     old = {s['text']: s for s in read(d / 'sentences.json')['sentences']} if (d / 'sentences.json').exists() else {}
     for s in sents:  # keep the agent's reviewed emotion / locked pause for unchanged sentences
         prev = old.get(s['text'])
         if prev and prev.get('source') in ('agent', 'script') and s.get('source') != 'script':
             s['emotion'], s['source'] = prev['emotion'], prev['source']
+        for k in ('tag', 'say'):  # the agent's v4 tag / spoken form survive a re-split
+            if prev and k in prev:
+                s[k] = prev[k]
         if prev and prev.get('locked'):
             s['locked'], s['pause_after'], s['pause_why'] = True, prev['pause_after'], prev.get('pause_why', 'locked')
     SENT.design_pauses(sents)

@@ -51,8 +51,9 @@ def _norm(s):
     return unicodedata.normalize('NFC', s)
 
 
-def _split_paragraph(text):
-    """Split a paragraph into sentences; keeps abbreviations, decimals (7.5) and dotted numbers (1.954) intact."""
+def _split_paragraph(text, lang=None):
+    """Split a paragraph into sentences; keeps abbreviations, decimals (7.5) and dotted numbers (1.954) intact.
+    German ordinals ("III. Korps", "7. Kürassier-Regiment") are not sentence ends."""
     out, start = [], 0
     for m in re.finditer(r'(\.\.\.|…|[.!?])(["”’»)\]]*)(\s+|$)', text):
         end = m.end(2)
@@ -61,6 +62,9 @@ def _split_paragraph(text):
         if m.group(1) == '.' and word and word[0].lower().rstrip('.') in ABBR and m.end() < len(text):
             continue
         if m.group(1) == '.' and word and re.fullmatch(r'[A-Z]', word[0]) and m.end() < len(text):  # "John A. Walker"
+            continue
+        if (lang == 'de' and m.group(1) == '.' and word and m.end() < len(text)
+                and re.fullmatch(r'\d{1,2}|[IVXL]{2,}|[VXL]', word[0])):
             continue
         nxt = text[m.end():m.end() + 1]
         if m.group(1) == '.' and nxt and nxt.islower():  # "approx. five" / mid-sentence period
@@ -91,7 +95,7 @@ def guess_emotion(text, index, words):
     return 'neutral'
 
 
-def parse(script):
+def parse(script, lang=None):
     """Return (sentences, chapters). Each sentence: id, text, paragraph, emotion, source, pause_override."""
     script = _norm(script.replace('\r\n', '\n'))
     script = re.sub(r'<!--.*?-->', '', script, flags=re.S)
@@ -103,7 +107,7 @@ def parse(script):
         for l in lines:
             if l.startswith('#'):
                 if body:  # chapter heading inside a block closes the paragraph before it
-                    _emit(' '.join(body), para, sents); body = []; para += 1
+                    _emit(' '.join(body), para, sents, lang); body = []; para += 1
                 pending_chapter = l.lstrip('#').strip()
                 chapters.append({'title': pending_chapter, 'before': len(sents)})
                 if sents:
@@ -111,7 +115,7 @@ def parse(script):
             else:
                 body.append(l)
         if body:
-            _emit(' '.join(body), para, sents)
+            _emit(' '.join(body), para, sents, lang)
             para += 1
     for i, s in enumerate(sents):
         s['id'] = f'S{i + 1:03d}'
@@ -120,7 +124,7 @@ def parse(script):
     return sents, chapters
 
 
-def _emit(text, para, sents):
+def _emit(text, para, sents, lang=None):
     # explicit pauses: "[pause 2.5]" attaches to the sentence before it
     pieces = re.split(r'\[pause\s+([0-9.]+)\s*s?\]', text)
     for k, piece in enumerate(pieces):
@@ -128,7 +132,7 @@ def _emit(text, para, sents):
             if sents:
                 sents[-1]['pause_override'] = float(piece)
             continue
-        for raw in _split_paragraph(piece.strip()):
+        for raw in _split_paragraph(piece.strip(), lang):
             m = re.match(r'\{(\w+)\}\s*', raw)
             emo = None
             if m and m.group(1).lower() in EMOTIONS:

@@ -77,6 +77,27 @@ LIB = {  # type -> [(seconds, prompt)]
     'mosquito': [(4.0, 'A single mosquito buzzing close to the ear, high whine passing left to right, quiet night, no music')],
     'oars': [(6.0, 'Many wooden oars rowing in unison on a river, rhythmic splashes and creaking wooden boat, no music')],
     'river': [(10.0, 'Wide tropical river ambience at dawn, gentle water lapping against a wooden boat hull, distant birds, no music')],
+    # 1870-71 warfare (first used by the Reichsverfassung film)
+    'artillery': [(4.0, '19th century steel breech-loading field gun battery firing, sharp heavy black powder cracks one after another, '
+                        'rolling thunder over open fields, no music'),
+                  (4.0, 'Single heavy siege gun firing in winter, huge deep boom with long echo over a city, no music')],
+    'shellburst': [(3.0, 'Artillery shell whistling in and exploding on impact in a field, earth and stones raining down, no music')],
+    'rifles': [(3.0, 'Infantry line firing a ragged volley of 19th century breech-loading rifles, crackling black powder shots, no music')],
+    'gallop': [(5.0, 'Heavy cavalry charge, hundreds of horses galloping closer on hard ground, thundering hooves, '
+                     'jingling tack, distant shouts, no music')],
+    'sabre': [(1.5, 'Cavalry sabres drawn from steel scabbards together, sharp metallic ring, no music')],
+    'march': [(6.0, 'Column of infantry marching in step on a cobbled road, heavy boots, rattling equipment, no music')],
+    'steamtrain': [(6.0, 'Old 19th century steam locomotive pulling away, chuffing and hissing steam, whistle, iron wheels on rails, no music')],
+    'telegraph': [(3.0, 'Old 19th century telegraph key tapping morse code, sharp clicking sounder, close, dry, no music')],
+    'bugle': [(3.0, 'Distant military bugle signal call on a battlefield, single brass horn, slightly echoing, no music')],
+    # el_01 came out as quiet bolt clicks, not a shot (user review 2026-11-01): use el_02/el_03
+    'gunshot': [(1.5, 'Single shot of a 19th century breech-loading black powder rifle, sharp crack with short echo outdoors, no music'),
+                (2.0, 'One single loud rifle gunshot, powerful black powder blast with deep boom and rolling echo over an open '
+                      'battlefield, no mechanical clicks, no reloading sounds, no music'),
+                (2.0, 'A single very loud musket shot fired outdoors, explosive bang with smoke whoosh and long echo, '
+                      'no clicks, no bolt sounds, no music')],
+    'mgburst': [(3.0, 'Hand-cranked 19th century multi-barrel volley gun firing a rapid rattling burst, black powder, outdoors, no music')],
+    'hurrah': [(4.0, 'Large hall full of uniformed officers cheering hurrah three times, sabres rattling, echo in a palace hall, no music')],
 }
 
 

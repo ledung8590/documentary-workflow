@@ -70,7 +70,7 @@
     const n = Math.floor(clamp((t - t0) * (o.cps || 18), 0, str.length)); const part = str.slice(0, n);
     if (t >= t0 && n < str.length) window.__typing = true;  // read by scripts/jsscene.mjs --typing (typewriter SFX timing)
     const w = text(c, part, x, y, Object.assign({ font: 'mono', upper: false }, o));
-    if (t >= t0 && (n < str.length || Math.floor(t * 2) % 2 === 0)) {
+    if (t >= t0 && (n < str.length || (o.keepCursor !== false && Math.floor(t * 2) % 2 === 0))) {  // keepCursor:false on all but the last typed line
       c.fillStyle = o.color || C.offwhite; const s = o.size || 40; c.fillRect(x + w + 4, y - s * 0.85, s * 0.5, s);
     }
     return n >= str.length;

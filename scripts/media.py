@@ -35,6 +35,8 @@ REPHOTO = re.compile(r'(museum|bảo tàng|exhibit|display|on show|plaque|poster
 def _get(url, headers=None, timeout=40, tries=4):
     """Polite GET: Wikimedia rate-limits bursts (HTTP 429), so back off and honour Retry-After."""
     import time
+    # thumbnails are also served by thumb.wikimedia.org, which stays reachable when upload.wikimedia.org hangs
+    url = url.replace('://upload.wikimedia.org/wikipedia/commons/thumb/', '://thumb.wikimedia.org/wikipedia/commons/thumb/')
     for k in range(tries):
         req = urllib.request.Request(url, headers={'User-Agent': UA, **(headers or {})})
         try:
@@ -58,6 +60,19 @@ def _smaller(thumb):
     return re.sub(r'/(\d+)px-', f'/{PREVIEW_W}px-', thumb) if thumb and '/thumb/' in thumb else thumb
 
 
+def _as_thumb(url, width, want):
+    """A Commons original (served when the file is narrower than iiurlwidth) as a thumbnail at the largest standard step
+    below its width, so it comes from thumb.wikimedia.org too. Non-Commons or tiny files stay as they are."""
+    m = re.match(r'(https://upload\.wikimedia\.org/wikipedia/commons)/(\w/\w\w)/([^/?]+)(\?.*)?$', url or '')
+    if not m or not width or not re.search(r'\.(jpe?g|png|tiff?|webp)$', m.group(3), re.I):
+        return url
+    step = next((w for w in (want, 1280, 960, 500, 330, 250) if w <= want and w < width), None)
+    if not step:
+        return url
+    base, hashdir, name, _ = m.groups()
+    return f'{base}/thumb/{hashdir}/{name}/{step}px-{name}' + ('.jpg' if name.lower().endswith(('.tif', '.tiff')) else '')
+
+
 def licence_ok(name):
     name = (name or '').strip()
     return bool(name) and bool(ALLOWED.search(name)) and not REJECT.search(name)
@@ -79,8 +94,9 @@ def commons(query, n=20, kind='photo'):
         g = lambda k: _text(md.get(k, {}).get('value'))
         out.append({'source': 'commons', 'id': str(p['pageid']), 'title': p['title'].removeprefix('File:'),
                     'kind': kind, 'duration': ii.get('duration'), 'mime': ii.get('mime'),
-                    'page': ii.get('descriptionurl'), 'preview': _smaller(ii.get('thumburl')),
-                    'download': ii.get('url') if kind == 'video' else (ii.get('thumburl') or ii.get('url')),
+                    'page': ii.get('descriptionurl'),
+                    'preview': _as_thumb(_smaller(ii.get('thumburl')), ii.get('width'), PREVIEW_W),
+                    'download': ii.get('url') if kind == 'video' else _as_thumb(ii.get('thumburl') or ii.get('url'), ii.get('width'), FULL_W),
                     'width': ii.get('width'), 'height': ii.get('height'), 'licence': g('LicenseShortName'),
                     'licence_url': g('LicenseUrl'), 'author': g('Artist'), 'credit': g('Credit'),
                     'date': g('DateTimeOriginal'), 'description': g('ImageDescription')[:400]})

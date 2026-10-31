@@ -433,6 +433,10 @@ def hide_under_text(subs, tl, margin=0.15, min_len=0.6):
     those overlays stay if they are long enough to read."""
     blocks = sorted((o['start'] - margin, o['end'] + margin) for tr in tl.get('tracks', []) if tr.get('id') == 'overlay'
                     for o in tr['clips'] if o.get('type') in SUB_HIDE and 'start' in o)
+    # ... and under picture clips that carry their own text (JS graphics with labels): "hide_subtitles": true on the clip
+    # (user review 2026-11-01: a subtitle on top of a graphic's caption line)
+    blocks = sorted(blocks + [(c['start'] - margin, c['end'] + margin) for tr in tl.get('tracks', []) if tr.get('id') == 'video'
+                              for c in tr['clips'] if c.get('hide_subtitles') and 'start' in c])
     if not blocks:
         return subs
     out = []
