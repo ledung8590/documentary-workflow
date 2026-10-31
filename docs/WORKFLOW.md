@@ -7,7 +7,7 @@ Run from the workspace root with `.venv/Scripts/python.exe` (PY). Built stages a
 ## 1. Ingest [built]
 `PY scripts/doc.py doctor` (setup: `powershell -ExecutionPolicy Bypass -File scripts/setup.ps1`). Then `PY scripts/doc.py ingest`.
 **Default input:** a narration script `input/<name>.txt` (or `input/<name>/script.txt`), with mode `tts`.
-- Ingest detects the language (vi/es/en; `job.json` "language" overrides) and picks the narrator voice for it (`VOICES` in doc.py: en Brian, es Alberto, vi Tung Dang; `voice.voice_id` overrides).
+- Ingest detects the language (vi/es/de/en; `job.json` "language" overrides) and picks the narrator voice for it (`VOICES` in doc.py: en Brian, es Alberto, de Robert Ranger, vi Tung Dang; `voice.voice_id` overrides).
 - The voice is generated per sentence through AI84 eleven_v4 with emotion tags, and the SRT is generated from those clips.
 - **Everything visible follows the script language:** overlays, captions, "illustrative" notes, map labels, card words, credits wording.
 - **Supplied narration** (`<name>.wav` + `<name>.srt`, mode `narration`) is still supported; its voice is only re-paced, never regenerated, unless the user asks for `voice`.

@@ -39,7 +39,8 @@ DEFAULTS = {
 # narrator per script language (AI84 shared voices chosen by the user, 2026-10-30); job.json voice.voice_id overrides
 VOICES = {'en': ('Gubgw9l4dtIoQA9YZHgx', 'Brian - Deep, Resonant and Comforting'),
           'es': ('l1zE9xgNpUTaQCZzpNJa', 'Alberto Rodríguez - Serious, Narrative'),
-          'vi': ('3VnrjnYrskPMDsapTr8X', 'Tung Dang - Deep, Warm and Resonant')}
+          'vi': ('3VnrjnYrskPMDsapTr8X', 'Tung Dang - Deep, Warm and Resonant'),
+          'de': ('ML23UVoFL5mI6APbRAeR', 'Robert Ranger - Cool Storyteller')}
 EDGE_DB = -40.0          # clip head/tail must be quieter than this after trimming
 TRIM_DB = -42.0          # speech onset/offset threshold (10 ms RMS)
 HEAD_PAD, TAIL_PAD = 0.04, 0.09
@@ -54,14 +55,17 @@ def merge(a, b):
 
 
 def detect_language(text):
-    """vi / es / en from the script itself (job.json 'language' overrides). Cheap and transparent: Vietnamese
+    """vi / es / de / en from the script itself (job.json 'language' overrides). Cheap and transparent: Vietnamese
     tone marks, Spanish marks and stop words; English otherwise."""
     t = text.lower()
     if len(re.findall(r'[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]', t)) > max(5, len(t) // 200):
         return 'vi'
-    words = re.findall(r'[a-záéíóúñü]+', t)
+    words = re.findall(r'[a-záéíóúñüäöß]+', t)
+    de = sum(w in {'der', 'die', 'das', 'und', 'ist', 'nicht', 'mit', 'ein', 'eine', 'zu', 'den', 'von', 'auf', 'im', 'sich', 'wurde', 'auch', 'dem', 'des'} for w in words)
     es = sum(w in {'el', 'la', 'los', 'las', 'que', 'de', 'del', 'y', 'en', 'un', 'una', 'por', 'con', 'para', 'su', 'se', 'fue'} for w in words)
     en = sum(w in {'the', 'and', 'of', 'to', 'in', 'a', 'was', 'that', 'for', 'with', 'his', 'by', 'were', 'it'} for w in words)
+    if de > max(es, en) or (re.search(r'[äöß]', t) and de >= en):
+        return 'de'
     return 'es' if es > en or re.search(r'[ñ¿¡]', t) else 'en'
 
 

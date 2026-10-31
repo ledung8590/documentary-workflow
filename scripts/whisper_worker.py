@@ -13,6 +13,7 @@ PROMPTS = {
     'vi': 'Xin chào, đây là video phân tích lịch sử, quân sự và câu chuyện tài liệu.',
     'en': 'Hello, this is a documentary story and narrative analysis.',
     'es': 'Hola, este es un documental y un análisis narrativo.',
+    'de': 'Hallo, dies ist eine Dokumentation und eine militärhistorische Analyse.',
     'th': 'สวัสดี นี่คือเนื้อหาภาษาไทย về lịch sử và phim tài liệu',
     'zh': '你好，这是关于历史与军事的深度纪录片分析内容。',
 }

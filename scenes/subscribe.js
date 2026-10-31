@@ -4,7 +4,7 @@
 // Beats (scene s): 0.0 pop in · 1.3 click Subscribe -> Subscribed + burst · 2.45 click bell -> rings · 3.7 out.
 // Clicks for SFX: CLICKS below (mouseclick at each, subscribed at the first, notifybell at the second).
 // Labels follow the film's language: jsscene.mjs --lang vi|es|en (default en).
-const SUB_LABELS = { en: ['SUBSCRIBE', 'SUBSCRIBED'], vi: ['ĐĂNG KÝ', 'ĐÃ ĐĂNG KÝ'], es: ['SUSCRIBIRSE', 'SUSCRITO'] };
+const SUB_LABELS = { en: ['SUBSCRIBE', 'SUBSCRIBED'], vi: ['ĐĂNG KÝ', 'ĐÃ ĐĂNG KÝ'], es: ['SUSCRIBIRSE', 'SUSCRITO'], de: ['ABONNIEREN', 'ABONNIERT'] };
 window.SCENE = {
   duration: 4.2, bg: 'none', vignette: 0,
   draw(c, t, L) {

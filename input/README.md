@@ -3,13 +3,14 @@
 **Mặc định:** mỗi phim là một file văn bản `input/<ten-phim>.txt` (UTF-8). Nếu muốn, có thể để trong thư mục con: `input/<ten-phim>/script.txt`.
 
 Bạn không cần gen giọng hay SRT trước. Pipeline tự làm các việc sau:
-- **Nhận biết ngôn ngữ** của kịch bản (Anh / Tây Ban Nha / Việt…). Toàn bộ đầu ra theo đúng ngôn ngữ đó: giọng, chữ trên hình, phụ đề.
+- **Nhận biết ngôn ngữ** của kịch bản (Anh / Tây Ban Nha / Đức / Việt…). Toàn bộ đầu ra theo đúng ngôn ngữ đó: giọng, chữ trên hình, phụ đề.
 - **Chọn giọng theo ngôn ngữ** (AI84, Eleven v4):
 
   | Ngôn ngữ | Giọng |
   |---|---|
   | US/EN | Brian - Deep, Resonant and Comforting |
   | ES | Alberto Rodríguez - Serious, Narrative |
+  | DE | Robert Ranger - Cool Storyteller |
   | VI | Tung Dang - Deep, Warm and Resonant |
 
 - **Gen từng câu, mỗi câu có thẻ cảm xúc** (`[dramatic]`, `[thoughtful]`…). Câu nào chưa ưng thì gen lại riêng câu đó.

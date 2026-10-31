@@ -81,7 +81,7 @@ Every film's subscribe call-to-action ("hit that subscribe button…") gets `sce
 3. The cursor clicks the bell, which rings.
 
 To add it:
-1. Render it once per project in the film's language: `node scripts/jsscene.mjs scenes/subscribe.js projects/<id>/media/scene-subscribe.mov --alpha --lang <vi|es|en>`. The labels are SUBSCRIBE/SUBSCRIBED, ĐĂNG KÝ/ĐÃ ĐĂNG KÝ or SUSCRIBIRSE/SUSCRITO.
+1. Render it once per project in the film's language: `node scripts/jsscene.mjs scenes/subscribe.js projects/<id>/media/scene-subscribe.mov --alpha --lang <vi|es|de|en>`. The labels are SUBSCRIBE/SUBSCRIBED, ĐĂNG KÝ/ĐÃ ĐĂNG KÝ, SUSCRIBIRSE/SUSCRITO or ABONNIEREN/ABONNIERT.
 2. Add a fx-track `media_overlay` clip (4.2 s) that starts 1.3 s before the word "button" in `voice/words.json`, so the first click lands on "button". In a Vietnamese script, anchor it on "đăng ký".
 3. Add these SFX, in film time = clip start + scene time:
    - `whoosh/el_01` at 0 s, gain about -9.
