@@ -3,13 +3,14 @@
   PY scripts/evidence.py JOB            dry run: what would move, copy and be fetched
   PY scripts/evidence.py JOB --run      build evidence/<film name>/
 
-Moves (not copies) the deliverables, the media files on screen and the project's record into evidence/<film name>/,
+Moves (not copies) the deliverables, the media files on screen, the project's record and the input script into evidence/<film name>/,
 fetches each source's licence record (NARA catalog record, Commons file metadata + page, DVIDS asset + page),
 copies the music/SFX actually used from assets/ (assets stay in place for later films) and writes INDEX.csv
 (film time -> file -> source -> licence) and README.md (how to answer a claim). What stays in projects/<id>/ is
 regenerable cache (render/, unused candidates, studio history) and is reported, never deleted here.
 """
 import argparse, csv, json, re, shutil, sys, urllib.parse
+from glob import escape as glob_escape
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -151,6 +152,8 @@ def main():
         p = proj / rel
         if p.exists():
             t = dst / 'project' / rel; t.parent.mkdir(parents=True, exist_ok=True); mv(p, t)
+    for f in (ROOT / 'input').glob(f'{glob_escape(name)}.*'):  # the original input script (and its job .json), as the user wrote it
+        mv(f, dst / 'project' / f.name)
     # 3. copy (never move) the shared music/SFX used, with their licence lines
     lines = []
     for rel in sorted(assets):

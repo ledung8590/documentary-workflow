@@ -92,7 +92,8 @@ Re-renders only the picture ranges changed in review (spliced into `render/pictu
 - **Moved, not copied (saves disk):**
   - the deliverables from `output/<id>/`;
   - every media file on screen;
-  - the project record: the timeline, the script, the notes, the scene/map sources and the voice.
+  - the project record: the timeline, the script, the notes, the scene/map sources and the voice;
+  - the original input script from `input/` (and its job .json).
 - **Fetched:** each source's licence record, i.e. the NARA catalog record, the Commons metadata plus page, and the DVIDS asset plus page.
 - **Copied, never moved:** the music and SFX used from `assets/`, so later films keep using them without searching or downloading again.
 - **Written:**
