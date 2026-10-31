@@ -58,7 +58,12 @@ Real, licensed archival material only (`docs/MEDIA.md`); this workflow is for hi
 Per chapter, pick a mood bed from `assets/music/<mood>/` and place it on the `music` track with `doc.py ops` / `update_clips` (`add` with `src`, `start`, `end`, `gain_db`, `fade_in`, `fade_out`, `in`; anchored automatically to the nearest word). Missing moods: `PY scripts/music_elevenlabs.py MOOD --seconds 90 --prompt "..."` dry-runs with the live balance; `--run` only after the user's yes (`docs/MUSIC.md`). Suno only as the user's manual Pro downloads. Beat-grid snapping (librosa) is **planned**: cut on phrase ends by ear instead. Rerun `assemble` after placing music if sentence starts should land on beats.
 
 ## 8. SFX [built: shared library + placement]
-Word-anchored one-shots from `assets/sfx/<type>/` on the `sfx` track (`add` with the event's time: the anchor goes to the word naming it), plus field sound of archival film on `original` (`docs/SOUND.md`). Sparse, under the voice; cards get an audible hit. New SFX types only via `scripts/sfx_elevenlabs.py` dry run and the user's yes.
+Word-anchored one-shots from `assets/sfx/<type>/` on the `sfx` track (`add` with the event's time: the anchor goes to the word naming it), plus field sound of archival film on `original` (`docs/SOUND.md`). Sparse, under the voice; cards get an audible hit.
+**Card and typing checklist (before the studio stop; missed twice, user review 2026-10-31):**
+- Every `quote` overlay: `typewriter/el_03` from card start + 0.7 s for chars/cps (`render.card_quote`), stopping on the last character, then `typebell`. Gain about -6 (≈10 dB under the voice above 400 Hz).
+- Every JS scene that uses `L.typed`: `jsscene.mjs --typing` spans → typewriter on each span.
+- Every chapter card: whoosh + chapterhit + subdrop + `cardslam` (mid/high layer); every question card: `cardslam` + impact; title cards: revswell + titlehit.
+- Grep the sfx track for each quote overlay's start before opening the studio. New SFX types only via `scripts/sfx_elevenlabs.py` dry run and the user's yes.
 
 ## 9. Draft render [built: `doc.py build JOB --only picture`]
 Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py`) in 3 parallel parts with NVENC encoding, the same path as the studio's whole-picture render (`core.render_range`, ~157 fps: ~10–12 min for a 65-min film; x264/CPU fallback), and saves the render state so studio exports only re-render edited ranges. (Before 2026-10-31 `build` rendered in one process with x264 at ~31 fps: 3–4× slower.) Not a deliverable: it is what the studio plays and splices into. Self-check a few frames (cards, maps, transitions) before the review.
@@ -68,10 +73,15 @@ Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py
 1. Start the studio for the job (`PY scripts/doc.py studio JOB`, http://localhost:5280/). Tell the user it is open, what to check (pictures and captions, cards, music/SFX levels, subtitles) and how: play, press C to leave notes, drag clips, edit subtitles by clicking them.
 2. **End the turn and wait.** Do not export, do not continue to QA.
 3. On each round: `list_review_notes` → fix with `update_clips` (or `doc.py ops`) → check with `render_frame` / `render_preview` → `set_note_status` doing + reply. Only the user marks notes done.
-4. Continue only when the user says the film is approved (in chat) or exports it with **Xuất bản**.
+4. Continue only when the user says the film is approved in chat. **The studio is for review only** (user decision 2026-10-31): do not use its **Xuất bản** button or the MCP `export` tool.
 
-## 11. Export [built: studio **Xuất bản**, or the MCP tool `export` when the user asks]
-Re-renders only the picture ranges changed in review (spliced into `render/picture.mp4`), runs the voice-led mix (−14 LUFS, ≤ −1 dBTP) and muxes. The first export of a film writes `output/<id>/video.mp4` with `LICENSES.md` and `credits.txt`; later exports write `video-studio-<time>.mp4` and never overwrite `video.mp4`. (`doc.py build JOB` still does picture + mix + mux in one go without review: only when the user asks to skip the studio.)
+## 11. Export [built: `PY scripts/export.py JOB`]
+**Never through the studio** (its export job hung at start twice on 2026-10-31, workers idle). `scripts/export.py` runs in the foreground process:
+- re-renders only the picture ranges changed in review (spliced into `render/picture.mp4`; no usable picture → whole picture on the GPU);
+- runs the voice-led mix (−14 LUFS, ≤ −1 dBTP; `--no-mix` reuses `render/mix.wav` after picture-only edits) and muxes;
+- the first export writes `output/<id>/video.mp4` with `LICENSES.md` and `credits.txt`; later ones write `video-<time>.mp4` and never overwrite `video.mp4`.
+- Run it in the background **with a watchdog**: check CPU/GPU or output growth within 1–2 min, stop on no progress for ~2–3 min, hard timeout about 1.5× the expected time. Never wait without a limit.
+(`doc.py build JOB` still does picture + mix + mux in one go without review: only when the user asks to skip the studio.)
 
 ## 12. QA [built: `doc.py qa`]
 `PY scripts/doc.py qa JOB --video FILE` on the exported file: black, freeze (flags anything not on an intentional card), loudness, true peak. `--stt` dry-runs; with the user's OK `--stt --run` transcribes with ElevenLabs Scribe and compares words with the SRT/script (target ≥ 97 %; judge names/spellings rather than hiding them). Then inspect real frames at every flagged time, transitions, maps and text cards. Record what was and was not checked.

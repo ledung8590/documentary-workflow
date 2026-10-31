@@ -5,7 +5,7 @@
 The server writes only projects/<id>/timeline.json (ETag-guarded) plus its own work files in render/studio/.
 Renders run as background jobs (studio/jobs.py); exports go to output/<id>/video-studio-<time>.mp4.
 """
-import argparse, json, mimetypes, os, re, sys, threading, time, traceback, webbrowser
+import argparse, json, mimetypes, os, re, socket, sys, threading, time, traceback, webbrowser
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -258,6 +258,18 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(500, {'error': f'{type(e).__name__}: {e}'})
 
 
+class ExclusiveServer(ThreadingHTTPServer):
+    """ThreadingHTTPServer sets SO_REUSEADDR, which on Windows lets a second studio bind a port the first one still
+    holds: both listen and the browser lands on either film (2026-10-31: the Người Gác Đêm studio answered for film 5).
+    Exclusive binding makes a busy port fail, so main() moves to the next one."""
+    allow_reuse_address = False
+
+    def server_bind(self):
+        if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
 def main():
     sys.stdout.reconfigure(encoding='utf-8', errors='replace'); sys.stderr.reconfigure(encoding='utf-8', errors='replace')
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -267,8 +279,15 @@ def main():
     if not a.project:
         sys.exit(f'which project? {C.projects()}')
     Handler.app = App(a.project)
-    srv = ThreadingHTTPServer(('127.0.0.1', a.port), Handler)
-    url = f'http://localhost:{a.port}/'
+    srv, port = None, a.port
+    for port in range(a.port, a.port + 20):  # a port another studio holds is skipped, never shared
+        try:
+            srv = ExclusiveServer(('127.0.0.1', port), Handler); break
+        except OSError:
+            print(f'port {port} is in use (another studio?), trying {port + 1}', flush=True)
+    if srv is None:
+        sys.exit(f'no free port in {a.port}-{a.port + 19}')
+    url = f'http://localhost:{port}/'
     print(f'Studio: {a.project} -> {url}  (Ctrl+C to stop)', flush=True)
     if not a.no_browser:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
