@@ -2,6 +2,7 @@
 //   node scripts/jsscene.mjs <scene.js> <out.mp4> [--fps 24] [--dur seconds] [--still t out.jpg]
 //   node scripts/jsscene.mjs <scene.js> <spans.json> --typing     typing spans, for typewriter SFX
 //   node scripts/jsscene.mjs <scene.js> <out.mov> --alpha           transparent overlay (bg 'none', vignette 0) for a media_overlay fx clip
+//   --lang vi|es|en                                                  language of fixed UI words in a scene (default en)
 // The scene file sets window.SCENE = {duration, bg, draw(c, t, L)}; see docs/SCENES.md.
 import fs from 'fs'; import http from 'http'; import path from 'path'; import { spawn } from 'child_process';
 import { fileURLToPath } from 'url';
@@ -28,6 +29,7 @@ const page = await browser.newPage({ viewport: { width: 1920, height: 1080 }, de
 let err = null; page.on('pageerror', e => { err = e; console.error('page error:', e.message); });
 await page.goto(`http://127.0.0.1:${port}/scenes/engine.html`);
 const rel = '/' + path.relative(ROOT, sceneFile).split(path.sep).join('/');
+await page.evaluate(l => { window.LANG = l; }, opt('--lang', 'en'));  // scenes that print fixed UI words (subscribe.js) read it
 const info = await page.evaluate(s => window.setup(s), rel);
 const DUR = +opt('--dur', info.duration || 6);
 

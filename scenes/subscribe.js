@@ -3,6 +3,8 @@
 // Put it on the fx track as a media_overlay (blend normal) starting ~1.3 s before the narrator says "subscribe".
 // Beats (scene s): 0.0 pop in · 1.3 click Subscribe -> Subscribed + burst · 2.45 click bell -> rings · 3.7 out.
 // Clicks for SFX: CLICKS below (mouseclick at each, subscribed at the first, notifybell at the second).
+// Labels follow the film's language: jsscene.mjs --lang vi|es|en (default en).
+const SUB_LABELS = { en: ['SUBSCRIBE', 'SUBSCRIBED'], vi: ['ĐĂNG KÝ', 'ĐÃ ĐĂNG KÝ'], es: ['SUSCRIBIRSE', 'SUSCRITO'] };
 window.SCENE = {
   duration: 4.2, bg: 'none', vignette: 0,
   draw(c, t, L) {
@@ -18,7 +20,9 @@ window.SCENE = {
     const sc = pop * (1 - 0.15 * pout) * press(CLICK1);
 
     // ---- card: avatar disc + channel line + button + bell
-    const bw = subd ? 410 : 360, bh = 92, gap = 26, bell = 92;
+    const [L0, L1] = SUB_LABELS[window.LANG] || SUB_LABELS.en;
+    c.font = '700 50px Oswald';
+    const bw = 108 + c.measureText(subd ? L1 : L0).width + 44, bh = 92, gap = 26, bell = 92;  // pill hugs the label
     const total = bw + gap + bell;
     const bx = cx - total / 2, by = cy - bh / 2;
     c.save(); c.globalAlpha = A;
@@ -55,7 +59,7 @@ window.SCENE = {
       c.stroke(); c.restore();
     }
     c.fillStyle = '#fff'; c.font = '700 50px Oswald'; c.textAlign = 'left'; c.textBaseline = 'middle';
-    c.fillText(subd ? 'SUBSCRIBED' : 'SUBSCRIBE', bx + 108, cy + 2);
+    c.fillText(subd ? L1 : L0, bx + 108, cy + 2);
 
     // bell
     const bxc = bx + bw + gap + bell / 2, rung = t >= CLICK2;

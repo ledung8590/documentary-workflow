@@ -80,7 +80,7 @@ Re-renders only the picture ranges changed in review (spliced into `render/pictu
 `output/<id>/video.mp4` (or the approved `video-studio-<time>.mp4`), `LICENSES.md`, `credits.txt` (description-ready attribution), `qa.json`. Never upload.
 - **Thumbnail.** Make a 1280×720 JPG in the film's look (user request, 2026-10-31):
   - The hero is a public-domain archival photo that is already in the film, graded steel-teal shadows and warm highlights, with a dark band on the left.
-  - The hook goes on that band, 2–3 short lines in Black Ops One: off-white plus red, with a thick dark stroke.
+  - The hook goes on that band, 2–3 short lines **in the script's language** in Black Ops One: off-white plus red, with a thick dark stroke. The font has full Vietnamese diacritics, as do Saira and Oswald.
   - Add a small Saira kicker and one red graphic cue on the subject (sonar rings and a target, a stamp tag).
   - Keep the bottom-right corner clear for YouTube's timestamp. It must read at 320×180.
   - Template: `projects/85-…/thumbnail.py`.
