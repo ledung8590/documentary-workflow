@@ -68,6 +68,15 @@ LIB = {  # type -> [(seconds, prompt)]
     'mouseclick': [(0.5, 'Single crisp computer mouse button click, close, dry, no music')],
     'subscribed': [(1.5, 'Bright satisfying UI confirmation pop with a short sparkling chime, clean, modern, no music')],
     'notifybell': [(1.5, 'Small bright notification bell ringing twice quickly, clean UI sound, no music')],
+    # pre-modern warfare: black-powder guns, river fleets, war elephants (first used by 5-nguyen-huu-canh)
+    'cannon': [(4.0, 'Single old bronze muzzle-loading cannon firing, deep black powder boom, rolling echo over water, no music'),
+               (4.0, 'Several old black powder cannons firing in a ragged salvo from boats on a river, booming echoes, no music')],
+    'musket': [(3.0, 'Massed matchlock musket volley, many black powder guns firing together, crackling roar and echo, no music')],
+    'elephant': [(3.0, 'War elephant trumpeting loudly in panic, close, raw, no music')],
+    'gong': [(4.0, 'Large bronze war gong struck hard twice, deep shimmering ring, Southeast Asian, no music')],
+    'mosquito': [(4.0, 'A single mosquito buzzing close to the ear, high whine passing left to right, quiet night, no music')],
+    'oars': [(6.0, 'Many wooden oars rowing in unison on a river, rhythmic splashes and creaking wooden boat, no music')],
+    'river': [(10.0, 'Wide tropical river ambience at dawn, gentle water lapping against a wooden boat hull, distant birds, no music')],
 }
 
 
