@@ -21,7 +21,10 @@ import media as M
 OWN = {'scene-': 'Own work: animated graphic rendered from scenes/*.js in this pack (illustrative)',
        'map-': 'Own work: animated map (maps/*.json); basemap EOX Sentinel-2 cloudless 2016 (CC BY 4.0), terrain AWS Terrain Tiles'}
 RECORD = ['timeline.json', 'script.txt', 'STORY.md', 'FACTS.md', 'brief.json', 'sentences.json', 'LICENSES.md',
-          'description_youtube.txt', 'thumbnail.py', 'scenes', 'maps', 'voice/voice.wav', 'voice/voice.srt', 'voice/words.json']
+          'description_youtube.txt', 'thumbnail.py', 'scenes', 'maps', 'voice/voice.wav', 'voice/voice.srt', 'voice/words.json',
+          # the edit plan that built the timeline (film 74 left these behind in projects/)
+          'plan.py', 'gen_sound.py', 'shots.txt', 'overlays.txt', 'sound.txt', 'sound_scenes.txt', 'PICKS.md',
+          'searches.txt', 'searches3.txt', 'build_timeline.py']
 
 
 def hms(t):
