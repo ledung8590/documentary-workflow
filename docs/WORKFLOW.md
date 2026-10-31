@@ -64,7 +64,7 @@ Word-anchored one-shots from `assets/sfx/<type>/` on the `sfx` track (`add` with
 - Every JS scene that uses `L.typed`: `jsscene.mjs --typing` spans → typewriter on each span.
 - Every chapter card: whoosh + chapterhit + subdrop + `cardslam` (mid/high layer); every question card: `cardslam` + impact; title cards: revswell + titlehit.
 - Every JS scene that draws gunfire, cannon shots, bursts or a charge gets one sound per visible flash or burst, in sync with the frame. Write a per-scene table of events (nominal scene seconds, scaled to the shot) and use `gunshot`, `rifles`, `artillery`, `shellburst`, `mgburst`. The user caught silent firing in film 74's Dreyse/Chassepot graphic (2026-11-01).
-- No callout or date tag over a JS scene that has its own labels: the text overlaps. Burned-in subtitles step aside under such scenes: set `"hide_subtitles": true` on the video clip (render.hide_under_text). Keep scene text above y ≈ 860 anyway (user review 2026-11-01).
+- No callout or date tag over a JS scene that has its own labels: the text overlaps. Design scenes with the subtitle band (y > 860) free of text (docs/SCENES.md). Where a scene has to draw there, set `"hide_subtitles": true` on its clip so the subtitles step aside (render.hide_under_text). Both rules come from user review 2026-11-01.
 - Grep the sfx track for each quote overlay's start before opening the studio. New SFX types only via `scripts/sfx_elevenlabs.py` dry run and the user's yes.
 
 ## 9. Draft render [built: `doc.py build JOB --only picture`]

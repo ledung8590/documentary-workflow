@@ -63,6 +63,11 @@ window.SCENE = { duration: 8, bg: 'brown', draw(c, t, L) { /* paint frame t (s) 
 - `L.grid(c, alpha)`.
 
 ## Rules
+- **Keep the subtitle band free.** Burned-in subtitles sit at y ≈ 895–985 (1080 p frame, `subtitle_style.y` 0.868).
+  - Put no text, counters, labels or key graphics below **y = 860**. Ground, smoke and background are fine there.
+  - If a scene must draw in that band, turn the subtitles off for its clip with `"hide_subtitles": true` (render.hide_under_text; in plan.py, every scene except the `SUBS_OVER` set).
+  - Check one still at the scene's busiest moment with the subtitle in mind before rendering.
+  - In film 74, 13 scenes had their bottom line under the subtitle and had to be redrawn (user review 2026-11-01).
 - **Fit the beat.** One scene covers one beat (usually 1–3 shots, 4–12 s). Each element appears on the narrator's word.
 - **Keep it moving.** Something must move in every second.
 - **Stay in the house style.** Use only the house palette and fonts. Keep text large: at least 26 px for body, 34 px for labels.
