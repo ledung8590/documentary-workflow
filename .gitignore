@@ -3,6 +3,7 @@ __pycache__/
 node_modules/
 projects/
 output/
+evidence/
 input/*
 !input/README.md
 !input/job.example.json

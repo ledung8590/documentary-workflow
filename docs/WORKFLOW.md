@@ -78,3 +78,25 @@ Re-renders only the picture ranges changed in review (spliced into `render/pictu
 
 ## 13. Deliver
 `output/<id>/video.mp4` (or the approved `video-studio-<time>.mp4`), `LICENSES.md`, `credits.txt` (description-ready attribution), `qa.json`. Never upload.
+- **Thumbnail.** Make a 1280×720 JPG in the film's look (user request, 2026-10-31):
+  - The hero is a public-domain archival photo that is already in the film, graded steel-teal shadows and warm highlights, with a dark band on the left.
+  - The hook goes on that band, 2–3 short lines in Black Ops One: off-white plus red, with a thick dark stroke.
+  - Add a small Saira kicker and one red graphic cue on the subject (sonar rings and a target, a stamp tag).
+  - Keep the bottom-right corner clear for YouTube's timestamp. It must read at 320×180.
+  - Template: `projects/85-…/thumbnail.py`.
+- **Names.** Rename the video and the thumbnail to the input script's file name, e.g. `85. Soviets Make … Fa.mp4` and `.jpg`. Copy `description_youtube.txt` next to them.
+- **Then ask the user whether the video is uploaded.** Do not build the evidence pack before they say so.
+
+## 14. Evidence pack (after the user confirms the upload)
+`PY scripts/evidence.py JOB` is a dry run. Add `--run` to build `evidence/<script name>/`, one folder per film under `evidence/` at the workspace root. It is not in git.
+- **Moved, not copied (saves disk):**
+  - the deliverables from `output/<id>/`;
+  - every media file on screen;
+  - the project record: the timeline, the script, the notes, the scene/map sources and the voice.
+- **Fetched:** each source's licence record, i.e. the NARA catalog record, the Commons metadata plus page, and the DVIDS asset plus page.
+- **Copied, never moved:** the music and SFX used from `assets/`, so later films keep using them without searching or downloading again.
+- **Written:**
+  - `INDEX.csv`: film time, file, source, licence and record;
+  - `README.md`: how to answer a claim, including 17 U.S.C. § 105 for US government works.
+- **Leftovers:** what remains in `projects/<id>/` is regenerable cache (render, unused candidates, voice clips). Ask before deleting it.
+- **Reruns:** the script can be rerun after a partial run. A folder the studio holds open is copied and its empty shell is left behind.
