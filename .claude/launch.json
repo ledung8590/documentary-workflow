@@ -4,7 +4,7 @@
     {
       "name": "studio",
       "runtimeExecutable": ".venv/Scripts/python.exe",
-      "runtimeArgs": ["studio/server.py", "nguoi-gac-dem", "--no-browser"],
+      "runtimeArgs": ["studio/server.py", "--no-browser"],
       "port": 5280
     }
   ]

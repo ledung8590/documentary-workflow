@@ -56,8 +56,13 @@ def projects():
 
 
 def last_project():
+    """The project the studio last opened; if it has since moved to evidence/ (or was deleted), the project whose
+    timeline changed most recently."""
     p = ROOT / 'studio' / '.last_project'
-    return p.read_text(encoding='utf-8').strip() if p.exists() else None
+    last = p.read_text(encoding='utf-8').strip() if p.exists() else None
+    if last in projects():
+        return last
+    return max(projects(), key=lambda n: (ROOT / 'projects' / n / 'timeline.json').stat().st_mtime, default=None)
 
 
 # ---------------------------------------------------------------- project + store
