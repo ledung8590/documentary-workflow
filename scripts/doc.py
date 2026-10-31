@@ -957,14 +957,23 @@ def media_pick(job, slot, tag, k, caption, t_in=0.0, dur=None):
     if c.get('kind') == 'video':  # cut only the needed range (+0.5 s handles) from the original file
         need = dur or (clip['end'] - clip['start'] + 0.5)
         dst = d / 'media' / f'{slot}-{c["source"].split(":")[0]}-{c["id"]}.mp4'
-        M.fetch_range(M.fetch_video(c, d / 'media' / 'candidates' / tag), t_in, need, dst)
-        clip.update(kind='video', **{'in': 0.0})
+        src = M.fetch_video(c, d / 'media' / 'candidates' / tag)
+        t_use, cuts = M.clean_in(src, t_in, need)  # keep the shot inside one camera take
+        if abs(t_use - t_in) > 0.01:
+            print(f'{slot}: camera cut inside {t_in:.2f}+{need:.2f} s, moved the in-point to {t_use:.2f} s')
+        elif any(t_in + 0.05 < x < t_in + need - 0.05 for x in cuts):
+            print(f'{slot}: WARNING no single take of {need:.1f} s near {t_in:.2f} s; the shot contains a cut')
+        M.fetch_range(src, t_use, need, dst)
+        clip.update(kind='video', source_in=t_use, **{'in': 0.0})
     else:
         dst = M.download(c, d / 'media')  # full 1920 px only now, for the picked file
         clip['kind'] = 'photo'
     rel = f'media/{dst.name}'
     author = re.sub(r'\s+', ' ', c['author'] or 'unknown author')[:80]
-    credit = f'{author} / {c["source"].split(":")[-1].title()} ({c["licence"]})'
+    if c['source'] == 'nara':  # archive name + plain licence; the agency author is usually just "National Archives"
+        credit = ('' if author in ('National Archives', 'unknown author') else f'{author} / ') + 'U.S. National Archives (public domain)'
+    else:
+        credit = f'{author} / {c["source"].split(":")[-1].title()} ({c["licence"]})'
     clip.update(src=rel, credit=credit, caption=caption or clip.get('caption'), page=c['page'])
     tl['credits'] = [x for x in tl['credits'] if x.get('file') != rel] + [{'file': rel, 'line': credit, 'page': c['page']}]
     write(d / 'timeline.json', tl)
@@ -989,7 +998,16 @@ def build(job, what):
         missing = [c['id'] for t in tl['tracks'] if t['id'] == 'video' for c in t['clips'] if not c.get('src') and c.get('kind') != 'card']
         if missing:
             print(f'{len(missing)} video slots without media render as red "MISSING MEDIA" slates: {missing[:10]}')
-        R.picture(d, tl, pic); print(f'picture -> {pic}')
+        # the studio's whole-picture path: parallel parts + NVENC (~157 fps on the RTX 4070 Ti SUPER, x264 fallback),
+        # and the render state is saved so later studio exports only re-render edited ranges
+        import os, time
+        studio = str(ROOT / 'studio'); sys.path.insert(0, studio)
+        os.environ['PYTHONPATH'] = os.pathsep.join(filter(None, [studio, str(ROOT / 'scripts'), os.environ.get('PYTHONPATH')]))  # pool workers import core
+        import core
+        proj = core.Project(d.name); t0 = time.time(); new = pic.with_name('picture.new.mp4')
+        core.render_range(proj, tl, 0.0, tl['duration'], new, enc='nvenc')
+        os.replace(new, pic); core.save_state(proj, tl)
+        print(f'picture -> {pic} ({time.time() - t0:.0f} s)')
     if what in ('mix', 'all'):
         beds = R.mix(d, tl, aud); print(f'mix -> {aud} ({beds} bed clips ducked under the voice)')
     if what == 'all':
@@ -1056,7 +1074,7 @@ def main():
     q.add_argument('--stt', action='store_true'); q.add_argument('--run', action='store_true')
     q = sub.add_parser('media'); q.add_argument('job'); ms = q.add_subparsers(dest='mcmd', required=True)
     s = ms.add_parser('search'); s.add_argument('query'); s.add_argument('--tag'); s.add_argument('--n', type=int, default=8)
-    s.add_argument('--sources', default='commons,openverse,dvids'); s.add_argument('--kind', choices=('photo', 'video'), default='photo')
+    s.add_argument('--sources', default='commons,openverse,dvids,nara'); s.add_argument('--kind', choices=('photo', 'video'), default='photo')
     s = ms.add_parser('pick'); s.add_argument('slot'); s.add_argument('tag'); s.add_argument('k', type=int)
     s.add_argument('--caption'); s.add_argument('--in', dest='t_in', type=float, default=0.0); s.add_argument('--dur', type=float)
     s = ms.add_parser('strip'); s.add_argument('tag'); s.add_argument('k', type=int); s.add_argument('--every', type=float, default=3.0)

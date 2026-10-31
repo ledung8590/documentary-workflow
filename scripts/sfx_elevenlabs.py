@@ -47,6 +47,27 @@ LIB = {  # type -> [(seconds, prompt)]
     'lock': [(2.0, 'Old padlock mechanism clicking open as a key turns, metallic, close, dry, no music')],
     'heartbeat': [(4.0, 'Slow deep heartbeat thumps, low and muffled, cinematic tension, no music')],
     'clock': [(6.0, 'Old wall clock ticking slowly in a silent room, close, no music')],
+    # submarine / naval (first used by the Akula film)
+    'sonarping': [(4.0, 'Single active sonar ping underwater, clean metallic ping with long echoing reverb tail, deep ocean, no music'),
+                  (5.0, 'Distant submarine sonar ping heard through water, soft and eerie with a faint returning echo, no music')],
+    'hullcreak': [(4.0, 'Submarine steel hull groaning and creaking under deep water pressure, low metallic stress sounds, no music')],
+    'torpedolaunch': [(3.0, 'Submarine torpedo tube firing underwater, sharp high-pressure air whoosh and thud, then propeller whine racing away, no music')],
+    'underwater': [(10.0, 'Deep underwater ocean ambience inside a quiet submarine, low muffled rumble, faint distant whale-like groans, no music')],
+    'propwash': [(5.0, 'Large submarine propeller passing close overhead underwater, rhythmic deep churning wash, muffled, no music')],
+    # weapons footage (cold open and SINKEX shots; user review 2026-10-31: "too gentle for a military film")
+    'navalblast': [(4.0, 'Massive close torpedo warhead detonation under a warship, huge deep boom, roaring water column erupting and '
+                         'crashing back down, metal groan, no music'),
+                   (4.0, 'Huge close explosion on a warship hull, sharp violent blast, fireball roar, debris and metal shrapnel '
+                         'raining down, no music')],
+    'missilelaunch': [(4.0, 'Naval missile launch from a vertical launch cell, violent ignition blast then deafening rocket roar '
+                            'climbing away, no music')],
+    # audible layer over the sub-bass card hits (impact/titlehit are ~100 % below 150 Hz: inaudible on laptop speakers)
+    'cardslam': [(1.5, 'Punchy cinematic trailer slam hit, sharp metallic transient with a mid-range body and short bright tail, '
+                       'close, no music')],
+    # subscribe call-to-action overlay (scenes/kit/subscribe.js; user review 2026-10-31)
+    'mouseclick': [(0.5, 'Single crisp computer mouse button click, close, dry, no music')],
+    'subscribed': [(1.5, 'Bright satisfying UI confirmation pop with a short sparkling chime, clean, modern, no music')],
+    'notifybell': [(1.5, 'Small bright notification bell ringing twice quickly, clean UI sound, no music')],
 }
 
 

@@ -60,6 +60,8 @@ def _split_paragraph(text):
         word = re.findall(r'([\w.]+)$', before)
         if m.group(1) == '.' and word and word[0].lower().rstrip('.') in ABBR and m.end() < len(text):
             continue
+        if m.group(1) == '.' and word and re.fullmatch(r'[A-Z]', word[0]) and m.end() < len(text):  # "John A. Walker"
+            continue
         nxt = text[m.end():m.end() + 1]
         if m.group(1) == '.' and nxt and nxt.islower():  # "approx. five" / mid-sentence period
             continue

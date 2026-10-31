@@ -1,7 +1,10 @@
 # Archival media and maps (stage 6: photos + video clips built; maps planned)
 
 ## Commands
-- `doc.py media JOB search "query" --tag T [--kind photo|video] [--n 8] [--sources commons,openverse,dvids]`
+- `doc.py media JOB search "query" --tag T [--kind photo|video] [--n 8] [--sources commons,openverse,dvids,nara]`
+  - NARA (catalog API v2) and DVIDS run only when `NARA_API_KEY` / `DVIDS_API_KEY` are in the Windows user environment. NARA results pass only when the record's use restriction is "Unrestricted"; photos are browsed from JPG/PNG objects, videos get a poster frame grabbed over HTTP and `pick` cuts just the range (no full reel download).
+  - DVIDS video (`--kind video --sources dvids`): one asset call per hit for its MP4 renditions (1080p preferred); `pick` cuts the range over HTTP. Best source for weapons footage: SINKEX hits (search "RIMPAC SINKEX", "Valiant Shield SINKEX"), missile launches ("SM-2 missile launch destroyer", "Trident II missile launch submarine", "submarine Tomahawk launch"), ICEX surfacings, submarines underway, torpedo rooms.
+  - **Only US-government productions are public domain.** DVIDS also hosts allied footage (Royal Australian Navy, Canadian, Japanese and NATO units): check the `author` unit and skip non-US ones. Watch for unit logos, burnt-in subtitles and title cards at the start or end of a clip.
   - Licence-gated results.
   - 500 px previews and a contact sheet at `qa/media-T.jpg`.
   - Flags: re-photos of museum displays, low resolution, vertical video.

@@ -354,6 +354,9 @@ class MediaLayer:
             out = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', str(self.path)],
                                  capture_output=True, text=True).stdout.strip()
             self.dur = float(out or 1) or 1
+            pf = subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=pix_fmt', '-of', 'csv=p=0',
+                                 str(self.path)], capture_output=True, text=True).stdout.strip()
+            self.nc = 4 if pf in ('rgba', 'argb', 'bgra', 'abgr', 'yuva420p', 'yuva444p', 'ya8', 'gbrap') else 3  # alpha video (jsscene --alpha .mov)
 
     def _target(self):
         s = float(self.p.get('size', 1.0))
@@ -370,12 +373,15 @@ class MediaLayer:
         from PIL import ImageOps
         return ImageOps.fit(im, (tw, th), Image.LANCZOS)
 
+    def _fmt(self):
+        return 'rgba' if self.nc == 4 else 'rgb24'
+
     def _vf(self):
         tw, th = self.size; sc = self.p.get('scale', 'cover')
         if sc == 'stretch':
             return f'scale={tw}:{th}'
         if sc == 'contain':
-            return f'scale={tw}:{th}:force_original_aspect_ratio=decrease,pad={tw}:{th}:(ow-iw)/2:(oh-ih)/2'
+            return f'scale={tw}:{th}:force_original_aspect_ratio=decrease,pad={tw}:{th}:(ow-iw)/2:(oh-ih)/2:color=black@0'
         return f'scale={tw}:{th}:force_original_aspect_ratio=increase,crop={tw}:{th}'
 
     def frame(self, lt, as_float=True):
@@ -390,22 +396,23 @@ class MediaLayer:
                 if skip:
                     skip = skip % self.dur if self.p.get('loop', True) else min(skip, self.dur)
                 self.proc = subprocess.Popen(['ffmpeg', '-v', 'error', *loop, '-ss', f'{skip:.3f}', '-i', str(self.path), '-an', '-vf',
-                                              f'setpts=PTS/{speed},{self._vf()},fps={self.fps},format=rgb24', '-f', 'rawvideo', '-'],
+                                              f'setpts=PTS/{speed},{self._vf()},fps={self.fps},format={self._fmt()}', '-f', 'rawvideo', '-'],
                                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-            raw = self.proc.stdout.read(tw * th * 3)
-            if len(raw) == tw * th * 3:
-                self.raw = np.frombuffer(raw, np.uint8).reshape(th, tw, 3); self.last = None  # float copy made only if the CPU needs it
+            raw = self.proc.stdout.read(tw * th * self.nc)
+            if len(raw) == tw * th * self.nc:
+                self.raw = np.frombuffer(raw, np.uint8).reshape(th, tw, self.nc); self.last = None  # float copy made only if the CPU needs it
         else:
             st = (lt * speed) % self.dur if self.p.get('loop', True) else min(lt * speed, self.dur - 0.05)
             raw = subprocess.run(['ffmpeg', '-v', 'error', '-ss', f'{st:.3f}', '-i', str(self.path), '-an', '-frames:v', '1', '-vf',
-                                  f'{self._vf()},format=rgb24', '-f', 'rawvideo', '-'], capture_output=True).stdout
-            if len(raw) == tw * th * 3:
-                self.raw = np.frombuffer(raw, np.uint8).reshape(th, tw, 3); self.last = None
+                                  f'{self._vf()},format={self._fmt()}', '-f', 'rawvideo', '-'], capture_output=True).stdout
+            if len(raw) == tw * th * self.nc:
+                self.raw = np.frombuffer(raw, np.uint8).reshape(th, tw, self.nc); self.last = None
         if getattr(self, 'raw', None) is None:
-            self.raw = np.zeros((th, tw, 3), np.uint8)
+            self.raw = np.zeros((th, tw, self.nc), np.uint8)
         if as_float and self.last is None:
-            self.last = self.raw.astype(np.float32)
-        return self.last, None
+            self.last = self.raw[..., :3].astype(np.float32)
+            self.alpha = self.raw[..., 3:4].astype(np.float32) / 255 if self.nc == 4 else None
+        return self.last, self.alpha
 
     def apply(self, f, lt, k):
         top, alpha = self.frame(lt)

@@ -149,6 +149,17 @@ def char_times(orig_text, words, is_cjk=False):
     return full
 
 
+NUMBER_WORDS = set('''zero one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen
+seventeen eighteen nineteen twenty thirty forty fifty sixty seventy eighty ninety hundred thousand million billion and'''.split())
+
+
+def _number_join(left, right):
+    """True if a break between left and right would split a spelled-out number ("three thousand five | hundred")."""
+    a = left.rstrip().rsplit(' ', 1)[-1].lower().strip(',.;:'); b = right.lstrip().split(' ', 1)[0].lower().strip(',.;:')
+    num = lambda w: w in NUMBER_WORDS - {'and'} or (w and all(x in NUMBER_WORDS for x in w.split('-')))
+    return bool(num(a) and (num(b) or b == 'and')) and not left.rstrip().endswith(',')
+
+
 def split_subtitles(text, max_chars=MAX_CHARS, is_cjk=False):
     """OmniVoice's split_text_into_subtitles: break at sentence ends; a long sentence at phrase marks (10+ chars before,
     8+ after) or at the last space before max_chars; never leave < 6 chars on their own."""
@@ -181,11 +192,17 @@ def split_subtitles(text, max_chars=MAX_CHARS, is_cjk=False):
             rem = len(s) - (j + 1)
             if rem < 6:
                 part += s[j + 1:]; parts.append(part.strip()); part = ''; break
-            if ch in BREAK_MINOR and len(part) >= 10 and rem >= 8:
+            in_word = ch == '-' and j > 0 and j + 1 < len(s) and s[j - 1].isalnum() and s[j + 1].isalnum()  # "twenty-one"
+            if ch in BREAK_MINOR and not in_word and len(part) >= 10 and rem >= 8:
                 parts.append(part.strip()); part = ''
             elif len(part) >= max_chars:
                 if not is_cjk and ' ' in part and part.rfind(' ') > 12:
-                    k = part.rfind(' '); parts.append(part[:k].strip()); part = part[k + 1:]
+                    k = part.rfind(' ')
+                    while k > 12 and _number_join(part[:k], part[k + 1:] + s[j + 1:]):  # keep "three thousand five hundred" whole
+                        k = part.rfind(' ', 0, k)
+                    if k <= 12:
+                        k = part.rfind(' ')
+                    parts.append(part[:k].strip()); part = part[k + 1:]
                 else:
                     parts.append(part.strip()); part = ''
             j += 1

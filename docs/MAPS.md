@@ -36,6 +36,12 @@
 - Cameras orbit 40–55° of bearing at a pitch of 60–65.
 - The clip gets `"bloom": true` in the timeline (a glow on bright parts, added by the ffmpeg post-process in render.py).
 
+## Ocean and continental scenes
+- Terrarium tiles include bathymetry, so the seafloor relief shows through the sea under hillshade.
+- Use `exaggeration` 1.0–1.2, `brightness` ~0.75 and `saturation` ~-0.35, at zoom 3.5–5.
+- At this scale the extruded arrows can be clipped by land relief. Check frames, and use wider arrows or a red `route` if that happens.
+- English credit: "Terrain: AWS Terrain Tiles · Imagery: Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) · Positions illustrative".
+
 ## Colours
 - Attacker red `#e0402f` / `#b8433a`.
 - Defender blue `#5f8fe0` / `#6f94d8`.

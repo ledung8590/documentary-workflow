@@ -708,7 +708,9 @@ class Framer:
 
     def subs(self, tl):
         p = self.proj.d / 'voice' / 'voice.srt'
-        m = (p.stat().st_mtime if p.exists() else 0, json.dumps(tl.get('subtitle_overrides') or {}, sort_keys=True))
+        text_ov = [(o['start'], o['end']) for tr in tl['tracks'] if tr['id'] == 'overlay' for o in tr['clips']
+                   if o.get('type') in self.R.SUB_HIDE and 'start' in o]  # subtitles hide under these (render.hide_under_text)
+        m = (p.stat().st_mtime if p.exists() else 0, json.dumps(tl.get('subtitle_overrides') or {}, sort_keys=True), json.dumps(text_ov))
         if not self._subs or self._subs[0] != m:
             s = self.R.subtitles(self.proj.d, tl)
             self._subs = (m, s, [x[0] for x in s])
@@ -955,7 +957,10 @@ def render_range(proj, tl, t0, t1, out, log=print, workers=None, enc='x264', ste
     cap = 8 if enc == 'nvenc' else 64  # GeForce cards run at most 8 NVENC sessions at once
     R.USE_GPU = cfg['gpu_render']
     if cfg['gpu_render'] and enc == 'nvenc':
-        cap = 3  # GPU frames: the encoder is the limit, 3 parts already reach ~157 fps (6 give no more)
+        # GPU frames: each part's Python frame loop holds one core. 3 parts reached ~157 fps on a photo-only film, but a
+        # film with many video sources (maps, JS scenes, footage) got only ~56 fps at 3 parts (GPU 40 %, NVENC 23 %).
+        # Allow up to 6, keeping 2 of GeForce's 8 NVENC sessions for studio previews.
+        cap = cfg.get('gpu_parts', 6)
     parts = max(1, min(workers or cfg['render_workers'], cap, n // (2 * fps)))  # at least ~2 s a part: each part loads its photos again
     if parts == 1:
         R.VIDEO_ENC = R.NVENC if enc == 'nvenc' else R.X264; R.FRAME_STEP = step

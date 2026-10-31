@@ -101,8 +101,10 @@ function afterTimeline() {
 }
 
 // ------------------------------------------------------------------ edits
-async function ops(list, label) {
-  const before = JSON.stringify(S.tl);
+async function ops(list, label, before) {
+  // before: the timeline as it was before the edit. A drag edits clips in place for its live preview, so it passes the
+  // snapshot taken at pointerdown; otherwise undo would restore the already-edited state (user review 2026-10-31)
+  before = before ?? JSON.stringify(S.tl);
   S.busy++; setSave('busy', 'Đang lưu…');
   try {
     const { body } = await api('/api/ops', { method: 'POST', headers: { 'Content-Type': 'application/json', 'If-Match': S.etag }, body: JSON.stringify({ ops: list }) });
@@ -314,7 +316,10 @@ function tick() {
     if (!v.paused) v.pause(); v.classList.remove('show');
     if (!frameBusy) { frameWant = { t: t + 0.12, force: true }; pumpFrame(); }
   }
-  if ((S.t - S.view0) * S.pps > laneW() - 30) { S.view0 = S.t - 30 / S.pps; }
+  // keep the playhead in view on either side (user review 2026-10-31: it vanished when the view sat elsewhere),
+  // except for 4 s after the user scrolls the timeline by hand
+  const px = (S.t - S.view0) * S.pps;
+  if ((px < 0 || px > laneW() - 30) && performance.now() - (S.userScrollAt || 0) > 4000) { S.view0 = Math.max(0, S.t - (laneW() * 0.15) / S.pps); }
   drawTL(); drawMeter(); drawNotesOnFrame();
   requestAnimationFrame(tick);
 }
@@ -642,7 +647,7 @@ tlCv.addEventListener('pointerdown', ev => {
     if (H.edge === 'end' && vids[i + 1] && Math.abs(vids[i + 1].start - c.end) < 1.5 / fps()) partner = vids[i + 1];
     if (H.edge === 'start' && vids[i - 1] && Math.abs(vids[i - 1].end - c.start) < 1.5 / fps()) partner = vids[i - 1];
   }
-  TL.mode = mode; TL.d = { c, x0: H.x, s0: c.start, e0: c.end ?? c.start, len, partner, moved: false };
+  TL.mode = mode; TL.d = { c, x0: H.x, s0: c.start, e0: c.end ?? c.start, len, partner, moved: false, before: JSON.stringify(S.tl) };
 });
 tlCv.addEventListener('pointermove', ev => {
   const H = hit(ev);
@@ -677,17 +682,17 @@ tlCv.addEventListener('pointerup', () => {
   const c = d.c; let op;
   if (mode === 'move') op = { op: 'move', id: c.id, start: +c.start.toFixed(4) };
   else op = { op: 'trim', id: c.id, start: +c.start.toFixed(4), end: +(c.end ?? c.start).toFixed(4), roll: !!d.partner };
-  ops([op], mode === 'move' ? `Đã dời ${c.id} tới ${tc(c.start)}` : `Đã cắt ${c.id}`);
+  ops([op], mode === 'move' ? `Đã dời ${c.id} tới ${tc(c.start)}` : `Đã cắt ${c.id}`, d.before);
 });
 tlCv.addEventListener('dblclick', ev => { const H = hit(ev); if (H.c) seek(H.c.start); });
 $('#lanes').addEventListener('wheel', ev => {
   if (ev.ctrlKey || ev.metaKey) { ev.preventDefault(); const b = tlCv.getBoundingClientRect(); setZoom(S.pps * (ev.deltaY < 0 ? 1.25 : 0.8), Tx(ev.clientX - b.left)); }
-  else if (ev.shiftKey || Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) { ev.preventDefault(); S.view0 = Math.max(0, Math.min(dur() - 5, S.view0 + (ev.deltaY + ev.deltaX) / S.pps * 0.6)); drawTL(); }
-  else if ($('#laneScroll').scrollHeight <= $('#laneScroll').clientHeight + 2) { ev.preventDefault(); S.view0 = Math.max(0, Math.min(dur() - 5, S.view0 + ev.deltaY / S.pps * 0.6)); drawTL(); }
+  else if (ev.shiftKey || Math.abs(ev.deltaX) > Math.abs(ev.deltaY)) { ev.preventDefault(); S.userScrollAt = performance.now(); S.view0 = Math.max(0, Math.min(dur() - 5, S.view0 + (ev.deltaY + ev.deltaX) / S.pps * 0.6)); drawTL(); }
+  else if ($('#laneScroll').scrollHeight <= $('#laneScroll').clientHeight + 2) { ev.preventDefault(); S.userScrollAt = performance.now(); S.view0 = Math.max(0, Math.min(dur() - 5, S.view0 + ev.deltaY / S.pps * 0.6)); drawTL(); }
 }, { passive: false });
 $('#laneScroll').addEventListener('scroll', () => { $('#heads').scrollTop = $('#laneScroll').scrollTop; });
 let ovDrag = false;
-const ovSeek = ev => { const b = ovCv.getBoundingClientRect(); const t = (ev.clientX - b.left) / b.width * dur(); S.view0 = Math.max(0, t - laneW() / S.pps / 2); drawTL(); };
+const ovSeek = ev => { const b = ovCv.getBoundingClientRect(); const t = (ev.clientX - b.left) / b.width * dur(); S.userScrollAt = performance.now(); S.view0 = Math.max(0, t - laneW() / S.pps / 2); drawTL(); };
 ovCv.addEventListener('pointerdown', ev => { ovDrag = true; ovCv.setPointerCapture(ev.pointerId); ovSeek(ev); });
 ovCv.addEventListener('pointermove', ev => { if (ovDrag) ovSeek(ev); });
 ovCv.addEventListener('pointerup', () => { ovDrag = false; });
@@ -887,7 +892,7 @@ PANELS.text = el => {
     h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: !!(S.tl.fx || {}).subtitles, onchange: e => ops([{ op: 'fx', fields: { subtitles: e.target.checked } }], e.target.checked ? 'Bật phụ đề' : 'Tắt phụ đề') }), 'Hiện phụ đề từ voice.srt'),
     h('p', { class: 'muted', style: 'font-size:11px' }, 'Sửa chữ một câu: dừng hình rồi bấm thẳng vào phụ đề trên khung xem trước (hoặc tab Lời nói → Phụ đề). Kéo thanh để xem nháp, thả để lưu.'),
     h('div', { class: 'muted', style: 'font-size:11px;margin-top:6px' }, 'Chữ'),
-    field('Phông', sel(st.font || 'body', [['body', 'Be Vietnam Pro'], ['bodyreg', 'Be Vietnam Pro mảnh'], ['head', 'Oswald'], ['monomed', 'IBM Plex Mono']], v => setSub('font', v))),
+    field('Phông', sel(st.font || 'body', [['body', 'Be Vietnam Pro'], ['bodyreg', 'Be Vietnam Pro mảnh'], ['head', 'Oswald'], ['monomed', 'IBM Plex Mono'], ['military', 'Saira Condensed (quân sự)'], ['stencil', 'Saira Stencil'], ['blackops', 'Black Ops One']], v => setSub('font', v))),
     slider('Cỡ chữ', st.size, [24, 90], 1, v => liveSub('size', v), v => setSub('size', v), v => Math.round(v)),
     field('In hoa', h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: !!st.upper, onchange: e => setSub('upper', e.target.checked || null) }), 'VIẾT HOA TOÀN BỘ PHỤ ĐỀ')),
     field('Màu chữ', h('input', { type: 'color', class: 'colorin', value: st.color || '#EDE7DC', onchange: e => setSub('color', e.target.value) })),
@@ -1311,7 +1316,7 @@ function overlayForm(c) {
       slider('Cỡ chữ', d.size, [16, 220], 1, v => live('size', v), v => commit('size', v), v => Math.round(v)),
       slider('Ngang (x)', d.x, [0, 1], 0.005, v => live('x', v), v => commit('x', v)), slider('Dọc (y)', d.y, [0, 1], 0.005, v => live('y', v), v => commit('y', v)),
       field('Căn', sel(d.align, [['center', 'Giữa'], ['left', 'Trái'], ['right', 'Phải']], v => commit('align', v))),
-      field('Phông', sel(d.font, [['head', 'Oswald (tiêu đề)'], ['body', 'Be Vietnam Pro'], ['bodyreg', 'Be Vietnam Pro mảnh'], ['mono', 'IBM Plex Mono'], ['monomed', 'IBM Plex Mono đậm']], v => commit('font', v))),
+      field('Phông', sel(d.font, [['head', 'Oswald (tiêu đề)'], ['body', 'Be Vietnam Pro'], ['bodyreg', 'Be Vietnam Pro mảnh'], ['mono', 'IBM Plex Mono'], ['monomed', 'IBM Plex Mono đậm'], ['military', 'Saira Condensed (quân sự)'], ['stencil', 'Saira Stencil'], ['blackops', 'Black Ops One']], v => commit('font', v))),
       field('Màu chữ', h('input', { type: 'color', class: 'colorin', value: d.color, onchange: e => commit('color', e.target.value) })),
       slider('Viền', d.stroke, [0, 10], 1, v => live('stroke', v), v => commit('stroke', v), v => Math.round(v)),
       slider('Bóng', d.shadow, [0, 1], 0.05, v => live('shadow', v), v => commit('shadow', v)),

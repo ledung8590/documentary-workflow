@@ -1,0 +1,30 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+@font-face { font-family: Oswald; src: url(/assets/fonts/Oswald.ttf); font-weight: 200 700; }
+@font-face { font-family: BeVN; src: url(/assets/fonts/BeVietnamPro-SemiBold.ttf); }
+@font-face { font-family: Plex; src: url(/assets/fonts/IBMPlexMono-Medium.ttf); }
+html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #0c0b0a; }
+canvas { position: absolute; inset: 0; }
+</style>
+</head><body><canvas id="c" width="1920" height="1080"></canvas>
+<script src="/scenes/lib.js"></script>
+<script>
+// Motion-graphics scene engine: deterministic per-frame rendering for the headless recorder (scripts/jsscene.mjs).
+// A scene file sets window.SCENE = {duration, bg, draw(c, t, L)}; draw paints frame t (seconds) on the 2D context c.
+window.setup = async (src) => {
+  await Promise.all(['700 40px Oswald', '400 40px Oswald', '30px BeVN', '30px Plex'].map(f => document.fonts.load(f)));
+  await document.fonts.ready;
+  await new Promise((ok, bad) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
+  return { duration: SCENE.duration };
+};
+window.renderAt = (t) => {
+  window.__typing = false;
+  const c = document.getElementById('c').getContext('2d');
+  c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+  L.background(c, SCENE.bg || 'brown', t);
+  c.save(); SCENE.draw(c, t, L); c.restore();
+  L.vignette(c, SCENE.vignette ?? 0.55);
+};
+</script>
+</body></html>

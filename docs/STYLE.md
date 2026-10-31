@@ -10,6 +10,7 @@ Reference: `Chiến Dịch Điện Biên Phủ 1954.mp4` (154.5 s, 24 fps, −14
   - Rhetorical question in big red caps on black ("VÌ SAO?").
   - Chapter card: small "CHƯƠNG 1", a huge red numeral, the title, a red rule, on a dark brown or warm-grey textured background.
   - Stat card on parchment: a heading with a rule, then big numbers revealed one by one, each with a red underline and a red/grey label.
+    - Each item appears on the word that reads it out: set `"at"` (card seconds = word start − card start, from `voice/words.json`), with a soft `reveal` SFX on each item. Without it the items pop in 0.45 s apart, and a read-out list such as "Was it A… B… C" shows everything at once. This rule comes from the user review on 2026-10-31.
   - Calendar card with a hand-drawn red circle.
   - Typewriter quote card: dark brown background, monospace text typed with a block cursor, strikethrough of a rejected idea, then an amber highlight on the key phrase.
   - Closing card: title plus a red date line, then a dedication on black that fades out.
@@ -38,6 +39,10 @@ Reference: `Chiến Dịch Điện Biên Phủ 1954.mp4` (154.5 s, 24 fps, −14
 - **Oswald Bold** (condensed): dates, names, card titles, numbers, map labels; uppercase for titles, mixed case allowed in date tags ("13/3/1954 · khoảng 17:00").
 - **IBM Plex Mono:** kickers above names ("KHẨU ĐỘI TRƯỞNG"), typewriter quotes, small eyebrow labels.
 - **Be Vietnam Pro SemiBold:** sub-lines and the credit line.
+- **Military fonts** (added 2026-10-31, OFL), as `font` kinds in `render.font` and the studio's font menus:
+  - `military` = Saira Condensed Bold. It is the burned-in subtitle style for military films: upper case, size 50, on a 62 % dark box.
+  - Subtitles hide automatically while a callout, a lower third or a full card is on screen (`render.hide_under_text`). Text never doubles up.
+  - `stencil` = Saira Stencil One, and `blackops` = Black Ops One. Use these two for titles only; a stencil is tiring to read for a whole film.
 - **Colours:**
   - off-white #EDE7DC;
   - signal red #C8372D for rules, underlines, numerals and arrows;
@@ -59,6 +64,7 @@ Reference: `Chiến Dịch Điện Biên Phủ 1954.mp4` (154.5 s, 24 fps, −14
 - Narration leads.
 - One music bed per section, ducked under the voice; it swells in designed pauses and on cards.
 - Sparse SFX: artillery on artillery shots, a typewriter clack on typed cards, a low hit on chapter cards.
+  - Every card hit also gets an audible mid/high layer (`cardslam/el_01`, about -15 dB; at -4 it startles). The sub-bass hits (`impact`, `titlehit`, `chapterhit`, `reveal`) are almost silent on laptop speakers and earbuds.
 - Archival film sound is used only when it is real field sound. **Clip audio is muted by default:** many uploads carry their own music, which is a copyright risk.
 
 ## Optional film grain (AutoVeo3 HyperFrames look)

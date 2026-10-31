@@ -31,7 +31,8 @@ VIDEO_ENC = X264  # the studio switches to NVENC for previews and whole-picture 
 
 
 def font(kind, size):
-    """kind: head (Oswald Bold), mono, monomed, body (Be Vietnam Pro SemiBold), bodyreg."""
+    """kind: head (Oswald Bold), mono, monomed, body (Be Vietnam Pro SemiBold), bodyreg,
+    military (Saira Condensed Bold), stencil (Saira Stencil One), blackops (Black Ops One); all OFL, assets/fonts."""
     key = (kind, size)
     if key not in _fc:
         if kind == 'head':
@@ -42,7 +43,9 @@ def font(kind, size):
                 pass
         else:
             name = {'mono': 'IBMPlexMono-Regular.ttf', 'monomed': 'IBMPlexMono-Medium.ttf',
-                    'body': 'BeVietnamPro-SemiBold.ttf', 'bodyreg': 'BeVietnamPro-Regular.ttf'}[kind]
+                    'body': 'BeVietnamPro-SemiBold.ttf', 'bodyreg': 'BeVietnamPro-Regular.ttf',
+                    'military': 'SairaCondensed-Bold.ttf', 'stencil': 'SairaStencilOne-Regular.ttf',
+                    'blackops': 'BlackOpsOne-Regular.ttf'}[kind]
             f = ImageFont.truetype(str(FONTS / name), size)
         _fc[key] = f
     return _fc[key]
@@ -320,8 +323,16 @@ def card_title(d, pr, lt, out):
 
 
 def card_question(d, pr, lt, out):
-    a = ease((lt - 0.15) / 0.4) * out; f = font('head', 170); s = pr['text'].upper(); w = text_w(d, s, f)
-    d.text(((W - w) / 2, H / 2 - 130), s, font=f, fill=RED + (int(255 * a),))
+    a = ease((lt - 0.15) / 0.4) * out; s = pr['text'].upper(); size = 170
+    lines = [s]
+    if text_w(d, s, font('head', size)) > W - 240:  # long question: two balanced lines, then shrink to fit
+        words = s.split(); cut = min(range(1, len(words)), key=lambda i: abs(len(' '.join(words[:i])) - len(' '.join(words[i:]))))
+        lines = [' '.join(words[:cut]), ' '.join(words[cut:])]
+        while size > 80 and max(text_w(d, ln, font('head', size)) for ln in lines) > W - 240:
+            size -= 6
+    f = font('head', size); lh = size * 1.12; y0 = H / 2 - 130 - (len(lines) - 1) * lh / 2
+    for i, ln in enumerate(lines):
+        d.text(((W - text_w(d, ln, f)) / 2, y0 + i * lh), ln, font=f, fill=RED + (int(255 * a),))
 
 
 def card_chapter(d, pr, lt, out):
@@ -340,14 +351,15 @@ def card_stat(d, pr, lt, out):
         r = ease((lt - 0.3) / 0.7) * out; d.rectangle((150, 236, 150 + (W - 300) * r, 239), fill=INK + (int(200 * out),))
     items = pr['items']; colw = (W - 300) / len(items)
     for k, it in enumerate(items):
-        b = ease((lt - 0.6 - 0.45 * k) / 0.45) * out
+        at = it.get('at', 0.6 + 0.45 * k)  # card seconds; set from the word that names the item (A/B/C read out one by one)
+        b = ease((lt - at) / 0.45) * out
         if b <= 0: continue
         cx = 150 + colw * (k + 0.5); f = font('head', 170 if len(items) < 3 else 140)
         if it.get('pre'):
             fp = font('head', 34); d.text((cx - text_w(d, it['pre'], fp) / 2, 400), it['pre'], font=fp, fill=INK + (int(220 * b),))
         v = it['value']; w = text_w(d, v, f); y = 440 + 24 * (1 - b)
         d.text((cx - w / 2, y), v, font=f, fill=INK + (int(255 * b),))
-        u = ease((lt - 0.9 - 0.45 * k) / 0.5) * out; d.rectangle((cx - w / 2, y + 232, cx - w / 2 + w * u, y + 238), fill=RED + (int(255 * out),))
+        u = ease((lt - at - 0.3) / 0.5) * out; d.rectangle((cx - w / 2, y + 232, cx - w / 2 + w * u, y + 238), fill=RED + (int(255 * out),))
         fl = font('head', 40); lw = text_w(d, it['label'].upper(), fl)
         d.text((cx - lw / 2, y + 256), it['label'].upper(), font=fl, fill=RED + (int(255 * b),))
         if it.get('sub'):
@@ -403,15 +415,35 @@ def subtitles(d, tl):
     p = d / 'voice' / 'voice.srt'
     subs = read_srt(p) if p.exists() else []
     ov = tl.get('subtitle_overrides') or {}
-    if not ov:
-        return subs
     out = []
     for a, b, x in subs:
         o = ov.get(sub_key(a)) or {}
         a2, b2, x2 = o.get('start', a), o.get('end', b), o.get('text', x)
         if x2 and x2.strip() and b2 > a2:
             out.append((a2, b2, x2))
-    return sorted(out)
+    return hide_under_text(sorted(out), tl)
+
+
+SUB_HIDE = ('callout', 'lower_third', 'title_card', 'chapter', 'question', 'stat', 'quote', 'text')
+
+
+def hide_under_text(subs, tl, margin=0.15, min_len=0.6):
+    """Subtitles step aside while on-screen text says the same thing: a callout, a lower third or a full card (user
+    review 2026-10-31: a subtitle under "YOUR ONLY LIFELINE: YOUR HEARING" looks amateur). The parts of a cue outside
+    those overlays stay if they are long enough to read."""
+    blocks = sorted((o['start'] - margin, o['end'] + margin) for tr in tl.get('tracks', []) if tr.get('id') == 'overlay'
+                    for o in tr['clips'] if o.get('type') in SUB_HIDE and 'start' in o)
+    if not blocks:
+        return subs
+    out = []
+    for a, b, x in subs:
+        pieces = [(a, b)]
+        for ba, bb in blocks:
+            if bb <= a or ba >= b:
+                continue
+            pieces = [q for pa, pb in pieces for q in ((pa, min(pb, ba)), (max(pa, bb), pb)) if q[1] - q[0] > 0]
+        out += [(pa, pb, x) for pa, pb in pieces if pb - pa >= min_len]
+    return out
 
 
 def subtitle_layout(text, style=None):
@@ -427,7 +459,12 @@ def subtitle_layout(text, style=None):
     for k, ln in enumerate(rows):
         w = d.textlength(ln, font=f); lines.append(((W - w) / 2, y_last - (len(rows) - 1 - k) * lh, ln, w))
     pad = s.get('box_pad', 18); wmax = max(l[3] for l in lines)
-    box = ((W - wmax) / 2 - pad, lines[0][1] - pad * 0.35, (W + wmax) / 2 + pad, y_last + s['size'] * 1.3 + pad * 0.1)
+    # box hugs the ink, not the font's line box: cap top to baseline (upper case) or descender, with even padding, so an
+    # all-caps cue does not sit low in its box (user review 2026-10-31); fixed per style, so the box never jumps per cue
+    cap_top = d.textbbox((0, 0), 'H', font=f)[1]
+    ink_bot = d.textbbox((0, 0), 'H' if s.get('upper') else 'Hgjpy', font=f)[3]
+    vpad = pad * 0.6
+    box = ((W - wmax) / 2 - pad, lines[0][1] + cap_top - vpad, (W + wmax) / 2 + pad, y_last + ink_bot + vpad)
     return s, f, lines, box
 
 
@@ -711,6 +748,9 @@ def premix(d, tl, pre, t0=0.0, t1=None, only=None, codec='pcm_s24le'):
     return n
 
 
+TP_GUARD = 'aresample=192000,alimiter=limit=0.6:attack=1:release=50:level=disabled,aresample=48000'
+
+
 def mix(d, tl, out, target=-14.0, tp=-1.5):
     """Voice-led mix: beds (verified field sound, music, sfx) are sidechain-ducked under the voice, then two-pass
     loudnorm. Video clip audio is muted unless the clip says original_audio: true (uploads often carry music)."""
@@ -721,7 +761,8 @@ def mix(d, tl, out, target=-14.0, tp=-1.5):
     m = json.loads(meas[meas.rindex('{'):meas.rindex('}') + 1])
     ln = (f'loudnorm=I={target}:TP={tp}:LRA=11:measured_I={m["input_i"]}:measured_TP={m["input_tp"]}:'
           f'measured_LRA={m["input_lra"]}:measured_thresh={m["input_thresh"]}:offset={m["target_offset"]}:linear=true')
-    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(pre), '-af', f'{ln},aresample=48000', '-ar', '48000',
+    # true-peak guard: limit at 4x oversampling to -4.4 dBFS: AAC encoding adds ~2.3 dB of overshoot (Akula: +0.2 dBTP unguarded, -3.5 dBTP with this guard)
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(pre), '-af', f'{ln},{TP_GUARD}', '-ar', '48000',
                     '-c:a', 'pcm_s24le', str(out)], check=True)
     return n
 

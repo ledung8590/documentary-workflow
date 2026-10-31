@@ -12,7 +12,20 @@ from pathlib import Path
 
 # Wikimedia's User-Agent policy wants contact info; clients without it get much tighter rate limits.
 # The user may set WIKIMEDIA_CONTACT (an email or URL they choose) in their environment; it is never stored here.
-UA = 'documentary-workflow/0.1 (' + (os.environ.get('WIKIMEDIA_CONTACT') or 'personal research tool') + ') python-urllib'
+def _user_env(name):
+    """Process environment, else the Windows user environment (so a value set after the shell started still counts)."""
+    v = os.environ.get(name)
+    if not v and sys.platform == 'win32':
+        try:
+            import winreg
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, 'Environment') as k:
+                v = winreg.QueryValueEx(k, name)[0]
+        except OSError:
+            v = None
+    return v
+
+
+UA = 'documentary-workflow/0.1 (' + (_user_env('WIKIMEDIA_CONTACT') or 'personal research tool') + ') python-urllib'
 PREVIEW_W, FULL_W, PAUSE = 500, 1920, 3.0   # browse at 500 px, download 1920 px only for picked files
 ALLOWED = re.compile(r'^(public domain|pd\b|pd-|cc0|cc[- ]?by(-sa)?[- ]?\d|cc[- ]?by(-sa)?$|no restrictions|no known copyright)', re.I)
 REJECT = re.compile(r'(\bnc\b|non-?commercial|\bnd\b|noderiv|fair use|editorial|all rights reserved)', re.I)
@@ -87,19 +100,25 @@ def openverse(query, n=20, kind='photo'):
             for r in data.get('results', [])]
 
 
-def dvids(query, n=20, kind='photo'):
-    if kind == 'video':  # DVIDS video files need its asset API; not wired yet
-        return []
-    key = os.environ.get('DVIDS_API_KEY')
+def _key(name):
+    """API key from the process environment, else the Windows user environment (set after this shell started)."""
+    key = os.environ.get(name)
     if not key and sys.platform == 'win32':
         import winreg
         try:
             with winreg.OpenKey(winreg.HKEY_CURRENT_USER, 'Environment') as h:
-                key = winreg.QueryValueEx(h, 'DVIDS_API_KEY')[0]
+                key = winreg.QueryValueEx(h, name)[0]
         except OSError:
             key = None
+    return key
+
+
+def dvids(query, n=20, kind='photo'):
+    key = _key('DVIDS_API_KEY')
     if not key:
         return []
+    if kind == 'video':
+        return _dvids_video(query, n, key)
     q = urllib.parse.urlencode({'q': query, 'type[]': 'image', 'max_results': n, 'api_key': key})
     data = json.loads(_get(f'https://api.dvidshub.net/search?{q}'))
     return [{'source': 'dvids', 'id': r['id'], 'title': r.get('title') or '', 'page': r.get('url'),
@@ -109,10 +128,68 @@ def dvids(query, n=20, kind='photo'):
             for r in data.get('results', [])]
 
 
-SOURCES = {'commons': commons, 'openverse': openverse, 'dvids': dvids}
+def _dvids_video(query, n, key):
+    """DVIDS video search: one asset call per hit for its MP4 renditions (1080p preferred, never the multi-GB master).
+    US Department of Defense productions are public domain; the credit names the unit."""
+    q = urllib.parse.urlencode({'q': query, 'type[]': 'video', 'max_results': n, 'api_key': key})
+    out = []
+    for r in json.loads(_get(f'https://api.dvidshub.net/search?{q}')).get('results', []):
+        try:
+            a = json.loads(_get('https://api.dvidshub.net/asset?' + urllib.parse.urlencode({'id': r['id'], 'api_key': key})))
+        except Exception:  # noqa: BLE001 - one bad asset must not sink the search
+            continue
+        a = a.get('results', a)
+        files = [f for f in a.get('files') or [] if f.get('type') == 'video/mp4' and (f.get('width') or 0) <= 1920]
+        if not files:
+            continue
+        f = max(files, key=lambda f: ((f.get('width') or 0), -(f.get('size') or 0)))
+        out.append({'source': 'dvids', 'id': str(r['id']).replace('video:', 'video'), 'title': r.get('title') or '', 'kind': 'video',
+                    'duration': a.get('duration'), 'page': a.get('url') or r.get('url'), 'preview': a.get('image'),
+                    'download': f['src'], 'width': f.get('width'), 'height': f.get('height'),
+                    'licence': 'Public domain (US government work)', 'licence_url': '',
+                    'author': a.get('unit_name') or 'DVIDS', 'credit': 'DVIDS', 'date': (a.get('date') or '')[:10],
+                    'description': (a.get('description') or '')[:400]})
+    return out
 
 
-def search(query, sources=('commons', 'openverse', 'dvids'), n=20, kind='photo'):
+def nara(query, n=20, kind='photo'):
+    """US National Archives catalog (API v2, needs NARA_API_KEY). Only records whose use restriction is
+    "Unrestricted" pass the licence gate; donated material with restrictions is labelled and rejected."""
+    key = _key('NARA_API_KEY')
+    if not key:
+        return []
+    # typeOfMaterials keeps text documents (deck logs, reports) out of photo searches
+    q = urllib.parse.urlencode({'q': query, 'limit': n, 'availableOnline': 'true',
+                                'typeOfMaterials': 'Moving Images' if kind == 'video' else 'Photographs and other Graphic Materials'})
+    data = json.loads(_get(f'https://catalog.archives.gov/api/v2/records/search?{q}',
+                           headers={'x-api-key': key, 'Content-Type': 'application/json', 'Accept': 'application/json'}))
+    want = 'audio/visual file (mp4)' if kind == 'video' else 'image'  # NARA objectType: "Image (JPG)", "Audio/Visual File (MP4)"
+    out = []
+    for h in data.get('body', {}).get('hits', {}).get('hits', []):
+        r = h.get('_source', {}).get('record', {})
+        objs = [o for o in r.get('digitalObjects') or [] if want in (o.get('objectType') or '').lower()]
+        if kind != 'video':  # browse JPG/PNG only; multi-hundred-MB TIFF masters are not worth a preview
+            objs = [o for o in objs if re.search(r'\.(jpe?g|png)$', o.get('objectUrl') or '', re.I)
+                    and (o.get('objectFileSize') or 0) < 40e6]
+        status = (r.get('useRestriction') or {}).get('status') or 'Undetermined'
+        lic = 'Public domain (NARA, unrestricted use)' if status.lower() == 'unrestricted' else f'NARA use restriction: {status}'
+        date = ((r.get('productionDates') or [{}])[0] or {}).get('logicalDate') or ''
+        author = '; '.join(c.get('heading', '') for c in (r.get('creators') or [])[:2]) or 'National Archives'
+        for k, o in enumerate(objs[:2]):  # a file unit can hold hundreds of scans: keep the first two
+            out.append({'source': 'nara', 'id': f"{r.get('naId')}-{k}" if k else str(r.get('naId')),
+                        'title': r.get('title') or '', 'kind': kind, 'duration': None,
+                        'page': f"https://catalog.archives.gov/id/{r.get('naId')}",
+                        'preview': None, 'download': o.get('objectUrl'), 'width': None, 'height': None,
+                        'licence': lic, 'licence_url': 'https://www.archives.gov/global-pages/privacy.html#copyright',
+                        'author': author, 'credit': 'U.S. National Archives', 'date': date,
+                        'description': _text((r.get('scopeAndContentNote') or ''))[:400]})
+    return out[:n]
+
+
+SOURCES = {'commons': commons, 'openverse': openverse, 'dvids': dvids, 'nara': nara}
+
+
+def search(query, sources=('commons', 'openverse', 'dvids', 'nara'), n=20, kind='photo'):
     found, errors = [], []
     for s in sources:
         try:
@@ -138,6 +215,11 @@ def preview(c, folder):
     p = folder / f"prev-{c['source'].split(':')[0]}-{re.sub(r'[^A-Za-z0-9_-]', '', str(c['id']))[:40]}.jpg"
     if not p.exists():
         url = c.get('preview') or (None if c.get('kind') == 'video' else c.get('download'))
+        if not url and c.get('kind') == 'video' and c.get('download'):  # no poster (NARA): grab a frame over HTTP
+            import subprocess
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', '20', '-i', c['download'], '-frames:v', '1',
+                            '-vf', f'scale={PREVIEW_W}:-2', str(p)], check=True, capture_output=True, timeout=120)
+            return p
         if not url:
             raise ValueError('no preview image')
         p.write_bytes(_get(url, timeout=60)); time.sleep(PAUSE)
@@ -146,6 +228,8 @@ def preview(c, folder):
 
 def fetch_video(c, folder):
     """Download one video file (transcoded derivative first) into the candidate cache."""
+    if c['source'] in ('nara', 'dvids'):  # long reels / 1080p productions: ffmpeg reads only the needed range over HTTP
+        return c['download']
     folder = Path(folder); folder.mkdir(parents=True, exist_ok=True)
     p = folder / f"{c['source'].split(':')[0]}-{c['id']}.webm"
     if p.exists():
@@ -159,6 +243,30 @@ def fetch_video(c, folder):
             if e.code != 404:
                 raise
     raise last
+
+
+def clean_in(src, t_in, dur, look=10.0, fps=12):
+    """In-point nearest t_in whose [in, in+dur] holds no camera cut, so a picked shot is one take. A cut a fraction
+    of a second into a shot reads as a jerk on screen (user review 2026-10-31). Returns (in, cuts found near t_in)."""
+    import subprocess
+    import numpy as np
+    a = max(0.0, t_in - look)
+    raw = subprocess.run(['ffmpeg', '-v', 'error', '-ss', f'{a:.3f}', '-i', str(src), '-t', f'{dur + 2 * look:.3f}', '-an',
+                          '-vf', f'fps={fps},scale=160:90,format=gray', '-f', 'rawvideo', '-'], capture_output=True, timeout=600).stdout
+    x = np.frombuffer(raw, np.uint8)
+    n = len(x) // (160 * 90)
+    if n < 2:
+        return t_in, []
+    x = x[:n * 160 * 90].reshape(n, 90, 160).astype(np.float32)
+    d = np.abs(np.diff(x, axis=0)).mean(axis=(1, 2))
+    cuts = [a + (i + 1) / fps for i in np.where(d > 28)[0]]  # hard cut or flash frame
+    end = a + n / fps
+    ok = lambda s: s >= a and s + dur <= end and not any(s + 0.05 < c < s + dur - 0.05 for c in cuts)
+    for step in range(int(look * fps) + 1):  # nearest clean start, either side of t_in
+        for s in (t_in + step / fps, t_in - step / fps):
+            if ok(s):
+                return round(s, 3), cuts
+    return t_in, cuts
 
 
 def fetch_range(src, start, dur, out):
