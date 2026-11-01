@@ -97,6 +97,13 @@ Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py
   - Add a small Saira kicker and one red graphic cue on the subject (sonar rings and a target, a stamp tag).
   - Keep the bottom-right corner clear for YouTube's timestamp. It must read at 320×180.
   - Template: `projects/85-…/thumbnail.py`.
+- **Description.** Build `description_youtube.txt` with `PY scripts/description.py JOB --intro intro.txt [--note note.txt] --tags "t1, …, t7"`. You write the intro and the note in the script's language; the script adds the rest:
+  - chapters, starting at 0:00;
+  - public-domain sources by archive;
+  - every Creative Commons file on screen, with author, licence and Commons ID (grouped by author; Bundesarchiv as "Bundesarchiv, Bild …");
+  - map and music credits;
+  - the TAGS line.
+  The text must be ready to paste into YouTube and stay under 5,000 characters. Never write "see credits.txt" or point to any internal file: the viewer cannot see them (user review 2026-11-01).
 - **Names.** Rename the video and the thumbnail to the input script's file name, e.g. `85. Soviets Make … Fa.mp4` and `.jpg`. Copy `description_youtube.txt` next to them.
 - **Tags.** End `description_youtube.txt` with a `TAGS` block. It holds 7 YouTube tags in the script's language, comma-separated on one line, under 500 characters: the topic, the war or event, the key people, and the genre (e.g. "Militärgeschichte"). The user pastes this line into YouTube's tag field (user request, 2026-11-01). Also give the tags in the chat when delivering.
 - **Then ask the user whether the video is uploaded.** Do not build the evidence pack before they say so.
