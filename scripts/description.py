@@ -1,6 +1,6 @@
 """Paste-ready YouTube description (stage 13): projects/JOB/description_youtube.txt.
 
-  PY scripts/description.py JOB --intro intro.txt [--note note.txt] --tags "t1, t2, ..., t7"
+  PY scripts/description.py JOB --intro intro.txt [--note note.txt] --tags "t1, t2, ..., t7" --hashtags "#A #B ... #G"
 
 The agent writes the intro (what the film is about) and an optional note (what is illustrative / reconstructed), in the
 script's language. This script adds everything else from the project's own records, so the text can be pasted into
@@ -9,6 +9,7 @@ YouTube as it is:
 - public-domain sources named by archive and author;
 - every Creative Commons file on screen with author, licence and Commons ID (attribution the licences require);
 - map basemap credit and music/SFX credit;
+- a line of 7 #hashtags just above TAGS (YouTube shows the first ones above the title; user request 2026-11-01);
 - the TAGS line (7 tags, comma-separated).
 It never refers to files the viewer cannot see (no "see credits.txt"; user review 2026-11-01) and keeps the text under
 YouTube's 5,000-character limit by shortening the public-domain author list first."""
@@ -70,6 +71,7 @@ def ts(s):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('job'); ap.add_argument('--intro', required=True); ap.add_argument('--note'); ap.add_argument('--tags', required=True)
+    ap.add_argument('--hashtags', required=True)
     a = ap.parse_args()
     d = ROOT / 'projects' / a.job
     tl = json.loads((d / 'timeline.json').read_text(encoding='utf-8'))
@@ -78,6 +80,9 @@ def main():
     tags = [t.strip() for t in a.tags.split(',') if t.strip()]
     if len(tags) != 7:
         sys.exit(f'need 7 tags, got {len(tags)}')
+    hashtags = a.hashtags.replace(',', ' ').split()
+    if len(hashtags) != 7 or not all(re.fullmatch(r'#\w+', h) for h in hashtags):
+        sys.exit(f'need 7 one-word hashtags like #ColdWar, got {hashtags}')
     used = {c['src'] for t in tl['tracks'] if t['id'] == 'video' for c in t['clips'] if c.get('src')}
     rows = []
     for line in (d / 'LICENSES.md').read_text(encoding='utf-8').splitlines():
@@ -120,7 +125,7 @@ def main():
             out += [L['cc']] + [f'- {au}, {lic}: ' + ', '.join(sorted(set(ids))) for (au, lic), ids in sorted(cc.items(), key=lambda x: x[0][0].lower())]
         if other:
             out += [L['other']] + sorted(set(other))
-        out += [L['maps'], L['music'], '', 'TAGS', ', '.join(tags)]
+        out += [L['maps'], L['music'], '', ' '.join(hashtags), '', 'TAGS', ', '.join(tags)]
         return '\n'.join(out)
 
     n = len(pd)
