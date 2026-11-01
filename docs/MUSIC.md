@@ -11,7 +11,8 @@
   - Music is never generated per scene.
   - Build a **small shared library of reusable mood beds** in `assets/music/<mood>/`, reused by every film. It is generated once, like `assets/sfx`, and existing files are never regenerated.
   - Each bed is about 60–120 s, instrumental, with a steady tempo so it can be cut and looped on bars, plus a separate ending or sting where useful.
-  - Starting set (one or two variants each): `tension`, `somber`, `battle`, `resolve`, `mystery`, `march`, `elegy`.
+  - **Read `assets/music/MOODS.md` before placing music.** The default under narration is a bed with **no drums, no percussion and no pulse** (`europe1870`, `strategy`, `darkdrone`, `warstrings`, `lament`, `somber`, `resolve`).
+  - Drum and pulse beds (`combat`, `battle`, `tension`, `naval`, `coldwar`, `mystery`) are for short battle climaxes only. `march` and `suspense` are retired. The user rejected the knocking ("lộc cộc") beds twice on 2026-11-01.
 - **Always dry-run first.** Before generating, print the planned tracks (mood, prompt, duration) and the estimated credits, then ask the user in chat; only then pass `--run`.
   - Estimate from **measured** costs, not documented rates. The music rate is not measured yet. With the user's OK, generate one short bed, record the balance before and after, and store credits per second in the script. Only then estimate a batch.
   - If the estimate exceeds the remaining monthly credits, generate only the moods the current film needs, or wait for the next month.
@@ -23,6 +24,9 @@
 
 ## Fitting music to the film
 1. **Plan per chapter** from the narration (STORY.md + pacing chapters): mood, intensity curve, where the music rests. Several chapters can reuse the same bed.
+   - Match each bed to the voice's emotion (MOODS.md).
+   - Switch beds where the emotion turns, for example from attack to lament.
+   - A bed plays at most about 2–3 min, never a 120 s loop running for minutes.
 2. **Beat grid:** `librosa` beat/downbeat detection per file, cached as `<file>.beats.json`.
 3. **Cuts on the beat:**
    - A music clip's start is anchored to the chapter's first unit (minus a pre-roll).
