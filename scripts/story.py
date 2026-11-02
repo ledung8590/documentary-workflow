@@ -10,7 +10,7 @@ The .srt here is the timing the images were made for (one image per seconds_per_
 story starts, title and chapter cards, music beds per chapter (mood from the sentences' emotions) and measured card
 SFX. Everything is anchored to sentences/words, so a later voice change retimes it.
 """
-import difflib, json, re, unicodedata
+import difflib, json, re, subprocess, unicodedata
 from pathlib import Path
 
 import numpy as np
@@ -195,14 +195,15 @@ def _level_music(d, tl, log):
     return float(np.median(after))
 
 
-def _loudest(p, length, src_in=0.0, win=0.4, sr=22050, _cache={}):
-    """Loudest 400 ms RMS (dBFS) of a file section: card SFX gains are set from this (measured, not guessed)."""
-    from common import load_audio
+def _lufs(p, length=None, src_in=0.0, _cache={}):
+    """Integrated loudness (LUFS) of a file, or of the section that actually plays (src_in .. src_in + length)."""
     key = (str(p), length, src_in)
     if key not in _cache:
-        x = load_audio(p, sr)[int(src_in * sr):int((src_in + length) * sr)].astype(np.float64)
-        n = int(win * sr); e = np.convolve(x * x, np.ones(n) / n, mode='valid') if len(x) > n else [np.mean(x * x)]
-        _cache[key] = 10 * np.log10(max(np.max(e), 1e-12))
+        cut = ['-ss', f'{src_in:.3f}'] + (['-t', f'{length:.3f}'] if length else [])
+        o = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', *cut, '-i', str(p), '-af', 'ebur128', '-f', 'null', '-'],
+                           capture_output=True, text=True, encoding='utf-8', errors='replace').stderr
+        v = re.findall(r'I:\s+(-?[\d.]+) LUFS', o)
+        _cache[key] = float(v[-1]) if v else -70.0
     return _cache[key]
 
 
@@ -332,6 +333,22 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
                 a[1] = b[0]
             return [(a, b, max(set(es), key=es.count)) for a, b, es, _ in merged]
 
+        plan = [p for p in st.get('music_plan') or [] if p.get('sentence') in timing]
+        if plan:  # brief story.music_plan: [{sentence, mood, emotion, drums?}], each bed from its sentence to the next entry
+            plan.sort(key=lambda p: timing[p['sentence']]['start'])
+            for i, p in enumerate(plan):
+                a = 0.0 if i == 0 else timing[p['sentence']]['start'] - 0.6
+                b = timing[plan[i + 1]['sentence']]['start'] - 0.6 + 2.0 if i + 1 < len(plan) else tl['duration']
+                emo = p.get('emotion', 'neutral')
+                if p.get('drums') and DRUM_BED in moods and b - a > DRUM_MAX:
+                    src = sorted((ROOT / 'assets' / 'music' / DRUM_BED).glob('*.mp3'))[0]
+                    place(a, a + DRUM_MAX, DRUM_BED, src, emo); a += DRUM_MAX - 2.0
+                n = max(1, int(np.ceil((b - a) / BED_MAX))); seg = (b - a) / n
+                for j in range(n):
+                    s0 = a + j * seg; s1 = b if j == n - 1 else s0 + seg + 2.0
+                    mood, src = pick(p['mood'])
+                    place(s0, s1, mood, src, emo)
+            bounds = []
         for i, (t0, sid) in enumerate(bounds):
             t1 = bounds[i + 1][0] + 1.5 if i + 1 < len(bounds) else tl['duration']
             if t1 - t0 < 4:
@@ -364,24 +381,24 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
             if p is None:
                 return
         c = {'id': f'X{len(fx) + 1:03d}', 'src': '../../' + p.relative_to(ROOT).as_posix(), 'start': 0.0, 'end': length,
-             'gain_db': round(level - _loudest(p, length, kw.get('in', 0.0)), 1), 'anchor': a}
+             'gain_db': round(level - _lufs(p, length, kw.get('in', 0.0)), 1), 'anchor': a}
         c.update(kw); fx.append(c)
     sh = lambda a, dt: {**a, 'offset': round(a['offset'] + dt, 3)}
-    # levels relative to the voice (median 400 ms RMS of the speech): card hits 6-8 dB UNDER it, whooshes/drops 10-12 under.
-    # Absolute levels (-8/-11 dBFS) put the title and chapter hits 7-10 dB over the voice on story 89 (user: "fx cũng bị to hơn").
-    vx = load_audio(d / 'voice' / 'voice.wav', 16000).astype(np.float64); nw = int(0.4 * 16000)
-    ve = np.convolve(vx * vx, np.ones(nw) / nw, mode='valid')[::nw]; vdb = 10 * np.log10(np.maximum(ve, 1e-12))
-    VL = float(np.median(vdb[vdb > -45]))
+    # Voice and SFX both in LUFS (integrated voice vs the SFX section that plays): card hits 3 dB under the voice, riser
+    # 4, whoosh/drop 6. Story 89 had hits 7-10 dB OVER the voice ("fx cũng bị to hơn"); story 51 then had them 13-18 dB
+    # under it, inaudible ("v006 thiếu fx"), because the voice was a median RMS and each SFX its loudest 400 ms.
+    VI = _lufs(d / 'voice' / 'voice.wav')
     if st.get('card_sfx', True):
         if title_a:
-            sfx('riser', sh(title_a, -3.3), 3.0, VL - 12)
-            sfx('titlehit', sh(title_a, 0.1), 5.0, VL - 6, fade_out=1.5)
-            sfx('subdrop', sh(title_a, 0.1), 3.0, VL - 10, fade_out=1.0)
-            sfx('whooshdark', sh(title_a, 0.65), 1.5, VL - 12)
+            sfx('riser', sh(title_a, -3.3), 3.0, VI - 4)
+            sfx('titlehit', sh(title_a, 0.1), 5.0, VI - 3, fade_out=1.5)
+            sfx('subdrop', sh(title_a, 0.1), 3.0, VI - 6, fade_out=1.0)
+            sfx('whooshdark', sh(title_a, 0.65), 1.5, VI - 6)
         for n, (a, _) in enumerate(chap_a, 1):
-            sfx('whooshdark', sh(a, -0.55), 1.5, VL - 12)
-            sfx('chapterhit', sh(a, 0.05), 3.0, VL - 6.5, f='01' if n % 2 else '02', fade_out=0.8)
-            sfx('subdrop', sh(a, 0.05), 3.0, VL - 12, fade_out=1.0)
+            sfx('whooshdark', sh(a, -0.55), 1.5, VI - 6)
+            sfx('chapterhit', sh(a, 0.05), 3.0, VI - 3, f='01' if n % 2 else '02', fade_out=0.8)
+            sfx('subdrop', sh(a, 0.05), 3.0, VI - 6, fade_out=1.0)
+        log(f'card sfx: voice {VI:.1f} LUFS; hits 3 dB, riser 4 dB, whoosh/drop 6 dB under it (LUFS of the part that plays)')
     track['sfx']['clips'] = fx
 
     tl['fx'] = {'grain': True, 'subtitles': True}

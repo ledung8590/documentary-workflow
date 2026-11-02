@@ -23,7 +23,8 @@ def main():
     ap.add_argument('--run', action='store_true')
     a = ap.parse_args()
     folder = OUT / a.mood; folder.mkdir(parents=True, exist_ok=True)
-    n = len(list(folder.glob('el_*.mp3'))) + 1
+    # next free number over every el_NN file, rejected ones too (el_01.pulse.off): never overwrite a bed
+    n = max([int(p.name[3:5]) for p in folder.glob('el_*') if p.name[3:5].isdigit()] or [0]) + 1
     path = folder / f'el_{n:02d}.mp3'
     before = subscription()
     left = before['limit'] - before['used'] if before and before.get('limit') else None
