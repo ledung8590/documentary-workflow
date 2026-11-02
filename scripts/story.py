@@ -401,6 +401,21 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
         log(f'card sfx: voice {VI:.1f} LUFS; hits 3 dB, riser 4 dB, whoosh/drop 6 dB under it (LUFS of the part that plays)')
     track['sfx']['clips'] = fx
 
+    # "Phim cũ nhẹ" over the whole film, every story (user rule 2026-11-02); brief story.old_film: false turns it off
+    if st.get('old_film', True):
+        from render_fx import EFFECT_PRESETS
+        label, typ, params = next(p for p in EFFECT_PRESETS if p[0] == 'Phim cũ nhẹ')
+        if 'fx' not in track:
+            tl['tracks'].append({'id': 'fx', 'kind': 'fx', 'name': 'Hiệu ứng', 'clips': []}); track['fx'] = tl['tracks'][-1]
+        fxc = track['fx']['clips']
+        c = next((c for c in fxc if c.get('type') == typ and c.get('start', 0) <= 0.5), None)
+        if c is None:
+            ids = {x.get('id') for t in tl['tracks'] for x in t['clips']}
+            c = {'id': next(f'F{k:03d}' for k in range(1, 999) if f'F{k:03d}' not in ids), 'type': typ, 'label': label,
+                 'params': dict(params), 'opacity': 1, 'fade_in': 0.3, 'fade_out': 0.3}
+            fxc.insert(0, c)
+        c.pop('anchor', None); c['start'] = 0.0; c['end'] = round(tl['duration'], 3)
+
     tl['fx'] = {'grain': True, 'subtitles': True}
     tl['language'] = brief.get('language') or tl.get('language') or 'en'
     if brief.get('title'):
