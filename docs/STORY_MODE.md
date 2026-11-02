@@ -18,6 +18,9 @@ Optional `input/<name>.json` (or `job.json` in the folder): `title`, `language`,
 ## Language and market
 `ingest` detects the script language (vi / es / de / en; `language` overrides) and picks the narrator (`VOICES` in `doc.py`: en Brian, es Alberto, de Robert Ranger, vi Tung Dang). Every on-screen word follows it: title, `CHAPTER`/`CHƯƠNG`/`CAPÍTULO`/`KAPITEL`, cards, subtitles.
 
+## Voice
+Vietnamese and US English stories use the user's MiniMax cloned voices on AI84 by default: TUNG_DUY_V2 (vi) and LS_US (en). Whole chunks of up to 9,500 characters each are read with the voice's own expression, then Whisper cuts them into sentences for the subtitles (`docs/VOICE.md`, MiniMax section). Other languages keep the per-sentence AI84 eleven_v4 voice. The script must pass `storycheck.py` before any voice, so the voice is always generated here, never outside.
+
 ## Steps
 1. `PY scripts/doc.py ingest --story [--only NAME]` → `projects/<id>/` with `genre: story`.
 2. Run `PY scripts/storycheck.py <script>` against earlier stories (`docs/STORY_WRITING.md`). Report every `!!` to the user; fix them, rewriting with the user's OK if they wrote the script, before `split`/`tts`. Then read the story and write a short `STORY.md` (chapters, emotional curve, title). Fiction: no `FACTS.md`. Chapters come from `# Heading` lines in the script; if it has none, propose chapter points to the user (or add them to `sentences.json` chapters) before voicing.

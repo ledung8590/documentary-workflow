@@ -71,3 +71,40 @@ def tts(text, voice_id, model='eleven_v4', settings=None, language_code=None, ou
         if j['status'] == 'failed':
             raise RuntimeError(f'AI84 job failed: {j.get("errorMessage") or j.get("errorCode")}')
     raise RuntimeError('AI84 job timed out')
+
+
+def minimax_cloned():
+    """The account's MiniMax cloned voices (and system shared ones): [{canonical_voice_id, name, ...}]."""
+    return _req('GET', '/v1/minimax/voices/cloned').get('data', [])
+
+
+def minimax_voice_id(name):
+    """canonical_voice_id of a cloned voice by its display name (case-insensitive), e.g. 'TUNG_DUY_V2', 'LS_US'."""
+    vs = minimax_cloned()
+    hit = [v for v in vs if v.get('name', '').strip().lower() == name.strip().lower()]
+    if not hit:
+        raise RuntimeError(f'MiniMax cloned voice "{name}" not found; have: {", ".join(v.get("name", "?") for v in vs)}')
+    return hit[0]['canonical_voice_id']
+
+
+def tts_minimax(text, voice_id, model='speech-2.6-hd', speed=1.0, language_boost=None, out=None, deadline=1800):
+    """MiniMax TTS with a cloned voice (max 10,000 chars per job). The voice reads with its own natural expression:
+    no emotion tags, one speed per job. Create, poll, download to `out`. Returns (path, credit_cost)."""
+    if len(text) > 10000:
+        raise RuntimeError(f'MiniMax job too long: {len(text)} chars (max 10,000)')
+    body = {'canonical_voice_id': voice_id, 'text': text, 'model': model, 'speed': speed, 'format': 'mp3',
+            'sample_rate': 44100, 'bitrate': 256000, 'channel': 1}
+    if language_boost: body['language_boost'] = language_boost
+    job = _req('POST', '/v1/minimax/text-to-speech/async', body)
+    jid, cost, t0 = job['job_id'], job.get('credit_cost'), time.time()
+    while time.time() - t0 < deadline:
+        time.sleep(5.0)
+        j = _req('GET', f'/v1/minimax/text-to-speech/async/{jid}')['job']
+        if j['status'] == 'done':
+            req = urllib.request.Request(j['audio_url'], headers={'User-Agent': 'documentary-workflow/0.1'})
+            with urllib.request.urlopen(req, timeout=300) as resp:
+                Path(out).write_bytes(resp.read())
+            return out, j.get('credit_cost', cost)
+        if j['status'] == 'failed':
+            raise RuntimeError(f'MiniMax job failed: {j.get("error_message") or j.get("error_category")}')
+    raise RuntimeError('MiniMax job timed out')

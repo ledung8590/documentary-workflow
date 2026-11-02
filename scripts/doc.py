@@ -41,6 +41,10 @@ VOICES = {'en': ('Gubgw9l4dtIoQA9YZHgx', 'Brian - Deep, Resonant and Comforting'
           'es': ('l1zE9xgNpUTaQCZzpNJa', 'Alberto Rodríguez - Serious, Narrative'),
           'vi': ('3VnrjnYrskPMDsapTr8X', 'Tung Dang - Deep, Warm and Resonant'),
           'de': ('ML23UVoFL5mI6APbRAeR', 'Robert Ranger - Cool Storyteller')}
+# story narrators (/gentruyen): the user's MiniMax cloned voices on AI84, sent as whole chunks that the voice reads with its own
+# expression (viewers liked them: TUNG_DUY_V2 for Vietnamese, LS_US for US English stories, 2026-11-02); job.json voice overrides
+STORY_VOICES = {'vi': 'TUNG_DUY_V2', 'en': 'LS_US'}
+MINIMAX_LANG = {'vi': 'Vietnamese', 'en': 'English', 'de': 'German', 'es': 'Spanish', 'fr': 'French'}
 EDGE_DB = -40.0          # clip head/tail must be quieter than this after trimming
 TRIM_DB = -42.0          # speech onset/offset threshold (10 ms RMS)
 HEAD_PAD, TAIL_PAD = 0.04, 0.09
@@ -179,7 +183,10 @@ def ingest(folder, story=False, only=None):
             (p / 'script.txt').write_text(text, encoding='utf-8')
             cfg['language'] = cfg.get('language') or detect_language(text)
             cfg['voice']['language_code'] = cfg['voice'].get('language_code') or cfg['language']
-            if not cfg['voice'].get('voice_id') and cfg['language'] in VOICES:
+            if st and cfg['voice'].get('provider', 'ai84') == 'ai84' and not cfg['voice'].get('voice_id') and cfg['language'] in STORY_VOICES:
+                cfg['voice'].update(provider='minimax', voice_name=STORY_VOICES[cfg['language']], model='speech-2.6-hd',
+                                    chunked=True, chunk_chars=9500, audio_tags=False)
+            if not cfg['voice'].get('voice_id') and cfg['language'] in VOICES and cfg['voice'].get('provider') != 'minimax':
                 cfg['voice']['voice_id'], cfg['voice']['voice_name'] = VOICES[cfg['language']]
             print(f'{job}: language {cfg["language"]}, voice {cfg["voice"].get("voice_name") or cfg["voice"]["voice_id"] or "NOT SET"}')
         write(p / 'brief.json', cfg)
@@ -368,7 +375,10 @@ def assemble_narration(d, cfg):
 
 # ---------------------------------------------------------------- tts
 def v4_request(s, voice):
-    """Spoken text with the emotion tag, and voice settings, for eleven_v4 via AI84 (per-sentence `tag`/`say` override)."""
+    """Spoken text with the emotion tag, and voice settings, for eleven_v4 via AI84 (per-sentence `tag`/`say` override).
+    MiniMax (cloned voices): plain text, one speed for the whole job, no per-sentence stretch: the voice's own reading is kept."""
+    if voice.get('provider') == 'minimax':
+        return (s.get('say') or spoken(s['text'])).strip(), {'speed': float(voice.get('speed', 1.0))}
     tag = s.get('tag', V4_TAGS.get(s['emotion'], ''))
     settings = {'stability': 0.5, 'similarity_boost': 0.8, 'style': 0.35, 'speed': V4_SPEED.get(s['emotion'], 1.0),
                 'use_speaker_boost': True, **voice.get('settings', {}).get(s['emotion'], {})}
@@ -376,7 +386,7 @@ def v4_request(s, voice):
 
 
 def clip_key(s, voice):
-    if voice.get('provider') == 'ai84':
+    if voice.get('provider') in ('ai84', 'minimax'):
         text, settings = v4_request(s, voice)
         return digest(text, voice['voice_id'], voice['model'], voice.get('language_code'), settings)
     from elevenlabs import SETTINGS, tts_text
@@ -386,7 +396,7 @@ def clip_key(s, voice):
 
 def clip_paths(d, s, voice, mock=False, cut=None):
     """cut: a clip cut from a chunked AI84 job (opt-in voice.chunked): 'c-' key, WAV."""
-    cut = voice.get('provider') == 'ai84' and voice.get('chunked', False) if cut is None else cut
+    cut = (voice.get('provider') == 'minimax' or voice.get('provider') == 'ai84' and voice.get('chunked', False)) if cut is None else cut
     key = ('mock-' if mock else 'c-' if cut else '') + clip_key(s, voice)
     base = d / 'voice' / 'clips' / f'{s["id"]}-{key}'
     return base.with_suffix('.wav' if mock or cut else '.mp3'), base.with_suffix('.json')
@@ -431,6 +441,8 @@ def tts(job, do_run=False, mock=False, only=None):
             mock_clip(s, *clip_paths(d, s, voice, True))
         print(f'{len(todo)} mock clips written (not deliverable; real TTS replaces them)')
         return
+    if voice.get('provider') == 'minimax':  # always whole chunks (max 10,000 chars per MiniMax job)
+        return tts_ai84_chunked(d, cfg, voice, data, todo, do_run)
     if voice.get('provider') == 'ai84':
         if voice.get('chunked', False):
             return tts_ai84_chunked(d, cfg, voice, data, todo, do_run)
@@ -542,7 +554,7 @@ def voice_chunks(voice, data):
     further only if voice.chunk_chars (default 0 = no limit) would be exceeded. Each sentence keeps its own emotion tag
     inside the chunk text."""
     starts = {c['sentence'] for c in data.get('chapters', []) if c.get('sentence')}
-    limit = int(voice.get('chunk_chars') or 0); chunks, cur, n = [], [], 0
+    limit = int(voice.get('chunk_chars') or (9500 if voice.get('provider') == 'minimax' else 0)); chunks, cur, n = [], [], 0
     for s in data['sentences']:
         tagged = v4_request(s, voice)[0]
         if cur and (s['id'] in starts or (limit and n + len(tagged) + 1 > limit)):
@@ -561,6 +573,8 @@ def chunk_request(sents, voice):
         sep = '' if k == 0 else ('\n' if s.get('paragraph') != sents[k - 1].get('paragraph') else ' ')
         tg = v4_request(s, voice)[0]; sp = s.get('say') or spoken(s['text'])
         tagged += sep + tg; plain += sep; spans.append((len(plain), len(plain) + len(sp))); plain += sp
+    if voice.get('provider') == 'minimax':
+        return tagged, plain, spans, {'speed': float(voice.get('speed', 1.0))}
     # one job has one speed: it is read at 1.0 and each cut clip gets its own emotion speed afterwards (stretch_speech)
     settings = {'stability': 0.5, 'similarity_boost': 0.8, 'style': 0.35, 'speed': 1.0, 'use_speaker_boost': True}
     return tagged, plain, spans, settings
@@ -599,6 +613,9 @@ def tts_ai84_chunked(d, cfg, voice, data, todo, do_run):
         print(f'  {r["sents"][0]["id"]}..{r["sents"][-1]["id"]} ({len(r["tagged"])} chars): {r["tagged"][:110]}...')
     if not do_run:
         print('dry run: add --run (Whisper medium loads first, then the AI84 jobs go out)'); return
+    mm = voice.get('provider') == 'minimax'
+    if mm and not voice.get('voice_id'):  # cloned voice looked up by its AI84 name once, then kept in brief.json
+        voice['voice_id'] = ai84.minimax_voice_id(voice['voice_name']); cfg['voice'] = voice; write(d / 'brief.json', cfg)
     if not voice.get('voice_id'):
         sys.exit('brief.json voice.voice_id is empty (no default voice for this language): set one')
     (d / 'voice' / 'chunks').mkdir(parents=True, exist_ok=True)
@@ -607,8 +624,12 @@ def tts_ai84_chunked(d, cfg, voice, data, todo, do_run):
 
     def gen(r):
         if not r['audio'].exists():
-            _, cost = ai84.tts(r['tagged'], voice['voice_id'], voice['model'], r['settings'], voice.get('language_code'), r['audio'],
-                               deadline=1800)
+            if mm:
+                _, cost = ai84.tts_minimax(r['tagged'], voice['voice_id'], voice['model'], r['settings']['speed'],
+                                           MINIMAX_LANG.get(lang), r['audio'])
+            else:
+                _, cost = ai84.tts(r['tagged'], voice['voice_id'], voice['model'], r['settings'], voice.get('language_code'), r['audio'],
+                                   deadline=1800)
             write(r['audio'].with_suffix('.json'), {'tagged': r['tagged'], 'credit_cost': cost, 'sentences': [s['id'] for s in r['sents']]})
             return r, cost
         return r, 0
@@ -633,7 +654,7 @@ def tts_ai84_chunked(d, cfg, voice, data, todo, do_run):
     if weak:
         print('CHECK THESE SENTENCES (little of the script was heard: skipped or misread by the voice?):\n  ' + '\n  '.join(weak))
     if not failed:
-        mark(d, 'tts', model=voice['model'], provider='ai84', chunked=True, weak=len(weak))
+        mark(d, 'tts', model=voice['model'], provider=voice.get('provider', 'ai84'), chunked=True, weak=len(weak))
 
 
 def cut_chunk(d, voice, r, worker, lang):
@@ -662,7 +683,7 @@ def cut_chunk(d, voice, r, worker, lang):
         save_wav(audio, stretch_speech(x[a:b], speed))
         ct = [v / speed for v in ct]
         ends = ct[1:] + [ct[-1] + 0.08]
-        write(meta, {'text': s['text'], 'spoken': v4_request(s, voice)[0], 'emotion': s['emotion'], 'provider': 'ai84', 'model': voice['model'],
+        write(meta, {'text': s['text'], 'spoken': v4_request(s, voice)[0], 'emotion': s['emotion'], 'provider': voice.get('provider', 'ai84'), 'model': voice['model'],
                      'voice_id': voice['voice_id'], 'chunk': r['audio'].name, 'heard_ratio': round(ratio, 3), 'speed': speed,
                      'alignment': {'characters': list(s['text']), 'character_start_times_seconds': [round(v, 3) for v in ct],
                                    'character_end_times_seconds': [round(v, 3) for v in ends], 'source': 'whisper'}})
