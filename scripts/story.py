@@ -203,6 +203,20 @@ def _clipped(p, _cache={}):
     return _cache[str(p)]
 
 
+def _steady_in(p, length, step=0.25):
+    """Start (s) of the file section of `length` s whose quietest 250 ms is loudest: an ambience that has sound from its
+    first frame. wind/el_02 dips to -28 dB at 2-4 s, and a fixed 'in': 3.0 left the black opening near silent ("lại lỗi
+    fx đầu ko nghe gì", story 89 Ngọn Hải Đăng, after story 51's "ko hề nghe thấy tiếng gió nào")."""
+    from common import load_audio
+    x = load_audio(p, 22050); n = int(step * 22050)
+    db = 20 * np.log10(np.sqrt(np.mean(x[:len(x) // n * n].reshape(-1, n) ** 2, axis=1)) + 1e-9)
+    k = max(1, int(round(length / step)))
+    if len(db) <= k:
+        return 0.0
+    best = max(range(len(db) - k + 1), key=lambda i: db[i:i + k].min())
+    return round(best * step, 2)
+
+
 def _lufs(p, length=None, src_in=0.0, _cache={}):
     """Integrated loudness (LUFS) of a file, or of the section that actually plays (src_in .. src_in + length)."""
     key = (str(p), length, src_in)
@@ -302,15 +316,17 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
         vids.insert(0, {'id': 'V000', 'start': 0.0, 'end': 0.0, 'src': 'media/black.png', 'kind': 'photo', 'grade': 'archival',
                         'motion': {'type': 'none'}, 'anchor': {'sentence': order[0], 'edge': 'start', 'offset': -99.0}, 'end_anchor': cut})
         vids[1]['anchor'] = cut; vids[1]['transition_in'] = {'type': 'dip', 'dur': 1.0}
-    # 20 s end screen after the last picture (YouTube end-screen slots drawn in), every story; story.end_screen: false = off
+    # end screen after the last picture (YouTube end-screen slots drawn in), every story; story.end_screen: false = off.
+    # Length story.end_screen_secs (YouTube allows 5-20 s); 10 s since story 89 Ngọn Hải Đăng ("V516 để 10s thui")
     lang = (brief.get('language') or 'en')[:2]
     if st.get('end_screen', True):
         last = order[-1]; t_end = timing[last]['end'] + 3.0
+        es = float(min(20.0, max(5.0, st.get('end_screen_secs', 10.0))))
         end_screen_image(d, imgs[-1], lang)
-        vids.append({'id': f'V{len(vids) + 1:03d}', 'start': round(t_end, 3), 'end': round(t_end + 20.0, 3), 'src': 'media/endscreen.png',
+        vids.append({'id': f'V{len(vids) + 1:03d}', 'start': round(t_end, 3), 'end': round(t_end + es, 3), 'src': 'media/endscreen.png',
                      'kind': 'photo', 'grade': grade, 'motion': {'type': 'none'}, 'transition_in': {'type': 'dip', 'dur': 1.0},
-                     'anchor': {'sentence': last, 'edge': 'end', 'offset': 3.0}, 'end_anchor': {'sentence': last, 'edge': 'end', 'offset': 23.0}})
-        tl['duration'] = round(max(tl['duration'], t_end + 20.0), 3)
+                     'anchor': {'sentence': last, 'edge': 'end', 'offset': 3.0}, 'end_anchor': {'sentence': last, 'edge': 'end', 'offset': 3.0 + es}})
+        tl['duration'] = round(t_end + es, 3)   # not max(): a shorter end screen must shorten the film too
     track['video']['clips'] = vids
 
     # cards: title after the first paragraph (if early), a chapter card in each chapter's pause
@@ -458,6 +474,8 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
                 p = best
             if _clipped(p) > 1.0:
                 log(f'!! sfx {name}/{p.name} is {_clipped(p):.1f} % clipped (crackles): regenerate it')
+        if kw.get('in') == 'steady':
+            kw['in'] = _steady_in(p, length)
         c = {'id': f'X{len(fx) + 1:03d}', 'src': '../../' + p.relative_to(ROOT).as_posix(), 'start': 0.0, 'end': length,
              'gain_db': round(level - _lufs(p, length, kw.get('in', 0.0)), 1), 'anchor': a}
         c.update(kw); fx.append(c)
@@ -525,11 +543,11 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
     if st.get('cold_black', True) and timing[order[0]]['start'] > 2.0:   # the ambience that plays over the black opening
         first_txt = ' '.join(by_id[x]['text'] for x in order[:4]).lower()
         amb = st.get('open_ambience') or ('rainroof' if any(w in first_txt for w in ('mưa', 'rain', 'lluvia', 'regen')) else 'wind')
-        # alone over black, so clearly audible: 8 dB under the voice, from 3 s into the file (wind/el_02 is 9 dB quieter
-        # in its first 3 s: story 51 measured -44 LUFS over the black at VI - 18, "tôi ko hề nghe thấy tiếng gió nào"),
-        # then out over the first words (2 s fade)
+        # alone over black, so clearly audible from the first frame: 6 dB under the voice, from the file's steadiest
+        # section (no quiet dip), almost no fade in, then out over the first words (2 s fade). Story 51 (-44 LUFS at
+        # VI - 18) and story 89 (fixed 'in': 3.0 landed on a -28 dB dip) both opened on near silence.
         sfx(amb, {'sentence': order[0], 'edge': 'start', 'offset': round(-timing[order[0]]['start'], 3)},
-            round(timing[order[0]]['start'] + 2.0, 2), VI - 8, fade_in=0.6, fade_out=2.0, **{'in': 3.0})
+            round(timing[order[0]]['start'] + 2.0, 2), VI - 6, fade_in=0.1, fade_out=2.0, **{'in': 'steady'})
     track['sfx']['clips'] = fx
 
     # "Phim cũ nhẹ" over the whole film, every story (user rule 2026-11-02); brief story.old_film: false turns it off
