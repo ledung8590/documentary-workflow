@@ -135,13 +135,13 @@ def _finish_img(img):
 
 
 # ------------------------------------------------------------------ sources
-def is_print(w, h):
-    return w / h < 1.2  # portrait/square photos become a print on black
+def is_print(w, h, photo=False):
+    return w / h < 1.2 or (photo and w < 900)  # portrait/square sources and small photo scans become a print on black (no blurry blow-up)
 
 
 def framed_print(im):
     bg = Image.new('RGB', (W, H), (12, 11, 10))
-    fg = ImageOps.contain(im, (int(W * 0.8), int(H * 0.86)), Image.LANCZOS)
+    fg = ImageOps.contain(im, (int(min(W * 0.8, im.width * 1.7)), int(min(H * 0.86, im.height * 1.7))), Image.LANCZOS)  # a small scan stays small rather than soft
     sh = Image.new('L', (fg.width + 60, fg.height + 60), 0)
     ImageDraw.Draw(sh).rectangle((30, 30, fg.width + 30, fg.height + 30), fill=150)
     bg.paste((0, 0, 0), ((W - fg.width) // 2 - 30, (H - fg.height) // 2 - 22), sh.filter(ImageFilter.GaussianBlur(18)))
@@ -153,7 +153,7 @@ class Photo:
     def __init__(self, path, clip, idx):
         im = ImageOps.exif_transpose(Image.open(path)).convert('RGB')
         g = clip.get('grade', 'archival')
-        if is_print(im.width, im.height):
+        if is_print(im.width, im.height, photo=True):
             self.base = Image.fromarray(grade(np.asarray(framed_print(im)), g)); self.push = 0.03
         else:
             self.base = Image.fromarray(grade(np.asarray(ImageOps.fit(im, (int(W * 1.1), int(H * 1.1)), Image.LANCZOS)), g))
@@ -747,8 +747,17 @@ def premix(d, tl, pre, t0=0.0, t1=None, only=None, codec='pcm_s24le'):
     ins, fc, n = mix_graph(d, tl, t0, t1, only)
     graph = pre.with_name(pre.stem.replace('premix', 'mix') + '_graph.txt')  # ~100 cues overflow the Windows 32k command line inline
     graph.write_text(';\n'.join(fc), encoding='utf-8')
-    subprocess.run(['ffmpeg', '-v', 'error', '-y', *ins, '-filter_complex_script', str(graph), '-map', '[pre]', '-ar', '48000',
-                    '-c:a', codec, str(pre)], check=True)
+    # ~400 inputs with absolute paths overflow the Windows 32k command line too (film 75): run from the workspace root
+    # and pass inputs under it as short relative paths (assets/sfx/x/el_01.mp3)
+    root = Path(d).resolve().parents[1]
+    rel = []
+    for i, a in enumerate(ins):
+        p = Path(a)
+        if i and ins[i - 1] == '-i' and p.is_absolute() and p.resolve().is_relative_to(root):
+            a = p.resolve().relative_to(root).as_posix()
+        rel.append(a)
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', *rel, '-filter_complex_script', str(Path(graph).resolve()), '-map', '[pre]', '-ar', '48000',
+                    '-c:a', codec, str(Path(pre).resolve())], check=True, cwd=root)
     return n
 
 

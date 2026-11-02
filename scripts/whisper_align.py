@@ -169,7 +169,7 @@ def split_subtitles(text, max_chars=MAX_CHARS, is_cjk=False):
         c = clean[i]; cur += c; brk = False
         if c == '\n':
             brk = True
-        elif c in '。！？.!?':
+        elif c in '。！？.!?' and not (c == '.' and 0 < i < len(clean) - 1 and clean[i - 1].isdigit() and clean[i + 1].isdigit()):  # "140.000"
             while i + 1 < len(clean) and clean[i + 1] in QUOTES_CLOSE:
                 cur += clean[i + 1]; i += 1
             brk = True
@@ -193,6 +193,7 @@ def split_subtitles(text, max_chars=MAX_CHARS, is_cjk=False):
             if rem < 6:
                 part += s[j + 1:]; parts.append(part.strip()); part = ''; break
             in_word = ch == '-' and j > 0 and j + 1 < len(s) and s[j - 1].isalnum() and s[j + 1].isalnum()  # "twenty-one"
+            in_word |= ch in '.,' and 0 < j < len(s) - 1 and s[j - 1].isdigit() and s[j + 1].isdigit()  # "19,05", "140.000" (de/es/vi digits)
             if ch in BREAK_MINOR and not in_word and len(part) >= 10 and rem >= 8:
                 parts.append(part.strip()); part = ''
             elif len(part) >= max_chars:
