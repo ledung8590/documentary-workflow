@@ -234,10 +234,12 @@ def end_screen_image(d, bg_img, lang):
     d_ = ImageDraw.Draw(im, 'RGBA'); t1, t2 = END_WORDS.get(lang, END_WORDS['en'])
     f = R.font('head', 72); d_.text(((W - R.text_w(d_, t1, f)) / 2, 90), t1, font=f, fill=(236, 230, 220))
     fs = R.font('body', 34); d_.text(((W - R.text_w(d_, t2, fs)) / 2, 192), t2, font=fs, fill=(205, 198, 188))
-    vw = round(W * 0.341); vh = round(vw * 9 / 16); y0 = 290
-    for x in (round(W * 0.08), W - round(W * 0.08) - vw):
+    # one row, everything above y 700: YouTube will not drag the subscribe element down into the player-controls zone
+    # (story 51: the circle under the videos reached y 1016 and the real Subscribe could not reach it)
+    vw = round(W * 0.341); vh = round(vw * 9 / 16); y0 = 330
+    for x in (round(W * 0.05), W - round(W * 0.05) - vw):
         d_.rounded_rectangle((x, y0, x + vw, y0 + vh), radius=12, outline=(236, 230, 220, 210), width=4, fill=(0, 0, 0, 90))
-    r = round(W * 0.166 / 2); cy = y0 + vh + 40 + r
+    r = round(W * 0.166 / 2); cy = y0 + vh // 2      # between the two slots, on their centre line
     d_.ellipse((W / 2 - r, cy - r, W / 2 + r, cy + r), outline=(200, 40, 40, 230), width=5, fill=(0, 0, 0, 90))
     out = d / 'media' / 'endscreen.png'; im.save(out)
     return out
