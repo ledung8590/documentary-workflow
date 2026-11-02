@@ -207,6 +207,45 @@ def _lufs(p, length=None, src_in=0.0, _cache={}):
     return _cache[key]
 
 
+END_WORDS = {'vi': ('CẢM ƠN CÁC BẠN ĐÃ XEM', 'Xem tiếp những câu chuyện khác của kênh'),
+             'en': ('THANKS FOR WATCHING', 'More stories from the channel'),
+             'es': ('GRACIAS POR VER', 'Más historias del canal'), 'de': ('DANKE FÜRS ZUSEHEN', 'Weitere Geschichten vom Kanal')}
+SUB_WORDS = {'vi': 'đăng ký', 'en': 'subscribe', 'es': 'suscr', 'de': 'abonn'}   # the narration's subscribe call
+CHANNEL_WORDS = {'vi': 'kênh', 'en': 'channel', 'es': 'canal', 'de': 'kanal'}     # fallback: the welcome / sign-off
+
+
+def end_screen_image(d, bg_img, lang):
+    """20 s end screen: the last picture blurred and dark, a thank-you line, and outlines sized and placed like YouTube's own
+    end-screen elements (two video/playlist slots 34.1 % of the width, a subscribe circle 16.6 %), so the user drags them on
+    and they cover the outlines (story 89: my slots were 35 % / 10 % and did not match)."""
+    from PIL import Image, ImageDraw, ImageEnhance, ImageFilter
+    import render as R
+    W, H = 1920, 1080
+    im = Image.open(bg_img).convert('L').convert('RGB').resize((W, H))
+    im = ImageEnhance.Brightness(im.filter(ImageFilter.GaussianBlur(14))).enhance(0.36)
+    d_ = ImageDraw.Draw(im, 'RGBA'); t1, t2 = END_WORDS.get(lang, END_WORDS['en'])
+    f = R.font('head', 72); d_.text(((W - R.text_w(d_, t1, f)) / 2, 90), t1, font=f, fill=(236, 230, 220))
+    fs = R.font('body', 34); d_.text(((W - R.text_w(d_, t2, fs)) / 2, 192), t2, font=fs, fill=(205, 198, 188))
+    vw = round(W * 0.341); vh = round(vw * 9 / 16); y0 = 290
+    for x in (round(W * 0.08), W - round(W * 0.08) - vw):
+        d_.rounded_rectangle((x, y0, x + vw, y0 + vh), radius=12, outline=(236, 230, 220, 210), width=4, fill=(0, 0, 0, 90))
+    r = round(W * 0.166 / 2); cy = y0 + vh + 40 + r
+    d_.ellipse((W / 2 - r, cy - r, W / 2 + r, cy + r), outline=(200, 40, 40, 230), width=5, fill=(0, 0, 0, 90))
+    out = d / 'media' / 'endscreen.png'; im.save(out)
+    return out
+
+
+def subscribe_scene(d, lang, log=print):
+    """media/scene-subscribe.mov (alpha) in the film's language, rendered once per project (docs/SCENES.md)."""
+    import subprocess
+    out = d / 'media' / 'scene-subscribe.mov'
+    if not out.exists():
+        log(f'rendering the subscribe overlay ({lang})')
+        subprocess.run(['node', str(ROOT / 'scripts' / 'jsscene.mjs'), str(ROOT / 'scenes' / 'subscribe.js'), str(out), '--alpha',
+                        '--lang', lang if lang in ('vi', 'en', 'es', 'de') else 'en'], check=True, cwd=ROOT, timeout=900)
+    return out
+
+
 def build(d, tl, brief, timing, sents, chapters, log=print):
     """Fill tl (in place) for story mode. d: project dir. Returns a summary string."""
     import shutil
@@ -243,6 +282,25 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
         a['end_anchor'] = b['anchor']
     vids[-1]['end_anchor'] = {'sentence': order[-1], 'edge': 'end', 'offset': 3.0}
     vids[0]['transition_in'] = {'type': 'dip', 'dur': 1.2}
+    # sound before picture: ~2.4 s of black under ambience before the first image fades in (story.cold_black: false = off)
+    if st.get('cold_black', True) and timing[order[0]]['start'] > 2.0:
+        from PIL import Image
+        blk = d / 'media' / 'black.png'
+        if not blk.exists():
+            Image.new('RGB', (1920, 1080), (0, 0, 0)).save(blk)
+        cut = {'sentence': order[0], 'edge': 'start', 'offset': -1.0}
+        vids.insert(0, {'id': 'V000', 'start': 0.0, 'end': 0.0, 'src': 'media/black.png', 'kind': 'photo', 'grade': 'archival',
+                        'motion': {'type': 'none'}, 'anchor': {'sentence': order[0], 'edge': 'start', 'offset': -99.0}, 'end_anchor': cut})
+        vids[1]['anchor'] = cut; vids[1]['transition_in'] = {'type': 'dip', 'dur': 1.0}
+    # 20 s end screen after the last picture (YouTube end-screen slots drawn in), every story; story.end_screen: false = off
+    lang = (brief.get('language') or 'en')[:2]
+    if st.get('end_screen', True):
+        last = order[-1]; t_end = timing[last]['end'] + 3.0
+        end_screen_image(d, imgs[-1], lang)
+        vids.append({'id': f'V{len(vids) + 1:03d}', 'start': round(t_end, 3), 'end': round(t_end + 20.0, 3), 'src': 'media/endscreen.png',
+                     'kind': 'photo', 'grade': grade, 'motion': {'type': 'none'}, 'transition_in': {'type': 'dip', 'dur': 1.0},
+                     'anchor': {'sentence': last, 'edge': 'end', 'offset': 3.0}, 'end_anchor': {'sentence': last, 'edge': 'end', 'offset': 23.0}})
+        tl['duration'] = round(max(tl['duration'], t_end + 20.0), 3)
     track['video']['clips'] = vids
 
     # cards: title after the first paragraph (if early), a chapter card in each chapter's pause
@@ -251,11 +309,15 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
     def card(kind, a, length, **props):
         ov.append({'id': f'O{len(ov) + 1:03d}', 'type': kind, 'start': 0.0, 'end': length, 'anchor': a, 'props': props})
     first_par = [s for s in sents if s.get('paragraph', 0) == sents[0].get('paragraph', 0)]
-    title_a = None
+    title_a = None; title_img = None
     if brief.get('title') and st.get('title_card', True):
         last = st.get('title_after') if st.get('title_after') in by_id else (first_par[-1]['id'] if timing[first_par[-1]['id']]['end'] < 120 else order[0])
         title_a = {'sentence': last, 'edge': 'end', 'offset': 0.35}
         card('title_card', title_a, 5.0, text=brief['title'].upper())
+        ti = d / st['title_image'] if st.get('title_image') else None   # story.title_image: a symbol/prop shot made for the title
+        if ti and ti.exists():
+            ov[-1]['props'].update(background='scrim', scrim=0.25, y=105)   # title text in the dark top third, over the picture
+            title_img = (ti.relative_to(d).as_posix(), title_a)
     chap_a = []
     for n, ch in enumerate([c for c in chapters if c.get('sentence') in by_id], 1):
         i = order.index(ch['sentence'])
@@ -377,7 +439,7 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
     def sfx(name, a, length, level, f='01', **kw):
         p = ROOT / 'assets' / 'sfx' / name / f'el_{f}.mp3'
         if not p.exists():
-            p = next(iter(sorted((ROOT / 'assets' / 'sfx' / name).glob('*.mp3'))), None)
+            p = next(iter(sorted((ROOT / 'assets' / 'sfx' / name).glob('el_*.*'))), None)   # some are .wav (whoosh)
             if p is None:
                 return
         c = {'id': f'X{len(fx) + 1:03d}', 'src': '../../' + p.relative_to(ROOT).as_posix(), 'start': 0.0, 'end': length,
@@ -399,6 +461,47 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
             sfx('chapterhit', sh(a, 0.05), 3.0, VI - 3, f='01' if n % 2 else '02', fade_out=0.8)
             sfx('subdrop', sh(a, 0.05), 3.0, VI - 6, fade_out=1.0)
         log(f'card sfx: voice {VI:.1f} LUFS; hits 3 dB, riser 4 dB, whoosh/drop 6 dB under it (LUFS of the part that plays)')
+    # subscribe call in the narration -> animated button, cursor click, SUBSCRIBED, bell, with their SFX (memory rule, every film)
+    sub_at = None
+    if st.get('subscribe', True):
+        key = SUB_WORDS.get(lang, 'subscribe')
+        for sid in order:
+            ws = [norm(w.get('w', '')) for w in timing[sid].get('words') or []]
+            k = next((i for i in range(len(ws)) if ' '.join(ws[i:i + len(key.split())]).startswith(norm(key.split()[0])) and
+                      (len(key.split()) == 1 or ws[i + 1:i + 2] == [norm(key.split()[1])])), None)
+            if k is not None:
+                sub_at = (sid, k); break
+        if not sub_at:   # no explicit subscribe call: the channel mention in the welcome (first 10 %) or the sign-off (last 5 %)
+            ch = CHANNEL_WORDS.get(lang, 'channel'); n = len(order)
+            for sid in order[:max(1, n // 10)] + order[-max(1, n // 20):]:
+                ws = [norm(w.get('w', '')) for w in timing[sid].get('words') or []]
+                if ch in ws:
+                    sub_at = (sid, ws.index(ch)); key = ch; break
+    if sub_at:
+        subscribe_scene(d, lang, log)
+        if 'fx' not in track:
+            tl['tracks'].append({'id': 'fx', 'kind': 'fx', 'name': 'Hiệu ứng', 'clips': []}); track['fx'] = tl['tracks'][-1]
+        fxc = track['fx']['clips']; fxc[:] = [c for c in fxc if c.get('label') != 'subscribe']
+        ids = {x.get('id') for t in tl['tracks'] for x in t['clips']}
+        a = {'sentence': sub_at[0], 'word': sub_at[1], 'offset': -1.3}       # first click lands on the word
+        fxc.append({'id': next(f'F{k:03d}' for k in range(1, 999) if f'F{k:03d}' not in ids), 'type': 'media_overlay', 'label': 'subscribe',
+                    'start': 0.0, 'end': 4.2, 'params': {'src': 'media/scene-subscribe.mov', 'blend': 'normal'}, 'anchor': a})
+        for name, at, under in (('whoosh', 0.0, 6), ('mouseclick', 1.27, 5), ('subscribed', 1.3, 4), ('mouseclick', 2.42, 5), ('notifybell', 2.45, 4)):
+            sfx(name, sh(a, at), 1.5, VI - under, fade_out=0.4)
+        log(f'subscribe overlay on "{key}" in {sub_at[0]}')
+    if title_img:
+        if 'fx' not in track:
+            tl['tracks'].append({'id': 'fx', 'kind': 'fx', 'name': 'Hiệu ứng', 'clips': []}); track['fx'] = tl['tracks'][-1]
+        fxc = track['fx']['clips']; fxc[:] = [c for c in fxc if c.get('label') != 'title image']
+        ids = {x.get('id') for t in tl['tracks'] for x in t['clips']}
+        fxc.append({'id': next(f'F{k:03d}' for k in range(1, 999) if f'F{k:03d}' not in ids), 'type': 'media_overlay', 'label': 'title image',
+                    'start': 0.0, 'end': 5.5, 'fade_in': 0.5, 'fade_out': 0.5, 'params': {'src': title_img[0], 'blend': 'normal'},
+                    'anchor': sh(title_img[1], -0.2)})
+    if st.get('cold_black', True) and timing[order[0]]['start'] > 2.0:   # the ambience that plays over the black opening
+        first_txt = ' '.join(by_id[x]['text'] for x in order[:4]).lower()
+        amb = st.get('open_ambience') or ('rainroof' if any(w in first_txt for w in ('mưa', 'rain', 'lluvia', 'regen')) else 'wind')
+        sfx(amb, {'sentence': order[0], 'edge': 'start', 'offset': round(-timing[order[0]]['start'], 3)},
+            round(timing[order[0]]['start'] + 6.0, 2), VI - 18, fade_out=3.0)
     track['sfx']['clips'] = fx
 
     # "Phim cũ nhẹ" over the whole film, every story (user rule 2026-11-02); brief story.old_film: false turns it off
