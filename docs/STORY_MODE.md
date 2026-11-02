@@ -51,7 +51,7 @@ When a story arrives without images, generate them with the user's app **TST Aut
 10. **After the user confirms the upload: clean up** (stories are AI images, so there is no evidence pack).
     1. Add the story's row to `stories/published/LOG.md`: opening frame, hero trade and region, signature prop, twist (from STORY.md).
     2. Run `PY scripts/story_done.py JOB` (dry run: lists what is kept, what is deleted and the GB freed).
-    3. Then run `PY scripts/story_done.py JOB --run`. It keeps the final script and STORY.md in `stories/published/`, the storycheck corpus. It deletes `projects/<id>/` and the story's inputs in `input/` (script, image folder, image SRT, prompts).
-    4. `output/<id>/` (video, thumbnail, description) is kept. Ask the user once whether to delete it too (`--with-output`).
+    3. Then run `PY scripts/story_done.py JOB --run`. It keeps the final script and STORY.md in `stories/published/`, the storycheck corpus. It deletes `projects/<id>/`, the story's inputs in `input/` (script, image folder, image SRT, prompts) and `output/<id>/` (the video is on YouTube; `--keep-output` keeps it once).
+    4. Music beds and SFX stay in the shared library `assets/music`, `assets/sfx` and are reused by both paths. Any music or SFX file found only inside the project is moved into `assets/<music|sfx>/from-<id>/` first.
 
 Checked on the story the user made with this workflow before (388 images, 65 min): the generic alignment places the images within 0.42 s (median) of the hand-tuned edit, 90 % within 1.3 s.
