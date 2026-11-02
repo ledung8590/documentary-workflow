@@ -47,6 +47,14 @@ Real, licensed archival material only (`docs/MEDIA.md`); this workflow is for hi
 - Never more than ~25 s without a map, scene, card or callout. Still photos fill at most about half the screen time.
 - **Never merge shots to hide a missing picture, and never use the same picture twice in a film** (YouTube demonetises reused content). A shot with no unique archival picture gets a map, a JS scene or a card.
 - Before the studio stop, count media keys used more than once (must be zero) and compare a contact sheet of the draft with the reference.
+- **Picture priority: archival first, drawn characters last** (user, 2026-11-02; film 75 drew dolls in 31 % of shots, which reads as a patchwork style).
+  1. Real period media: photos, paintings, engravings, film.
+  2. If that is rare: a modern stand-in (reenactment, museum object, the place today, later painting), captioned "(illustrative)" in the script's language.
+  3. A 3D map or a JS graphic without figures (data, diagram, timeline, document).
+  4. Only then a JS scene with drawn period figures (`K.doll`).
+  - Budget, enforced by `plan.py check` via `scripts/dollcheck.py`: at most **10 %** of shots and of running time, never more than **2** doll shots in a row, none in the first **60 s**, and every doll scene file carries `// no-real-media: <what was searched>`.
+  - A film's `plan.py` is copied from the newest `evidence/*/project/plan.py`. Its `check()` must end with `dollcheck.check(D, sh)`; add the call if the copy lacks it. Fix every `!!` line before the draft render.
+  - One drawing style per film: only `K.doll` on the kit's backgrounds; no second character style.
 1. Turn the per-sentence video slots into scenes, a new shot every ~3–6 s. Merge, split and trim slots with timeline ops (`doc.py ops JOB ops.json`, or the studio MCP tool `update_clips`): moved clips are re-anchored to the nearest word, so later voice changes still retime them.
 2. For each scene write the media need, then `doc.py media JOB search "query" --tag T [--kind photo|video]` and look at the contact sheet `qa/media-T.jpg`.
 3. `doc.py media JOB pick SLOT T K --caption "what it really shows"` downloads the file, sets `src`/`kind`/`credit` and appends the `LICENSES.md` row. A photo of another place or date gets "(illustrative)" / "(minh hoạ)" in its caption.
