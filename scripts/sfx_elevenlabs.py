@@ -98,6 +98,31 @@ LIB = {  # type -> [(seconds, prompt)]
                       'no clicks, no bolt sounds, no music')],
     'mgburst': [(3.0, 'Hand-cranked 19th century multi-barrel volley gun firing a rapid rattling burst, black powder, outdoors, no music')],
     'hurrah': [(4.0, 'Large hall full of uniformed officers cheering hurrah three times, sabres rattling, echo in a palace hall, no music')],
+    # WWII aviation (first used by the P-39 Airacobra film)
+    'planedive': [(4.0, 'WWII piston fighter plane diving steeply, rising engine howl and wind scream, Allison V12, passing close, no music')],
+    'planeflyby': [(4.0, 'WWII single-engine piston fighter flying low and fast past the camera, roaring V12 engine doppler fly-by, no music'),
+                   (5.0, 'Several WWII piston fighter planes passing overhead in formation, deep droning engines, doppler, no music')],
+    'enginestart': [(5.0, 'WWII aircraft V12 piston engine cranking, coughing and catching, then roaring up to a rough idle, propeller, no music')],
+    'cannon37': [(2.0, 'Single heavy 37 mm aircraft autocannon shot, deep thudding boom with metallic punch, short echo in open air, no music'),
+                 (3.0, 'Heavy aircraft autocannon firing three slow powerful thumping rounds, 37 mm, open air, no music')],
+    'mg50': [(2.0, 'Short burst of WWII .50 caliber aircraft machine guns firing, fast heavy rattle, open air, no music')],
+    'radio': [(3.0, 'Old WWII aircraft radio static crackle and squelch with a brief garbled voice transmission, no music')],
+    'blizzard': [(8.0, 'Howling arctic blizzard wind, driving snow, deep freezing gusts, no music')],
+    # piano-tuner story foley (first used by story 89, Nốt La)
+    'pianokey': [(3.0, 'A single piano key A struck once on an old upright piano in a quiet room, ringing and decaying naturally, close, dry, no music')],
+    'tuningfork': [(3.0, 'A steel tuning fork struck once and ringing a pure sustained tone, held near the microphone, quiet room, no music')],
+    'rainroof': [(10.0, 'Steady night rain falling on an old tile and tin roof, gentle drips, calm ambience, no thunder, no music')],
+    'shutter': [(1.0, 'Single tiny spy camera shutter click and film advance, very close, dry, no music')],
+    'helicopter': [(6.0, 'Several 1960s military Huey helicopters flying overhead in the distance, rotor thump passing by, no music')],
+    'churchbell': [(5.0, 'A small village chapel bell ringing slowly three times in the morning, distant, open air, no music')],
+    # continuous scene ambiences (looped ~22 dB under the voice; story 89)
+    'ambroom': [(20.0, 'Quiet old house interior room tone in a cool mountain town, faint distant birds outside the window, soft air, no clock, no music, no voices')],
+    'ambmarket': [(20.0, 'Busy 1960s Asian highland morning market ambience, distant chatter in Vietnamese, baskets, footsteps on wet ground, no music')],
+    'ambparty': [(20.0, 'Indoor evening reception ambience in a villa, low murmur of many guests, glasses clinking softly, distant laughter, no music')],
+    'ambtruck': [(20.0, 'Inside the cab of an old 1960s truck driving slowly on a mountain road, steady engine rumble and road rattle, no music, no voices')],
+    'ambhills': [(20.0, 'Calm morning on tea plantation hills, gentle wind, distant birdsong, faint rooster far away, no music, no voices')],
+    'ambforest': [(20.0, 'Dense tropical jungle ambience, insects, distant birds, light dripping after rain, leaves rustling, no music, no voices')],
+    'waterfall': [(20.0, 'Mountain waterfall at night in heavy rain, steady roar of falling water, no music')],
 }
 
 
@@ -114,7 +139,8 @@ def main():
     for t, i, s, p in todo:
         before = subscription()
         req = urllib.request.Request('https://api.elevenlabs.io/v1/sound-generation?output_format=mp3_44100_128', method='POST',
-                                     data=json.dumps({'text': p, 'duration_seconds': s, 'prompt_influence': 0.5}).encode(),
+                                     data=json.dumps({'text': p, 'duration_seconds': s, 'prompt_influence': 0.5,
+                                                      'model_id': 'eleven_text_to_sound_v3'}).encode(),
                                      headers={'xi-api-key': elevenlabs_key(), 'Content-Type': 'application/json'})
         try:
             with urllib.request.urlopen(req, timeout=300) as r:

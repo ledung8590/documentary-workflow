@@ -132,10 +132,67 @@ def image_starts(n, timing, srt=None, seconds_per_image=None):
     return vt, [min(i, len(vt) - 1) for i in idx]
 
 
-MOODS = {'tense': 'tension', 'urgent': 'tension', 'dramatic': 'suspense', 'hook': 'suspense', 'somber': 'somber',
-         'sad': 'somber', 'reflective': 'nostalgia', 'calm': 'nostalgia', 'neutral': 'noir', 'hopeful': 'resolve',
+# music beds by emotion (assets/music/MOODS.md): drum-free beds under narration. The user heard "lộc cộc" drum beds under
+# whole chapters and music far under the voice on story 89 (2026-11-02): drums only as a short accent on urgent passages.
+MOODS = {'tense': 'darkdrone', 'urgent': 'warstrings', 'dramatic': 'darkdrone', 'hook': 'darkdrone', 'somber': 'somber',
+         'sad': 'lament', 'reflective': 'nostalgia', 'calm': 'europe1870', 'neutral': 'strategy', 'hopeful': 'resolve',
          'triumphant': 'resolve', 'warm': 'nostalgia'}
-ALT = {'tension': ['tension', 'suspense', 'noir'], 'nostalgia': ['nostalgia', 'somber'], 'noir': ['noir', 'suspense']}
+ALT = {'darkdrone': ['strategy', 'europe1870'], 'strategy': ['europe1870', 'darkdrone'], 'europe1870': ['strategy', 'darkdrone'],
+       'warstrings': ['darkdrone', 'strategy'], 'somber': ['lament', 'nostalgia'], 'lament': ['somber', 'nostalgia'],
+       'nostalgia': ['somber', 'europe1870'], 'resolve': ['nostalgia', 'europe1870']}
+DRUM_BED, DRUM_MAX, DRUM_GAP = 'tension', 70.0, 300.0   # a drum accent: ≤70 s, on an urgent/dramatic passage, ≥5 min apart
+BED_MAX = 112.0      # one pass of a ~120 s file at most, then the bed changes (never loop a file for minutes)
+EMO_GAIN = {'urgent': 2.5, 'dramatic': 2.0, 'tense': 1.5, 'hook': 1.5, 'question': 0.5, 'neutral': 0.0, 'triumphant': 1.0,
+            'hopeful': 0.0, 'somber': -0.5, 'sad': -0.5, 'calm': -1.0, 'reflective': -1.5, 'warm': -1.0}  # music follows the voice: up in tension, down in reflection
+MIN_RUN = 35.0       # an emotion run shorter than this joins its neighbour (no bed changes every few sentences)
+MUSIC_UNDER = 11.0   # neutral narration bed: dB under the voice (LUFS over speech); tense beds come up to BED_GAP_MIN
+BED_GAP_MIN, BED_GAP_MAX = 9.0, 13.5    # ducked music sits this many dB under the voice (measured; 13-15 dB sounded like a bare reading)
+
+
+def _speech_level(x, sr, floor=25.0):
+    """Median 400 ms RMS (dB) over the active part of a signal (frames within `floor` dB of its loudest)."""
+    n, h = int(0.4 * sr), int(0.1 * sr)
+    if len(x) < n:
+        return -120.0
+    e = np.array([np.mean(x[i:i + n].astype(np.float64) ** 2) for i in range(0, len(x) - n, h)])
+    db = 10 * np.log10(np.maximum(e, 1e-12))
+    return float(np.median(db[db > db.max() - floor]))
+
+
+def _lufs_m(path):
+    """Momentary loudness (LUFS, 10 values/s) of a file, from ffmpeg's ebur128 filter."""
+    import re, subprocess
+    o = subprocess.run(['ffmpeg', '-hide_banner', '-i', str(path), '-af', 'ebur128=metadata=1,ametadata=print:key=lavfi.r128.M',
+                        '-f', 'null', '-'], capture_output=True, text=True).stderr
+    return np.array([float(x) for x in re.findall(r'lavfi.r128.M=(-?[\d.]+)', o)])
+
+
+def _level_music(d, tl, log):
+    """Level EACH bed against the voice it plays under (perceived loudness, momentary LUFS over the bed's speech),
+    so no bed comes closer than BED_GAP_MIN dB: a film-wide average of 8.6 dB still had tense beds 4.7 dB under the voice
+    on story 89 ("nhạc to hơn voice"). Target gap per bed = MUSIC_UNDER - its emotion offset (EMO_GAIN), clamped."""
+    import tempfile
+    import render
+    clips = next(t for t in tl['tracks'] if t['id'] == 'music')['clips']
+    if not clips:
+        return None
+    with tempfile.TemporaryDirectory() as tmp:
+        pv, pm = Path(tmp) / 'premix_v.wav', Path(tmp) / 'premix_m.wav'
+        render.premix(d, tl, pv, only={'voice'}); render.premix(d, tl, pm, only={'music'})
+        V, M = _lufs_m(pv), _lufs_m(pm)
+    k = min(len(V), len(M)); V, M = V[:k], M[:k]; sp = V > -40
+    before, after = [], []
+    for c in clips:
+        a, b = int(c['start'] * 10) + 20, int(c['end'] * 10) - 20     # skip the crossfades
+        w = slice(max(0, a), min(k, b)); s = sp[w]
+        if s.sum() < 30:
+            continue
+        g = float(np.median(V[w][s]) - np.median(M[w][s]))
+        want = float(np.clip(MUSIC_UNDER - EMO_GAIN.get(c.get('emotion'), 0.0), BED_GAP_MIN, BED_GAP_MAX))
+        c['gain_db'] = round(c['gain_db'] + g - want, 1); before.append(g); after.append(want)
+    log(f'music: per-bed levelling, gaps under the voice were {min(before):.1f}-{max(before):.1f} dB '
+        f'(median {np.median(before):.1f}), now {min(after):.1f}-{max(after):.1f} dB (LUFS, over speech)')
+    return float(np.median(after))
 
 
 def _loudest(p, length, src_in=0.0, win=0.4, sr=22050, _cache={}):
@@ -195,7 +252,7 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
     first_par = [s for s in sents if s.get('paragraph', 0) == sents[0].get('paragraph', 0)]
     title_a = None
     if brief.get('title') and st.get('title_card', True):
-        last = first_par[-1]['id'] if timing[first_par[-1]['id']]['end'] < 120 else order[0]
+        last = st.get('title_after') if st.get('title_after') in by_id else (first_par[-1]['id'] if timing[first_par[-1]['id']]['end'] < 120 else order[0])
         title_a = {'sentence': last, 'edge': 'end', 'offset': 0.35}
         card('title_card', title_a, 5.0, text=brief['title'].upper())
     chap_a = []
@@ -207,7 +264,7 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
         chap_a.append((a, ch['sentence']))
     track['overlay']['clips'] = ov
 
-    # music: a bed per section (cold open, title, each chapter), tiled with 2 s crossfades, ~13 dB under the voice
+    # music: drum-free beds per section (cold open, title, each chapter), each at most one file pass, 2 s crossfades, measured 9 dB under the voice
     moods = sorted(p.name for p in (ROOT / 'assets' / 'music').iterdir() if p.is_dir() and any(p.glob('*.mp3')))
     music = []
     if moods and st.get('music', True):
@@ -216,37 +273,86 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
             bounds.append((T(title_a) - 1.0, None))
         bounds += [(T(a) - 0.5, sid) for a, sid in chap_a]
         bounds.sort(key=lambda b: b[0])
-        prev_mood = None; k = 0; lens = {}
+        lens, used, level = {}, {}, {}
+        prev_src, last_drum = None, -1e9
+        vi = (brief.get('language') or '').startswith('vi')
+        moods_map = {**MOODS, **(st.get('moods') or {})}   # brief story.moods: a genre's own beds (e.g. espionage)
+        alt_map = {**ALT, **(st.get('alt') or {})}
+        drums = st.get('drum_accent', True)
+
+        def emotions(a, b):
+            return [by_id[x].get('emotion', 'neutral') for x in order if timing[x]['start'] < b and timing[x]['end'] > a] or ['neutral']
+
+        def pick(mood):
+            """Least-used file of the mood (or its alternatives) that is not the bed just played."""
+            cands = [mood] + alt_map.get(mood, [])
+            if not vi:
+                cands = [m for m in cands if m != 'nostalgia'] or ['somber']  # bamboo flute: Vietnamese/Asian stories only
+            for m in cands:
+                fs = [f for f in sorted((ROOT / 'assets' / 'music' / m).glob('*.mp3')) if f != prev_src] if m in moods else []
+                if fs:
+                    return m, min(fs, key=lambda f: used.get(f, 0))
+            return mood, prev_src
+
+        def place(t, e, mood, src, emo='neutral'):
+            nonlocal prev_src
+            if src not in lens:
+                lens[src] = len(load_audio(src, 22050)) / 22050
+                level[src] = _speech_level(load_audio(src, 16000), 16000, floor=30.0)
+            k = len(music) + 1
+            anchor_sid = max((x for x in order if timing[x]['start'] <= t), key=lambda x: timing[x]['start'], default=order[0])
+            music.append({'id': f'M{k:03d}', 'src': '../../' + src.relative_to(ROOT).as_posix(), 'start': round(t, 3),
+                          'end': round(min(e, t + lens[src] - 1.0), 3), 'in': 0.0, 'fade_in': 1.0 if not music else 2.5, 'fade_out': 2.5,
+                          'gain_db': round(-30.0 - level[src] + EMO_GAIN.get(emo, 0.0), 1),  # equal loudness + the scene's emotion; _level_music sets the offset
+                          'mood': mood, 'emotion': emo, 'anchor': {'sentence': anchor_sid, 'edge': 'start', 'offset': round(t - timing[anchor_sid]['start'], 3)}})
+            used[src] = used.get(src, 0) + 1; prev_src = src
+
+        def runs(t0, t1):
+            """[(start, end, top emotion)] inside a section: sentences grouped by the bed their emotion asks for, short runs merged."""
+            ids = [x for x in order if timing[x]['start'] >= t0 - 0.5 and timing[x]['start'] < t1]
+            out = []
+            for x in ids:
+                e = by_id[x].get('emotion', 'neutral'); m = moods_map.get(e, 'strategy')
+                a = timing[x]['start'] - 0.6
+                if out and out[-1][3] == m:
+                    out[-1][1] = timing[x]['end']; out[-1][2].append(e)
+                else:
+                    out.append([a, timing[x]['end'], [e], m])
+            merged = []
+            for r in out:
+                if merged and (r[1] - r[0] < MIN_RUN or merged[-1][1] - merged[-1][0] < MIN_RUN):
+                    merged[-1][1] = r[1]; merged[-1][2] += r[2]
+                    merged[-1][3] = moods_map.get(max(set(merged[-1][2]), key=merged[-1][2].count), 'strategy')
+                else:
+                    merged.append(r)
+            if not merged:
+                return [(t0, t1, 'neutral')]
+            merged[0][0] = t0; merged[-1][1] = t1
+            for a, b in zip(merged, merged[1:]):
+                a[1] = b[0]
+            return [(a, b, max(set(es), key=es.count)) for a, b, es, _ in merged]
+
         for i, (t0, sid) in enumerate(bounds):
             t1 = bounds[i + 1][0] + 1.5 if i + 1 < len(bounds) else tl['duration']
             if t1 - t0 < 4:
                 continue
-            j0 = order.index(sid) if sid else 0
-            j1 = order.index(bounds[i + 1][1]) if i + 1 < len(bounds) and bounds[i + 1][1] else len(order)
-            emo = [by_id[x].get('emotion', 'neutral') for x in order[j0:max(j1, j0 + 1)]]
-            mood = MOODS.get(max(set(emo), key=emo.count), 'noir')
-            if i == 0:
-                mood = 'suspense' if 'suspense' in moods else mood
-            if mood == prev_mood:  # the same bed twice in a row: take its alternative
-                mood = next((m for m in ALT.get(mood, []) if m != prev_mood and m in moods), mood)
-            if mood not in moods:
-                mood = moods[0]
-            prev_mood = mood
-            src = sorted((ROOT / 'assets' / 'music' / mood).glob('*.mp3'))[0]
-            if src not in lens:
-                lens[src] = len(load_audio(src, 22050)) / 22050
-            seg, t, first = lens[src] - 6.0, t0, True
-            while t < t1 - 0.5:
-                e = min(t + seg, t1); k += 1
-                anchor_sid = max((x for x in order if timing[x]['start'] <= t), key=lambda x: timing[x]['start'], default=order[0])
-                music.append({'id': f'M{k:03d}', 'src': '../../' + src.relative_to(ROOT).as_posix(), 'start': round(t, 3), 'end': round(e, 3),
-                              'in': 0.0 if first else 3.0, 'fade_in': 1.0 if i == 0 and first else 2.0, 'fade_out': 2.0, 'gain_db': -7.0,
-                              'mood': mood, 'anchor': {'sentence': anchor_sid, 'edge': 'start', 'offset': round(t - timing[anchor_sid]['start'], 3)}})
-                first = False
-                if e >= t1:
-                    break
-                t = e - 2.0
+            for r0, r1, top in runs(t0, t1):
+                n = max(1, int(np.ceil((r1 - r0) / BED_MAX))); seg = (r1 - r0) / n   # each bed at most one file pass
+                for j in range(n):
+                    a = r0 + j * seg; b = r1 + 2.0 if j == n - 1 else a + seg + 2.0    # 2 s crossfade into the next bed
+                    emo = emotions(a, b); hot = sum(e in ('urgent', 'dramatic') for e in emo) / len(emo)
+                    if drums and hot >= 0.5 and a - last_drum >= DRUM_GAP and DRUM_BED in moods and b - a > DRUM_MAX + 20:
+                        src = sorted((ROOT / 'assets' / 'music' / DRUM_BED).glob('*.mp3'))[0]
+                        place(a, a + DRUM_MAX, DRUM_BED, src, top); last_drum = a        # a short drum accent, then strings again
+                        a += DRUM_MAX - 2.0
+                    mood, src = pick(moods_map.get(top, 'strategy'))
+                    place(a, b, mood, src, top)
     track['music']['clips'] = music
+    if music:
+        try:
+            _level_music(d, tl, log)
+        except Exception as e:  # noqa: BLE001  (a failed measurement must not lose the build; studio gains stay adjustable)
+            log(f'!! music level not measured ({e}); check the music against the voice by ear')
 
     # card SFX at measured levels (loudest 400 ms in the premix): whoosh in, hit as the card lands, sub drop
     fx = []
@@ -261,16 +367,21 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
              'gain_db': round(level - _loudest(p, length, kw.get('in', 0.0)), 1), 'anchor': a}
         c.update(kw); fx.append(c)
     sh = lambda a, dt: {**a, 'offset': round(a['offset'] + dt, 3)}
+    # levels relative to the voice (median 400 ms RMS of the speech): card hits 6-8 dB UNDER it, whooshes/drops 10-12 under.
+    # Absolute levels (-8/-11 dBFS) put the title and chapter hits 7-10 dB over the voice on story 89 (user: "fx cũng bị to hơn").
+    vx = load_audio(d / 'voice' / 'voice.wav', 16000).astype(np.float64); nw = int(0.4 * 16000)
+    ve = np.convolve(vx * vx, np.ones(nw) / nw, mode='valid')[::nw]; vdb = 10 * np.log10(np.maximum(ve, 1e-12))
+    VL = float(np.median(vdb[vdb > -45]))
     if st.get('card_sfx', True):
         if title_a:
-            sfx('riser', sh(title_a, -3.3), 3.0, -21)
-            sfx('titlehit', sh(title_a, 0.1), 5.0, -8, fade_out=1.5)
-            sfx('subdrop', sh(title_a, 0.1), 3.0, -15, fade_out=1.0)
-            sfx('whooshdark', sh(title_a, 0.65), 1.5, -20)
+            sfx('riser', sh(title_a, -3.3), 3.0, VL - 12)
+            sfx('titlehit', sh(title_a, 0.1), 5.0, VL - 6, fade_out=1.5)
+            sfx('subdrop', sh(title_a, 0.1), 3.0, VL - 10, fade_out=1.0)
+            sfx('whooshdark', sh(title_a, 0.65), 1.5, VL - 12)
         for n, (a, _) in enumerate(chap_a, 1):
-            sfx('whooshdark', sh(a, -0.55), 1.5, -19)
-            sfx('chapterhit', sh(a, 0.05), 3.0, -11, f='01' if n % 2 else '02', fade_out=0.8)
-            sfx('subdrop', sh(a, 0.05), 3.0, -19, fade_out=1.0)
+            sfx('whooshdark', sh(a, -0.55), 1.5, VL - 12)
+            sfx('chapterhit', sh(a, 0.05), 3.0, VL - 6.5, f='01' if n % 2 else '02', fade_out=0.8)
+            sfx('subdrop', sh(a, 0.05), 3.0, VL - 12, fade_out=1.0)
     track['sfx']['clips'] = fx
 
     tl['fx'] = {'grain': True, 'subtitles': True}

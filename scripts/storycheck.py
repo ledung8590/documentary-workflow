@@ -120,7 +120,7 @@ def check(path, corpus):
     head = t[:int(len(t) * 0.12)]
     years = len(re.findall(r'\b1[89]\d\d\b', head))
     if years > 8:
-        warn.append(f'{years} year numbers in the first 12 %: a history lecture before the story moves (weave context into action)')
+        warn.append(f'{years} year numbers in the first 12 %: the history passage sits right after the hook, the 87/88 slot (move it to another scene)')
 
     # 5. ending
     tail = ' '.join(ss[-12:])

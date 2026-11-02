@@ -64,14 +64,27 @@ def tts(text, voice_id, model='eleven_v4', settings=None, language_code=None, ou
         time.sleep(4.0)
         j = _req('GET', f'/v2/text-to-speech/async/{jid}')['job']
         if j['status'] == 'done':
-            req = urllib.request.Request(j['audioUrl'], headers={'User-Agent': 'documentary-workflow/0.1'})
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                Path(out).write_bytes(resp.read())
+            _download(j['audioUrl'], out, 120)
             return out, j.get('credit_cost', cost)
         if j['status'] == 'failed':
             raise RuntimeError(f'AI84 job failed: {j.get("errorMessage") or j.get("errorCode")}')
     raise RuntimeError('AI84 job timed out')
 
+
+
+def _download(url, out, timeout, tries=5):
+    """Download a finished job's audio; the job is already paid, so retry dropped connections (IncompleteRead)."""
+    import http.client
+    for k in range(tries):
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'documentary-workflow/0.1'})
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                Path(out).write_bytes(resp.read())
+            return
+        except (http.client.IncompleteRead, urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            if k == tries - 1:
+                raise RuntimeError(f'download failed after {tries} tries: {e}')
+            time.sleep(5 * (k + 1))
 
 def minimax_cloned():
     """The account's MiniMax cloned voices (and system shared ones): [{canonical_voice_id, name, ...}]."""
@@ -101,9 +114,7 @@ def tts_minimax(text, voice_id, model='speech-2.6-hd', speed=1.0, language_boost
         time.sleep(5.0)
         j = _req('GET', f'/v1/minimax/text-to-speech/async/{jid}')['job']
         if j['status'] == 'done':
-            req = urllib.request.Request(j['audio_url'], headers={'User-Agent': 'documentary-workflow/0.1'})
-            with urllib.request.urlopen(req, timeout=300) as resp:
-                Path(out).write_bytes(resp.read())
+            _download(j['audio_url'], out, 300)
             return out, j.get('credit_cost', cost)
         if j['status'] == 'failed':
             raise RuntimeError(f'MiniMax job failed: {j.get("error_message") or j.get("error_category")}')

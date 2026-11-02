@@ -7,7 +7,7 @@ Story mode only (`docs/STORY_MODE.md`). Archival films follow `docs/WORKFLOW.md`
   1. A cold open with the hero in danger and a small object in his pocket.
   2. The identical line "Tôi muốn bắt đầu câu chuyện hôm nay từ khoảnh khắc ấy".
   3. The code name explained.
-  4. A 2–3 minute history lecture.
+  4. A 2–3 minute history lecture, always in the same spot right after the code name.
   5. "Sinh năm 19xx, cha ông làm nghề…".
   6. Watch, wait, postpone, suspected.
   7. A reflective sign-off.
@@ -33,7 +33,7 @@ Story mode only (`docs/STORY_MODE.md`). Archival films follow `docs/WORKFLOW.md`
 
 ### Hero, context and props
 5. **A new hero every time.** Use a different trade and region, and introduce him through an action rather than his birth year or his father's trade. Give him a flaw that matters to the plot (impatience, pride, a debt, a family tie).
-6. **Context inside action.** No history lecture before the hero lives. Put dates and operations into what the characters see and say. At most two short context passages per story, and none in the first 2 minutes after the hook.
+6. **History passages stay; move them.** The user wants real history lectures (2026-11-02: viewers like them; the complaint was only the identical skeleton) and the usual length (~55–60k characters). Keep 2–4 narrated context passages of 1–3 minutes, tied to the scene they explain (the city before the mission, the road before the journey, what came after in the epilogue). Do not put the main one in the 87/88 slot (straight after the hook and the code name); rotate where it falls.
 7. **Props are unique per story.** Choose one signature object that drives the plot, never one used in earlier stories (no more copper wire, scraps of paper or silver lighters). Name it once in the hook and pay it off at the end.
 
 ### Voice and sentences
@@ -49,4 +49,4 @@ Story mode only (`docs/STORY_MODE.md`). Archival films follow `docs/WORKFLOW.md`
 ## Prompt block for an outside writer (GPT/Gemini)
 When the user writes with another model, give it this (Vietnamese) on top of their own prompt:
 
-> Viết truyện hoàn chỉnh, có cao trào và kết thúc rõ ràng, rồi mới tới lời chào cuối. Không mở đầu bằng "Tôi muốn bắt đầu câu chuyện hôm nay từ khoảnh khắc…". Không giảng bối cảnh lịch sử thành đoạn dài: đan ngày tháng, sự kiện vào hành động và lời thoại. Nhân vật chính có nghề, quê, tính cách và điểm yếu khác hẳn các truyện trước; không giới thiệu bằng "sinh năm…, cha ông làm nghề…". Mỗi truyện một đồ vật đặc trưng riêng (không dùng lại mảnh giấy, dây đồng, bật lửa bạc). Câu văn đa dạng 8–20 chữ, câu cụt 1–4 chữ chỉ ở cao trào, không lặp cùng chữ đầu câu ba lần liền. Mỗi chương phải thay đổi tình thế; không lặp vòng "chờ – hoãn – chờ".
+> Viết truyện hoàn chỉnh, có cao trào và kết thúc rõ ràng, rồi mới tới lời chào cuối. Không mở đầu bằng "Tôi muốn bắt đầu câu chuyện hôm nay từ khoảnh khắc…". Vẫn có các đoạn kể bối cảnh lịch sử (1–3 phút mỗi đoạn, 2–4 đoạn), nhưng đặt ở chỗ khác nhau mỗi truyện, gắn với cảnh nó giải thích, không luôn nằm ngay sau phần mở đầu và mật danh. Nhân vật chính có nghề, quê, tính cách và điểm yếu khác hẳn các truyện trước; không giới thiệu bằng "sinh năm…, cha ông làm nghề…". Mỗi truyện một đồ vật đặc trưng riêng (không dùng lại mảnh giấy, dây đồng, bật lửa bạc). Câu văn đa dạng 8–20 chữ, câu cụt 1–4 chữ chỉ ở cao trào, không lặp cùng chữ đầu câu ba lần liền. Mỗi chương phải thay đổi tình thế; không lặp vòng "chờ – hoãn – chờ".

@@ -603,7 +603,9 @@ def tts_ai84_chunked(d, cfg, voice, data, todo, do_run):
     reqs = []
     for i, cs in enumerate(chunks, 1):
         tagged, plain, spans, settings = chunk_request(cs, voice)
-        key = digest(tagged, voice['voice_id'], voice['model'], voice.get('language_code'), settings)
+        # cloned MiniMax voices: key on the name, not the id looked up on the first --run (else a rerun re-buys every chunk)
+        vkey = voice.get('voice_name') if voice.get('provider') == 'minimax' else voice['voice_id']
+        key = digest(tagged, vkey, voice['model'], voice.get('language_code'), settings)
         reqs.append({'n': i, 'sents': cs, 'tagged': tagged, 'plain': plain, 'spans': spans, 'settings': settings,
                      'audio': d / 'voice' / 'chunks' / f'{cs[0]["id"]}-{key}.mp3'})
     chars = sum(len(r['tagged']) for r in reqs)

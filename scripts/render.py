@@ -306,7 +306,10 @@ def draw_overlay(lay, o, lt):
         fade_in = ease(lt / 0.25)
         bg = {'stat': 'parchment', 'quote': 'brown', 'chapter': 'brown'}.get(t, 'black')
         if pr.get('background'): bg = pr['background']
-        lay.alpha_composite(Image.blend(Image.new('RGBA', (W, H), (0, 0, 0, 0)), texture(bg), min(fade_in, out)))
+        if bg == 'scrim':  # card over the picture below it (e.g. a title over a hero shot): darken only, keep the image
+            lay.alpha_composite(Image.new('RGBA', (W, H), (0, 0, 0, int(255 * float(pr.get('scrim', 0.35)) * min(fade_in, out)))))
+        else:
+            lay.alpha_composite(Image.blend(Image.new('RGBA', (W, H), (0, 0, 0, 0)), texture(bg), min(fade_in, out)))
         d = ImageDraw.Draw(lay)
         fn = {'title_card': card_title, 'question': card_question, 'chapter': card_chapter, 'stat': card_stat, 'quote': card_quote}[t]
         fn(d, pr, lt, out)
@@ -315,11 +318,11 @@ def draw_overlay(lay, o, lt):
 
 
 def card_title(d, pr, lt, out):
-    a = ease((lt - 0.2) / 0.6) * out; f = font('head', 132); s = pr['text']; w = text_w(d, s, f)
-    d.text(((W - w) / 2, H / 2 - 120 + 16 * (1 - a)), s, font=f, fill=OFFWHITE + (int(255 * a),))
+    a = ease((lt - 0.2) / 0.6) * out; f = font('head', 132); s = pr['text']; w = text_w(d, s, f); y = pr.get('y', H / 2 - 120)
+    d.text(((W - w) / 2, y + 16 * (1 - a)), s, font=f, fill=OFFWHITE + (int(255 * a),))
     if pr.get('sub'):
         b = ease((lt - 0.8) / 0.6) * out; fs = font('head', 40); s2 = '  '.join(pr['sub'].upper()); w2 = text_w(d, s2, fs)
-        d.text(((W - w2) / 2, H / 2 + 60), s2, font=fs, fill=RED + (int(255 * b),))
+        d.text(((W - w2) / 2, y + 180), s2, font=fs, fill=RED + (int(255 * b),))
 
 
 def card_question(d, pr, lt, out):
@@ -712,7 +715,9 @@ def mix_graph(d, tl, t0=0.0, t1=None, only=None):
             src_in = c.get('in', 0) if tr['id'] != 'video' else 0
             fade_in = f'afade=t=in:d={fi},' if not win or skip < fi else ''
             # music beds often build from near-silence (measured: -31 LUFS intro, -12 at the climax): even them out
-            level = 'dynaudnorm=f=400:g=31:p=0.9:m=8,loudnorm=I=-16:TP=-2:LRA=7,' if tr['id'] == 'music' else ''
+            # ...and carve the voice's presence band (1-4 kHz) out of the music so piano/trumpet melodies do not mask the words
+            level = ('dynaudnorm=f=400:g=31:p=0.9:m=8,loudnorm=I=-16:TP=-2:LRA=7,equalizer=f=2200:t=o:w=1.6:g=-4,'
+                     if tr['id'] == 'music' else '')
             if win:
                 src_in = round(src_in + skip, 3)
             (hits if tr['id'] == 'sfx' else beds).append(
