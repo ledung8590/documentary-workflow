@@ -9,7 +9,9 @@ window.SCENE = {
   duration: 4.2, bg: 'none', vignette: 0,
   draw(c, t, L) {
     const CLICK1 = 1.3, CLICK2 = 2.45, OUT = 3.75;
-    const cx = 960, cy = 742;                                   // above the subtitle band (y 0.868)
+    // bottom-left corner, over where YouTube's own Subscribe button sits under the player (user, story 51, 2026-11-02);
+    // drawn at full size from the anchor (AX, cy), shown at BASE scale so it stays left of the centred subtitles
+    const AX = 64, cy = 975, BASE = 0.85, M = (x, y) => [AX + (x - AX) * BASE, cy + (y - cy) * BASE];
     const pin = L.easeOut(L.lin(t, 0, 0.35)), pout = L.ease(L.lin(t, OUT, 4.15));
     const pop = pin < 1 ? 0.6 + 0.4 * pin + 0.12 * Math.sin(pin * Math.PI) : 1;
     const A = Math.min(pin * 1.4, 1) * (1 - pout);
@@ -24,9 +26,9 @@ window.SCENE = {
     c.font = '700 50px Oswald';
     const bw = 108 + c.measureText(subd ? L1 : L0).width + 44, bh = 92, gap = 26, bell = 92;  // pill hugs the label
     const total = bw + gap + bell;
-    const bx = cx - total / 2, by = cy - bh / 2;
+    const bx = AX, by = cy - bh / 2;
     c.save(); c.globalAlpha = A;
-    c.translate(cx, cy); c.scale(sc, sc); c.translate(-cx, -cy);
+    c.translate(AX, cy); c.scale(sc * BASE, sc * BASE); c.translate(-AX, -cy);
 
     // soft shadow plate
     c.save(); c.shadowColor = 'rgba(0,0,0,0.55)'; c.shadowBlur = 40; c.shadowOffsetY = 8;
@@ -93,11 +95,11 @@ window.SCENE = {
       }
       c.restore();
     };
-    burst(bx + bw / 2, cy, CLICK1, '#ff3b3b', 22);
-    burst(bxc, cy, CLICK2, '#ffd34d', 14);
+    burst(...M(bx + bw / 2, cy), CLICK1, '#ff3b3b', 22);
+    burst(...M(bxc, cy), CLICK2, '#ffd34d', 14);
 
     // ---- cursor: glides in, clicks Subscribe, then the bell, then drifts away
-    const P0 = [1500, 1010], P1 = [bx + bw * 0.62, cy + 14], P2 = [bxc + 6, cy + 12], P3 = [1580, 1000];
+    const P0 = [760, 1060], P1 = M(bx + bw * 0.62, cy + 14), P2 = M(bxc + 6, cy + 12), P3 = [820, 1060];
     let p;
     if (t < 0.55) p = P0;
     else if (t < CLICK1 - 0.08) { const k = L.seg(t, 0.55, CLICK1 - 0.08); p = [L.lerp(P0[0], P1[0], k), L.lerp(P0[1], P1[1], k) - Math.sin(k * Math.PI) * 60]; }
