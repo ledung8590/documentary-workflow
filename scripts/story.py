@@ -195,6 +195,14 @@ def _level_music(d, tl, log):
     return float(np.median(after))
 
 
+def _clipped(p, _cache={}):
+    """Percent of samples at full scale (|x| > 0.97): ElevenLabs SFX often come hard-clipped and crackle at any gain."""
+    if str(p) not in _cache:
+        from common import load_audio
+        _cache[str(p)] = float((np.abs(load_audio(p, 22050)) > 0.97).mean() * 100)
+    return _cache[str(p)]
+
+
 def _lufs(p, length=None, src_in=0.0, _cache={}):
     """Integrated loudness (LUFS) of a file, or of the section that actually plays (src_in .. src_in + length)."""
     key = (str(p), length, src_in)
@@ -442,6 +450,12 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
             p = next(iter(sorted((ROOT / 'assets' / 'sfx' / name).glob('el_*.*'))), None)   # some are .wav (whoosh)
             if p is None:
                 return
+        if _clipped(p) > 1.0:  # hard-clipped files crackle ("4:18 fx lỗi rè rè", story 51): take the cleanest of the type
+            best = min((q for q in (ROOT / 'assets' / 'sfx' / name).glob('el_*.*') if q.suffix in ('.mp3', '.wav')), key=_clipped)
+            if _clipped(best) < _clipped(p):
+                p = best
+            if _clipped(p) > 1.0:
+                log(f'!! sfx {name}/{p.name} is {_clipped(p):.1f} % clipped (crackles): regenerate it')
         c = {'id': f'X{len(fx) + 1:03d}', 'src': '../../' + p.relative_to(ROOT).as_posix(), 'start': 0.0, 'end': length,
              'gain_db': round(level - _lufs(p, length, kw.get('in', 0.0)), 1), 'anchor': a}
         c.update(kw); fx.append(c)
@@ -497,11 +511,23 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
         fxc.append({'id': next(f'F{k:03d}' for k in range(1, 999) if f'F{k:03d}' not in ids), 'type': 'media_overlay', 'label': 'title image',
                     'start': 0.0, 'end': 5.5, 'fade_in': 0.5, 'fade_out': 0.5, 'params': {'src': title_img[0], 'blend': 'normal'},
                     'anchor': sh(title_img[1], -0.2)})
+    # story SFX on words (brief story.word_sfx: [{sentence, word, sfx, f?, under, length, offset?}]): gunshots, blasts, planes
+    # on the exact word, `under` dB under the voice in LUFS of the part that plays; kept across story rebuilds
+    for e in st.get('word_sfx') or []:
+        ws = (timing.get(e['sentence']) or {}).get('words') or []
+        i = next((k for k, w in enumerate(ws) if norm(w['w']).startswith(norm(e['word']))), None)
+        if i is None:
+            log(f'!! word_sfx: "{e["word"]}" not in {e["sentence"]}'); continue
+        sfx(e['sfx'], {'sentence': e['sentence'], 'word': i, 'offset': e.get('offset', 0.0)}, e.get('length', 2.5),
+            VI - e.get('under', 8), f=e.get('f', '01'), fade_out=e.get('fade_out', 0.4))
     if st.get('cold_black', True) and timing[order[0]]['start'] > 2.0:   # the ambience that plays over the black opening
         first_txt = ' '.join(by_id[x]['text'] for x in order[:4]).lower()
         amb = st.get('open_ambience') or ('rainroof' if any(w in first_txt for w in ('mưa', 'rain', 'lluvia', 'regen')) else 'wind')
+        # alone over black, so clearly audible: 8 dB under the voice, from 3 s into the file (wind/el_02 is 9 dB quieter
+        # in its first 3 s: story 51 measured -44 LUFS over the black at VI - 18, "tôi ko hề nghe thấy tiếng gió nào"),
+        # then out over the first words (2 s fade)
         sfx(amb, {'sentence': order[0], 'edge': 'start', 'offset': round(-timing[order[0]]['start'], 3)},
-            round(timing[order[0]]['start'] + 6.0, 2), VI - 18, fade_out=3.0)
+            round(timing[order[0]]['start'] + 2.0, 2), VI - 8, fade_in=0.6, fade_out=2.0, **{'in': 3.0})
     track['sfx']['clips'] = fx
 
     # "Phim cũ nhẹ" over the whole film, every story (user rule 2026-11-02); brief story.old_film: false turns it off

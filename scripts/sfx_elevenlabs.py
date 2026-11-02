@@ -21,15 +21,22 @@ LIB = {  # type -> [(seconds, prompt)]
     # card hits (the first set was too thin under narration; first used by nguoi-gac-dem)
     'titlehit': [(5.0, 'Massive cinematic movie trailer title hit, huge sub bass boom, metallic slam and deep dark braam, '
                        'long reverb tail, thriller, no melody'),
-                 (4.0, 'Epic dark cinematic impact, heavy orchestral drum slam with distorted sub drop and long tail, no melody')],
+                 (4.0, 'Epic dark cinematic impact, heavy orchestral drum slam with distorted sub drop and long tail, no melody'),
+                 (5.0, 'Cinematic documentary title hit, deep boom and dark low brass braam with long reverb tail, no melody, clean mix with headroom, not distorted, not clipped')],
     'chapterhit': [(3.0, 'Deep dark cinematic documentary transition hit, low boom with short metallic ring and reverb tail, no melody'),
                    (3.0, 'Heavy low taiko slam with sub boom, cinematic chapter card, dark, no melody')],
-    'subdrop': [(3.0, 'Deep cinematic sub bass drop, low rumble falling in pitch, no melody')],
+    'subdrop': [(3.0, 'Deep cinematic sub bass drop, low rumble falling in pitch, no melody'),
+                # el_01 is 49 % hard-clipped and crackles (story 51); these ask for headroom, story.py picks the cleanest
+                (3.0, 'Soft deep cinematic sub bass drop, smooth low rumble gently falling in pitch, no melody, clean mix with headroom, not distorted, not clipped'),
+                (3.0, 'Low warm sub boom fading down in pitch, subtle documentary transition, no melody, clean mix with headroom, not distorted, not clipped')],
     'revswell': [(3.0, 'Reverse cymbal and reverse piano swell rising into a hit, dark cinematic suck-in, no melody')],
-    'whooshdark': [(1.5, 'Fast deep cinematic whoosh pass-by, dark, airy, no music')],
+    'whooshdark': [(1.5, 'Fast deep cinematic whoosh pass-by, dark, airy, no music'),
+                   (1.5, 'Smooth deep dark whoosh pass-by, airy, soft, no music, clean mix with headroom, not distorted, not clipped')],
     'typebell': [(1.5, 'Typewriter carriage return lever with end-of-line bell ding, close, dry')],
     'impact': [(3.0, 'Deep cinematic trailer impact hit with sub boom and long dark reverb tail, no music'),
-               (2.5, 'Heavy cinematic braam hit, low brass and distorted sub, documentary title, no melody')],
+               (2.5, 'Heavy cinematic braam hit, low brass and distorted sub, documentary title, no melody'),
+               # clean re-takes (2026-11-02): earlier files are hard-clipped and crackle; story.py picks the cleanest
+               (2.5, 'Heavy cinematic braam hit, low brass and deep sub boom, dark, long tail, clean mix with headroom, not distorted, not clipped, no music')],
     'riser': [(3.0, 'Dark cinematic riser building tension into a hit, reverse swell, no melody')],
     'reveal': [(1.2, 'Short low whoosh with soft metallic shimmer for a text reveal, cinematic, no music')],
     'mapping': [(1.5, 'Subtle digital UI sweep and soft beep for a map marker appearing, military briefing, no music')],
@@ -80,8 +87,12 @@ LIB = {  # type -> [(seconds, prompt)]
     # 1870-71 warfare (first used by the Reichsverfassung film)
     'artillery': [(4.0, '19th century steel breech-loading field gun battery firing, sharp heavy black powder cracks one after another, '
                         'rolling thunder over open fields, no music'),
-                  (4.0, 'Single heavy siege gun firing in winter, huge deep boom with long echo over a city, no music')],
-    'shellburst': [(3.0, 'Artillery shell whistling in and exploding on impact in a field, earth and stones raining down, no music')],
+                  (4.0, 'Single heavy siege gun firing in winter, huge deep boom with long echo over a city, no music'),
+                  # clean re-takes (2026-11-02): earlier files are hard-clipped and crackle; story.py picks the cleanest
+                  (4.0, 'WWII field artillery battery firing in the distance, deep heavy booms rolling over hills one after another, clean mix with headroom, not distorted, not clipped, no music')],
+    'shellburst': [(3.0, 'Artillery shell whistling in and exploding on impact in a field, earth and stones raining down, no music'),
+                   # clean re-takes (2026-11-02): earlier files are hard-clipped and crackle; story.py picks the cleanest
+                   (3.0, 'WWII artillery shell whistling in and exploding in a field, deep blast, earth and stones falling, clean mix with headroom, not distorted, not clipped, no music')],
     'rifles': [(3.0, 'Infantry line firing a ragged volley of 19th century breech-loading rifles, crackling black powder shots, no music')],
     'gallop': [(5.0, 'Heavy cavalry charge, hundreds of horses galloping closer on hard ground, thundering hooves, '
                      'jingling tack, distant shouts, no music')],
@@ -95,11 +106,19 @@ LIB = {  # type -> [(seconds, prompt)]
                 (2.0, 'One single loud rifle gunshot, powerful black powder blast with deep boom and rolling echo over an open '
                       'battlefield, no mechanical clicks, no reloading sounds, no music'),
                 (2.0, 'A single very loud musket shot fired outdoors, explosive bang with smoke whoosh and long echo, '
-                      'no clicks, no bolt sounds, no music')],
-    'mgburst': [(3.0, 'Hand-cranked 19th century multi-barrel volley gun firing a rapid rattling burst, black powder, outdoors, no music')],
+                      'no clicks, no bolt sounds, no music'),
+                # clean re-takes (2026-11-02): earlier files are hard-clipped and crackle; story.py picks the cleanest
+                (2.0, 'Single WWII bolt-action rifle shot outdoors, sharp crack with short echo, clean mix with headroom, not distorted, not clipped, no music'),
+                (2.0, 'Single shotgun shot in an open marsh, hunting, sharp bang with soft echo over water, clean mix with headroom, not distorted, not clipped, no music')],
+    'mgburst': [(3.0, 'Hand-cranked 19th century multi-barrel volley gun firing a rapid rattling burst, black powder, outdoors, no music'),
+                # clean re-takes (2026-11-02): earlier files are hard-clipped and crackle; story.py picks the cleanest
+                (2.5, 'WWII machine gun firing one short burst outdoors, fast rattle with short echo, clean mix with headroom, not distorted, not clipped, no music'),
+                (2.5, 'Distant WWII machine gun bursts across a valley, rattle with echo, clean mix with headroom, not distorted, not clipped, no music')],
     'hurrah': [(4.0, 'Large hall full of uniformed officers cheering hurrah three times, sabres rattling, echo in a palace hall, no music')],
     # WWII aviation (first used by the P-39 Airacobra film)
-    'planedive': [(4.0, 'WWII piston fighter plane diving steeply, rising engine howl and wind scream, Allison V12, passing close, no music')],
+    'planedive': [(4.0, 'WWII piston fighter plane diving steeply, rising engine howl and wind scream, Allison V12, passing close, no music'),
+                  # clean re-takes (2026-11-02): earlier files are hard-clipped and crackle; story.py picks the cleanest
+                  (4.0, 'WWII fighter plane diving steeply, rising piston engine howl and wind, passing overhead, clean mix with headroom, not distorted, not clipped, no music')],
     'planeflyby': [(4.0, 'WWII single-engine piston fighter flying low and fast past the camera, roaring V12 engine doppler fly-by, no music'),
                    (5.0, 'Several WWII piston fighter planes passing overhead in formation, deep droning engines, doppler, no music')],
     'enginestart': [(5.0, 'WWII aircraft V12 piston engine cranking, coughing and catching, then roaring up to a rough idle, propeller, no music')],
