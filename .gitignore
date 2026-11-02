@@ -40,3 +40,4 @@ assets/music/**
 # studio: last opened project (MCP default)
 studio/.last_project
 studio/settings.json
+stories/
