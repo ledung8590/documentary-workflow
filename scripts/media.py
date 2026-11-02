@@ -66,6 +66,8 @@ def _as_thumb(url, width, want):
     m = re.match(r'(https://upload\.wikimedia\.org/wikipedia/commons)/(\w/\w\w)/([^/?]+)(\?.*)?$', url or '')
     if not m or not width or not re.search(r'\.(jpe?g|png|tiff?|webp)$', m.group(3), re.I):
         return url
+    if want >= FULL_W and width < want:  # a picked file narrower than 1920 px: keep the original, never a smaller thumb step
+        return url
     step = next((w for w in (want, 1280, 960, 500, 330, 250) if w <= want and w < width), None)
     if not step:
         return url
@@ -239,6 +241,14 @@ def preview(c, folder):
         if not url:
             raise ValueError('no preview image')
         p.write_bytes(_get(url, timeout=60)); time.sleep(PAUSE)
+        from PIL import Image  # NARA has no thumbnail: the "preview" is the full scan (up to 236 MP), shrink it
+        Image.MAX_IMAGE_PIXELS = None
+        with Image.open(p) as im:
+            big = im.width > 2 * PREVIEW_W
+            if big:
+                im.draft('RGB', (PREVIEW_W, PREVIEW_W)); sm = im.convert('RGB'); sm.thumbnail((PREVIEW_W, PREVIEW_W * 4))
+        if big:
+            sm.save(p, quality=88)
     return p
 
 
@@ -289,7 +299,7 @@ def fetch_range(src, start, dur, out):
     """Cut [start, start+dur] of a local video to an H.264/AAC intermediate."""
     import subprocess
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{start:.3f}', '-i', str(src), '-t', f'{dur:.3f}',
-                    '-c:v', 'libx264', '-crf', '16', '-preset', 'veryfast', '-pix_fmt', 'yuv420p',
+                    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-crf', '16', '-preset', 'veryfast', '-pix_fmt', 'yuv420p',
                     '-c:a', 'aac', '-ar', '48000', '-ac', '2', str(out)], check=True, capture_output=True, timeout=600)
     return out
 
