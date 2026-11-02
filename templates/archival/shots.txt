@@ -1,0 +1,3 @@
+# ANCHOR | SRC[, SRC…] | caption[ ;; caption…]     (plan.py docstring: anchor syntax and SRC kinds)
+# SRC = pick:TAG#K (photo) · vid:TAG#K@IN (film clip from IN s) · scene:NAME (scenes/src/NAME.js) · map:NAME (maps/src/NAME.json) · card
+# A new shot every ~3-6 s; picture priority and the doll budget: docs/WORKFLOW.md stage 6. Captions say what the picture really shows.

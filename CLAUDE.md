@@ -1,1 +1,1 @@
-Read `AGENTS.md` and follow its `/gendoc` dispatch. The canonical workflow is `docs/WORKFLOW.md`. Avoid loading all documentation at once.
+Read `AGENTS.md` and follow its dispatch: `/genvideo` and `/gendoc` run the archival workflow `docs/WORKFLOW.md`; `/gentruyen` runs story mode `docs/STORY_MODE.md`. The two paths never mix. Avoid loading all documentation at once.

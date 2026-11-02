@@ -13,7 +13,7 @@
   - Each bed is about 60–120 s, instrumental, with a steady tempo so it can be cut and looped on bars, plus a separate ending or sting where useful.
   - **Read `assets/music/MOODS.md` before placing music.** The default under narration is a bed with **no drums, no percussion and no pulse** (`europe1870`, `strategy`, `darkdrone`, `warstrings`, `lament`, `somber`, `resolve`).
   - Drum and pulse beds (`combat`, `battle`, `tension`, `naval`, `coldwar`, `mystery`) are for short battle climaxes only. `march` and `suspense` are retired. The user rejected the knocking ("lộc cộc") beds twice on 2026-11-01.
-- **Always dry-run first.** Before generating, print the planned tracks (mood, prompt, duration) and the estimated credits, then ask the user in chat; only then pass `--run`.
+- **Always dry-run first.** Before generating, print the planned tracks (mood, prompt, duration) and the estimated credits, then pass `--run` (the user pre-authorized AI84/ElevenLabs spend for quality, 2026-10-31); stay within the live balance and report what was spent.
   - Estimate from **measured** costs, not documented rates. The music rate is not measured yet. With the user's OK, generate one short bed, record the balance before and after, and store credits per second in the script. Only then estimate a batch.
   - If the estimate exceeds the remaining monthly credits, generate only the moods the current film needs, or wait for the next month.
 

@@ -1046,6 +1046,25 @@ def story_build(job):
     print(f'timeline.json saved (etag {tag}). Next: doc.py build {job} --only picture, then doc.py studio {job} (review stop).')
 
 
+def plan_init(job, force=False):
+    """Archival films: copy the edit-plan toolkit (templates/archival: plan.py, gen_sound.py, render_all.sh, scenes/src/_kit.js,
+    build.py, maps/write_maps.py, plan file skeletons) into projects/<id>/. Story jobs never use it (they use `doc.py story`)."""
+    d = job_dir(job); brief = read(d / 'brief.json')
+    if brief.get('genre') == 'story':
+        sys.exit(f'{job} is a story job: use `doc.py story {job}` (docs/STORY_MODE.md), not the archival plan toolkit')
+    src = ROOT / 'templates' / 'archival'
+    done, kept = [], []
+    for f in sorted(p for p in src.rglob('*') if p.is_file() and '__pycache__' not in p.parts):
+        rel = f.relative_to(src); dst = d / rel
+        if dst.exists() and not force:
+            kept.append(str(rel)); continue
+        dst.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(f, dst); done.append(str(rel))
+    print(f'copied {len(done)}: {", ".join(done) or "-"}')
+    if kept:
+        print(f'kept existing {len(kept)} (--force to overwrite): {", ".join(kept)}')
+    print(f'next: write shots.txt / overlays.txt / sound.txt, then PY projects/{d.name}/plan.py check (docs/WORKFLOW.md stage 6)')
+
+
 def ops(job, file, why):
     """Apply timeline clip ops (the studio's format, docs/STUDIO.md / studio/core.apply_ops) from a JSON file: same store
     as the studio and its MCP server (ETag lock, history, moved clips re-anchored to the nearest word)."""
@@ -1073,6 +1092,7 @@ def main():
     q = sub.add_parser('ingest'); q.add_argument('--input', default=str(ROOT / 'input'))
     q.add_argument('--story', action='store_true', help='fiction over your own images (docs/STORY_MODE.md)'); q.add_argument('--only')
     q = sub.add_parser('story'); q.add_argument('job')
+    q = sub.add_parser('plan'); q.add_argument('job'); q.add_argument('--force', action='store_true')
     for c in ('split', 'pace', 'assemble', 'status'):
         sub.add_parser(c).add_argument('job')
     q = sub.add_parser('tts'); q.add_argument('job'); q.add_argument('--run', action='store_true')
@@ -1104,6 +1124,8 @@ def main():
         return voice_gen(a.job, a.run, a.only)
     if a.cmd == 'story':
         return story_build(a.job)
+    if a.cmd == 'plan':
+        return plan_init(a.job, a.force)
     if a.cmd == 'ops':
         return ops(a.job, a.file, a.why)
     if a.cmd == 'studio':  # web studio + review notes (docs/STUDIO.md); the agent side is studio/mcp_server.py

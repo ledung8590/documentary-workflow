@@ -1,0 +1,2 @@
+# ANCHOR .. ANCHOR | type | {json props}   types: title_card, chapter, question, stat, quote, date_tag, lower_third, callout
+# Stat/list items appear on the word that reads them: {"items": [{"text": "A …", "at": "S280 \"A\""}]}

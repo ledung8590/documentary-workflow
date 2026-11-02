@@ -1,0 +1,3 @@
+# Music beds (no drums or pulses under narration, assets/music/MOODS.md; 2-3 min per bed):  ANCHOR .. ANCHOR | music/mood/el_01 | gain [| in]
+# Hand-placed one-shots:  ANCHOR | sfx/type/el_01 | gain [| dur]. Card, scene-event, typing and subscribe SFX come from gen_sound.py.
+# Measure the ducked music 8-10 dB under the voice before the studio stop (docs/WORKFLOW.md stage 7).

@@ -2,7 +2,7 @@
 
 Fiction over the user's own images is a different path: `/gentruyen`, `docs/STORY_MODE.md`.
 
-Run from the workspace root with `.venv/Scripts/python.exe` (PY). Built stages are marked **[built]**; the others are **[planned]**: say so plainly and stop there, do not improvise a substitute. Stage 10 is a hard stop: the user reviews in the studio before any final output. Every paying command dry-runs first; ask the user before `--run`.
+Run from the workspace root with `.venv/Scripts/python.exe` (PY). Built stages are marked **[built]**; the others are **[planned]**: say so plainly and stop there, do not improvise a substitute. Stage 10 is a hard stop: the user reviews in the studio before any final output. Every paying command dry-runs first to show the cost; the user has pre-authorized AI84 and ElevenLabs spend for quality (2026-11-01), so then run it with `--run` without asking.
 
 ## 1. Ingest [built]
 `PY scripts/doc.py doctor` (setup: `powershell -ExecutionPolicy Bypass -File scripts/setup.ps1`). Then `PY scripts/doc.py ingest`.
@@ -55,17 +55,20 @@ Real, licensed archival material only (`docs/MEDIA.md`); this workflow is for hi
   - Budget, enforced by `plan.py check` via `scripts/dollcheck.py`: at most **10 %** of shots and of running time, never more than **2** doll shots in a row, none in the first **60 s**, and every doll scene file carries `// no-real-media: <what was searched>`.
   - A film's `plan.py` is copied from the newest `evidence/*/project/plan.py`. Its `check()` must end with `dollcheck.check(D, sh)`; add the call if the copy lacks it. Fix every `!!` line before the draft render.
   - One drawing style per film: only `K.doll` on the kit's backgrounds; no second character style.
-1. Turn the per-sentence video slots into scenes, a new shot every ~3–6 s. Merge, split and trim slots with timeline ops (`doc.py ops JOB ops.json`, or the studio MCP tool `update_clips`): moved clips are re-anchored to the nearest word, so later voice changes still retime them.
-2. For each scene write the media need, then `doc.py media JOB search "query" --tag T [--kind photo|video]` and look at the contact sheet `qa/media-T.jpg`.
-3. `doc.py media JOB pick SLOT T K --caption "what it really shows"` downloads the file, sets `src`/`kind`/`credit` and appends the `LICENSES.md` row. A photo of another place or date gets "(illustrative)" / "(minh hoạ)" in its caption.
-4. Per scene, as needed: motion (Ken Burns presets or custom `motion`), grade, `transition_in`, colour (`docs/SCHEMA.md#studio-fields`).
-5. Overlays on the `overlay` track: date tags, lower thirds, callouts, title/question/chapter/stat/quote cards, free text.
-6. Maps: `node scripts/mapscene.mjs projects/JOB/maps/X.json projects/JOB/media/map-X.mp4` (`docs/MAPS.md`). JS graphics: `node scripts/jsscene.mjs projects/JOB/scenes/X.js projects/JOB/media/scene-X.mp4` (`docs/SCENES.md`). Both go on the video track as `kind: video`, `grade: none`, credited.
+**Edit plan (the archival toolkit, never `doc.py story`).** The picture, overlays and sound are written as plan files and built into the timeline by the film's `plan.py`. Do not fill per-sentence slots one by one: that gave the "crude slideshow" of 2026-10-31.
+1. `PY scripts/doc.py plan JOB` copies `templates/archival/` into the project: `plan.py`, `gen_sound.py`, `render_all.sh`, `scenes/src/_kit.js` + `build.py`, `maps/write_maps.py`, and skeletons of `shots.txt`, `overlays.txt`, `sound.txt`. It refuses story jobs. Improve the template in `templates/archival/` when a film teaches something general, not only the project copy.
+2. Write `sentence-index.txt` (S-id + text) and split the film into 3–4 groups. Search media for the groups in parallel (subagents): `doc.py media JOB search "short query" --tag T [--kind photo|video]`, look at `qa/media-T.jpg`, note picks in `picks-*.txt`. Short queries work; long ones return nothing. Start the search while TTS runs.
+3. Per group, write `shots.txt` lines: `ANCHOR | pick:T#K / vid:T#K@IN / scene:NAME / map:NAME / card | caption` (a new shot every ~3–6 s, anchors on the word the picture belongs to; syntax in the `plan.py` docstring). Write `overlays.txt` (cards, date tags, lower thirds, callouts; list items `"at"` on their word) and the music beds in `sound.txt`. Merge the groups.
+4. `PY projects/JOB/plan.py check` until it prints no `!!`: anchors, shot lengths, repeats across groups, overlapping film cuts, and the drawn-character budget (`scripts/dollcheck.py`).
+5. `plan.py durations`, then write the JS scenes (`scenes/src/NAME.js`, `docs/SCENES.md`) and map specs (`maps/src/NAME.json`, `docs/MAPS.md`) for the scene and map shots; `scenes/src/build.py` and `maps/write_maps.py`, then `bash render_all.sh` (3 renders at a time, hard timeouts, plus the subscribe overlay in the film's language).
+6. `plan.py apply` writes the video, overlay, sfx and music tracks through the studio store and downloads every pick (`doc.py media pick`: credit + `LICENSES.md` row). Then contact-sheet every film cut against its caption (in-points drift and shared footage repeats).
+7. Later changes: edit the plan files and rerun `check` / `apply`, or small fixes with `update_clips` / `doc.py ops` (moved clips re-anchor to the nearest word).
 
 ## 7. Music [built: shared library + placement; beat grid planned]
-Per chapter, pick a mood bed from `assets/music/<mood>/` and place it on the `music` track with `doc.py ops` / `update_clips` (`add` with `src`, `start`, `end`, `gain_db`, `fade_in`, `fade_out`, `in`; anchored automatically to the nearest word). Missing moods: `PY scripts/music_elevenlabs.py MOOD --seconds 90 --prompt "..."` dry-runs with the live balance; `--run` only after the user's yes (`docs/MUSIC.md`). Suno only as the user's manual Pro downloads. Beat-grid snapping (librosa) is **planned**: cut on phrase ends by ear instead. Rerun `assemble` after placing music if sentence starts should land on beats.
+Per chapter, pick a mood bed from `assets/music/<mood>/` (read `assets/music/MOODS.md`: no drum or pulse beds under narration, 2–3 min per bed) and write it in `sound.txt` (`ANCHOR .. ANCHOR | music/mood/el_01 | gain`); `plan.py apply` places it, ducked. Measure the ducked music **8–10 dB under the voice** (`render.premix(only={'music'})` vs `only={'voice'}`) and adjust the gains before the studio stop. Missing moods: `PY scripts/music_elevenlabs.py MOOD --seconds 90 --prompt "..."` dry-runs with the live balance, then `--run` (spend pre-authorized; stay within the balance, `docs/MUSIC.md`). Suno only as the user's manual Pro downloads. Beat-grid snapping (librosa) is **planned**: cut on phrase ends by ear instead. Rerun `assemble` after placing music if sentence starts should land on beats.
 
 ## 8. SFX [built: shared library + placement]
+`PY projects/JOB/gen_sound.py` writes `sound_scenes.txt`: card hits, typing, scene events (`scenes/events-NAME.txt`), film-clip firing (`FIRE`) and the subscribe sequence (`SUBSCRIBE_AT`), each gain set from the file's own loudness at a fixed dB under the voice and cut at its shot end. Then `plan.py sound`. Hand-placed one-shots go in `sound.txt`.
 Word-anchored one-shots from `assets/sfx/<type>/` on the `sfx` track (`add` with the event's time: the anchor goes to the word naming it), plus field sound of archival film on `original` (`docs/SOUND.md`). Sparse, under the voice; cards get an audible hit.
 **Card and typing checklist (before the studio stop; missed twice, user review 2026-10-31):**
 - Every `quote` overlay: `typewriter/el_03` from card start + 0.7 s for chars/cps (`render.card_quote`), stopping on the last character, then `typebell`. Gain about -6 (≈10 dB under the voice above 400 Hz).
@@ -75,7 +78,7 @@ Word-anchored one-shots from `assets/sfx/<type>/` on the `sfx` track (`add` with
 - No callout or date tag over a JS scene that has its own labels: the text overlaps. Design scenes with the subtitle band (y > 860) free of text (docs/SCENES.md). Where a scene has to draw there, set `"hide_subtitles": true` on its clip so the subtitles step aside (render.hide_under_text). Both rules come from user review 2026-11-01.
 - Grep the sfx track for each quote overlay's start before opening the studio.
 - **Closing A/B/C question:** each item appears on its own letter word (`"at": "S280 \"A\""`), never one sentence early or late. Sentence ids shift when `split` is rerun, so read the text from `voice/timing.json` before anchoring, and check with `render_frame` 0.3 s before and after each letter. The user has had to point this out in almost every film (film 75, 2026-11-02).
-- New SFX types only via `scripts/sfx_elevenlabs.py` dry run and the user's yes.
+- New SFX types via `scripts/sfx_elevenlabs.py` (dry run, then `--run`; spend is pre-authorized).
 
 ## 9. Draft render [built: `doc.py build JOB --only picture`]
 First run `PY scripts/fontcheck.py JOB`. It must pass. A character missing from its font renders as an empty box: in film 74, "→" was missing from Oswald. The check covers overlays, subtitles, JS scenes and map labels. The house fonts cover vi/en/de/fr/es completely, including ä ö ü ß ẞ „ “ « » – —. Subtitles use `military` (Saira Condensed Bold) for every language.
@@ -101,12 +104,10 @@ Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py
 
 ## 13. Deliver
 `output/<id>/video.mp4` (or the approved `video-studio-<time>.mp4`), `LICENSES.md`, `credits.txt` (description-ready attribution), `qa.json`. Never upload.
-- **Thumbnail.** Make a 1280×720 JPG in the film's look (user request, 2026-10-31):
-  - The hero is a public-domain archival photo that is already in the film, graded steel-teal shadows and warm highlights, with a dark band on the left.
-  - The hook goes on that band, 2–3 short lines **in the script's language** in Black Ops One: off-white plus red, with a thick dark stroke. The font has full Vietnamese diacritics, as do Saira and Oswald.
-  - Add a small Saira kicker and one red graphic cue on the subject (sonar rings and a target, a stamp tag).
-  - Keep the bottom-right corner clear for YouTube's timestamp. It must read at 320×180.
-  - Template: `projects/85-…/thumbnail.py`.
+- **Thumbnail.** Make a 1280×720 JPG with the film's `thumbnail.py` (start from the newest `evidence/*/project/thumbnail.py`):
+  - **Hero:** a sharp, high-resolution picture that is already in the film, with one obvious subject. Prefer a colour painting or portrait with one large face, in its natural colours with only a light grade. A dark, crowded engraving under a heavy grade was rejected ("hình như ko vậy? y/c hình rõ", film 75, 2026-11-02).
+  - **Hook:** 2–4 big words **in the script's language**, in Black Ops One, off-white plus red with a thick dark stroke, on a dark area beside the subject. No kicker line, tags or stamp text: text-heavy thumbnails had a low CTR (2026-11-01).
+  - Keep the bottom-right corner clear for YouTube's timestamp. It must read at 320×180. Look at it full size before showing it.
 - **Description.** Build `description_youtube.txt` with `PY scripts/description.py JOB --intro intro.txt [--note note.txt] --tags "t1, …, t7" --hashtags "#A #B #C #D #E #F #G"`. You write the intro and the note in the script's language; the script adds the rest:
   - chapters, starting at 0:00;
   - public-domain sources by archive;
