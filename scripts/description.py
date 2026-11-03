@@ -22,11 +22,11 @@ T = {
     'en': dict(ch='CHAPTERS', first='Introduction', src='SOURCES & CREDITS', own='Narration, maps and animated graphics: original work of this channel.',
                pd='Public domain', cc='Creative Commons files on Wikimedia Commons (licences: creativecommons.org/licenses; file page: commons.wikimedia.org/?curid=ID):',
                maps='Map imagery: Sentinel-2 cloudless 2016 by EOX IT Services GmbH (CC BY 4.0, s2maps.eu). Terrain: AWS Terrain Tiles.',
-               music='Music and sound effects: ElevenLabs (commercial licence).', other='Other open licences:'),
+               music='Music and sound effects: ElevenLabs (commercial licence).', other='Other open licences:', ccc='Creative Commons files on Wikimedia Commons, by licence (creativecommons.org/licenses) and author:'),
     'de': dict(ch='KAPITEL', first='Einleitung', src='QUELLEN & NACHWEISE', own='Sprechertext, Karten und animierte Grafiken: eigenes Werk dieses Kanals.',
                pd='Gemeinfrei', cc='Creative-Commons-Bilder von Wikimedia Commons (Lizenzen: creativecommons.org/licenses; Dateiseite: commons.wikimedia.org/?curid=ID):',
                maps='Kartenbilder: Sentinel-2 cloudless 2016 von EOX IT Services GmbH (CC BY 4.0, s2maps.eu). Gelände: AWS Terrain Tiles.',
-               music='Musik und Soundeffekte: ElevenLabs (kommerzielle Lizenz).', other='Weitere offene Lizenzen:'),
+               music='Musik und Soundeffekte: ElevenLabs (kommerzielle Lizenz).', other='Weitere offene Lizenzen:', ccc='Creative-Commons-Bilder von Wikimedia Commons, nach Lizenz (creativecommons.org/licenses) und Urheber:'),
     'vi': dict(ch='CHƯƠNG', first='Mở đầu', src='NGUỒN & GHI CÔNG', own='Lời bình, bản đồ và đồ hoạ động: sản phẩm của kênh.',
                pd='Phạm vi công cộng', cc='Ảnh Creative Commons trên Wikimedia Commons (giấy phép: creativecommons.org/licenses; trang tệp: commons.wikimedia.org/?curid=ID):',
                maps='Ảnh bản đồ: Sentinel-2 cloudless 2016 của EOX IT Services GmbH (CC BY 4.0, s2maps.eu). Địa hình: AWS Terrain Tiles.',
@@ -114,7 +114,7 @@ def main():
     intro = Path(a.intro).read_text(encoding='utf-8').strip()
     note = Path(a.note).read_text(encoding='utf-8').strip() if a.note else ''
 
-    def build(n_pd):
+    def build(n_pd, compact=False):
         orgs = {name for _, name in ORGS}
         names = [k for k, _ in pd.most_common() if k in orgs] + [k for k, _ in pd.most_common() if k not in orgs][:min(n_pd, 12)]
         out = [intro, '', L['ch'], f'0:00 {L["first"]}'] + [f'{ts(s)} {t}' for s, t in sorted(chapters)]
@@ -123,8 +123,13 @@ def main():
         out += ['', L['src'], L['own']]
         if pd:
             out.append(f'{L["pd"]}: ' + ', '.join(names) + (', …' if len(names) < len(pd) else '') + '.')
-        if cc:
+        if cc and not compact:
             out += [L['cc']] + [f'- {au}, {lic}: ' + ', '.join(sorted(set(ids))) for (au, lic), ids in sorted(cc.items(), key=lambda x: x[0][0].lower())]
+        elif cc:  # many CC authors (film 76: 124): one line per licence, authors only (author + licence is the attribution)
+            by = {}
+            for (au, lic), _ in cc.items():
+                by.setdefault(lic, set()).add(re.sub(r',?\s*\d{4}-\d\d-\d\d[\d: ]*$', '', au))
+            out += [L.get('ccc', T['en']['ccc'])] + [f'- {lic}: ' + ', '.join(sorted(v, key=str.lower)) for lic, v in sorted(by.items())]
         if other:
             out += [L['other']] + sorted(set(other))
         out += [L['maps'], L['music'], '', ' '.join(hashtags), '', 'TAGS', ', '.join(tags)]
@@ -134,6 +139,10 @@ def main():
     txt = build(n)
     while len(txt) > LIMIT and n > 3:
         n -= 3; txt = build(n)
+    if len(txt) > LIMIT:
+        n = len(pd); txt = build(n, True)
+        while len(txt) > LIMIT and n > 3:
+            n -= 3; txt = build(n, True)
     if len(txt) > LIMIT:
         sys.exit(f'{len(txt)} characters even with a short author list: shorten the intro or note')
     (d / 'description_youtube.txt').write_text(txt + '\n', encoding='utf-8')
