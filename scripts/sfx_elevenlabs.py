@@ -133,6 +133,14 @@ LIB = {  # type -> [(seconds, prompt)]
     # piano-tuner story foley (first used by story 89, Nốt La)
     'pianokey': [(3.0, 'A single piano key A struck once on an old upright piano in a quiet room, ringing and decaying naturally, close, dry, no music')],
     'tuningfork': [(3.0, 'A steel tuning fork struck once and ringing a pure sustained tone, held near the microphone, quiet room, no music')],
+    # ancient battle (first used by film 76, Teutoburg Forest)
+    'spearvolley': [(3.0, 'Volley of hundreds of thrown spears whistling through the air and raining down, airy hiss, ancient battle, no music, clean mix with headroom, not clipped')],
+    'spearhit': [(1.5, 'Heavy spear thudding into a wooden shield, dull wooden impact with a short crack, close, no music, clean mix with headroom, not clipped')],
+    'swordclash': [(2.0, 'Iron swords clashing against shields and each other in close combat, several metallic hits, ancient battle, no music, clean mix with headroom, not clipped')],
+    'warcry': [(4.0, 'Thousands of ancient warriors roaring a deep war cry in a dark forest, low rumbling shout swelling, distant, no music, no words')],
+    'thunder': [(5.0, 'Single loud thunder crack followed by a deep rolling rumble, heavy rain, no music, clean mix with headroom, not clipped')],
+    'rainforest': [(10.0, 'Heavy cold autumn rain pouring through a dense European forest canopy, dripping leaves, steady, no thunder, no music')],
+    'firecrackle': [(6.0, 'Large wooden wagons burning, roaring crackling fire, timber cracking, outdoors, no music')],
     'rainroof': [(10.0, 'Steady night rain falling on an old tile and tin roof, gentle drips, calm ambience, no thunder, no music')],
     'shutter': [(1.0, 'Single tiny spy camera shutter click and film advance, very close, dry, no music')],
     'helicopter': [(6.0, 'Several 1960s military Huey helicopters flying overhead in the distance, rotor thump passing by, no music')],

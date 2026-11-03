@@ -144,6 +144,8 @@ def check():
         k = s['src'].split(':')[0]; kinds[k] = kinds.get(k, 0) + s['t1'] - s['t0']
     import dollcheck  # drawn-character budget (scripts/dollcheck.py): archival first
     warn += dollcheck.check(D, sh)
+    import reviewcheck  # overlay text inside the frame, typing sound, firing sound (scripts/reviewcheck.py, film 76)
+    warn += reviewcheck.check(D, sh)
     print({k: round(v) for k, v in kinds.items()}, f'total {DUR:.0f}s, {len(sh)} shots, {warn} warnings')
 
 

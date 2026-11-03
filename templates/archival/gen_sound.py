@@ -103,6 +103,9 @@ for r in plan.lines('overlays.txt'):
     if kind == 'chapter':
         add(t0 - 0.4, 'whoosh/el_01', 12, 1.5); add(t0, 'chapterhit/el_01', 6, 3)
         add(t0, 'subdrop/el_01', 9, 3); add(t0, 'cardslam/el_01', 1, 1.5)
+    elif kind == 'title_card':  # overlay title (no JS title scene): rev swell into a title hit (WORKFLOW stage 8)
+        if not TITLE_SCENE:
+            add(t0 - 2.0, 'revswell/el_01', 8, 2.2); add(t0, 'titlehit/el_03', 5, 4); add(t0, 'cardslam/el_01', 1, 1.5)
     elif kind == 'question':
         add(t0, 'cardslam/el_01', 1, 1.5); add(t0, 'impact/el_01', 7, 3)
     elif kind == 'quote':
@@ -120,7 +123,9 @@ for r in plan.lines('overlays.txt'):
 # ---- scene events: (10 s-scale seconds | kind | note) -> SFX on the exact frame. Black-powder era sounds.
 MAP = {'gunshot': ('musket/el_01', 10, 1.5), 'volley': ('rifles/el_01', 8, 2.5), 'cannon': ('cannon/el_01', 7, 2.5),
        'burst': ('shellburst/el_01', 8, 2.5), 'clash': ('sabre/el_01', 11, 1.5), 'fall': ('knockfloor/el_01', 13, 1.2),
-       'thud': ('stamp/el_02', 12, 1.2), 'drum': ('drum/el_01', 12, 2), 'thunder': ('boom/el_01', 8, 3)}
+       'thud': ('stamp/el_02', 12, 1.2), 'drum': ('drum/el_01', 12, 2), 'thunder': ('thunder/el_01', 8, 3),
+       'spearvolley': ('spearvolley/el_01', 9, 2.5), 'spearhit': ('spearhit/el_01', 10, 1.2), 'swordclash': ('swordclash/el_01', 10, 1.8),
+       'warcry': ('warcry/el_01', 10, 3.5), 'firecrackle': ('firecrackle/el_01', 12, 4), 'rainforest': ('rainforest/el_01', 14, 6)}
 ALT = {'gunshot': ['musket/el_01', 'gunshot/el_03'], 'cannon': ['cannon/el_01', 'cannon/el_02', 'artillery/el_01']}
 GAP = {'gunshot': 0.6}  # thin out dense fire: one shot per 0.6 s reads as a firefight, not a wall of noise
 sd = json.loads((D / 'scenes' / 'src' / 'durations.json').read_text(encoding='utf-8'))
@@ -163,10 +168,26 @@ for s in plan.shots():
 # ---- archival/reenactment film clips: the shot they show (clip seconds of the first visible firing, measured on the clip's own audio)
 for s in plan.shots():
     k, _, rest = s['src'].partition(':')
-    key = rest.split('@')[0]
+    key = rest if rest in FIRE else rest.split('@')[0]  # 'tag#K@IN' (one cut) wins over 'tag#K' (every cut of that film)
     if k == 'vid' and key in FIRE:
         for at, rel, under, dur in FIRE[key]:
             add(s['t0'] + at, rel, under, round(min(dur, s['t1'] - s['t0'] - at + 0.15), 2))
+
+# ---- typing spans written automatically: every scene that calls L.typed( gets scenes/typing-NAME.txt from `jsscene.mjs --typing`
+# (film 76: two typed scenes had no hand-written file and played silent). Rewritten whenever the built scene is newer.
+for s in plan.shots():
+    k, _, name = s['src'].partition(':')
+    js, built, p = D / 'scenes' / 'src' / f'{name}.js', D / 'scenes' / f'{name}.js', D / 'scenes' / f'typing-{name}.txt'
+    if k != 'scene' or not js.exists() or 'L.typed(' not in js.read_text(encoding='utf-8') or not built.exists():
+        continue
+    if p.exists() and p.stat().st_mtime >= built.stat().st_mtime:
+        continue
+    tmp = D / 'qa' / f'typing-{name}.json'; tmp.parent.mkdir(exist_ok=True)
+    subprocess.run(['node', str(plan.ROOT / 'scripts' / 'jsscene.mjs'), str(built), str(tmp), '--typing'], capture_output=True, timeout=600)
+    spans = json.loads(tmp.read_text(encoding='utf-8')) if tmp.exists() else []
+    f = sd.get(name, 10) / 10  # the file is on the 10 s scale, like the hand-written ones
+    p.write_text(''.join(f'{a / f:.3f} {b / f:.3f}' + chr(10) for a, b in spans), encoding='utf-8')
+    print(f'typing-{name}.txt: {len(spans)} span(s) from jsscene --typing')
 
 # ---- typed text in JS scenes (scenes/typing-NAME.txt: "start end [dB under the voice]" per line on the 10 s scale)
 for s in plan.shots():

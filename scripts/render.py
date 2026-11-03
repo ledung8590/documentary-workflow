@@ -318,11 +318,19 @@ def draw_overlay(lay, o, lt):
 
 
 def card_title(d, pr, lt, out):
-    a = ease((lt - 0.2) / 0.6) * out; f = font('head', 132); s = pr['text']; w = text_w(d, s, f); y = pr.get('y', H / 2 - 120)
-    d.text(((W - w) / 2, y + 16 * (1 - a)), s, font=f, fill=OFFWHITE + (int(255 * a),))
+    a = ease((lt - 0.2) / 0.6) * out; s = pr['text']; size = 132; y = pr.get('y', H / 2 - 120)
+    lines = [s]
+    if text_w(d, s, font('head', size)) > W - 240:  # long title (film 76 ran off both edges): two balanced lines, then shrink to fit
+        words = s.split(); cut = min(range(1, len(words)), key=lambda i: abs(len(' '.join(words[:i])) - len(' '.join(words[i:]))))
+        lines = [' '.join(words[:cut]), ' '.join(words[cut:])]
+        while size > 72 and max(text_w(d, ln, font('head', size)) for ln in lines) > W - 240:
+            size -= 6
+    f = font('head', size); lh = size * 1.1; y0 = y - (len(lines) - 1) * lh / 2
+    for i, ln in enumerate(lines):
+        d.text(((W - text_w(d, ln, f)) / 2, y0 + i * lh + 16 * (1 - a)), ln, font=f, fill=OFFWHITE + (int(255 * a),))
     if pr.get('sub'):
         b = ease((lt - 0.8) / 0.6) * out; fs = font('head', 40); s2 = '  '.join(pr['sub'].upper()); w2 = text_w(d, s2, fs)
-        d.text(((W - w2) / 2, y + 180), s2, font=fs, fill=RED + (int(255 * b),))
+        d.text(((W - w2) / 2, y0 + (len(lines) - 1) * lh + size * 1.36), s2, font=fs, fill=RED + (int(255 * b),))
 
 
 def card_question(d, pr, lt, out):
@@ -353,11 +361,15 @@ def card_stat(d, pr, lt, out):
         d.text((150, 150), pr['title'].upper(), font=font('head', 56), fill=INK + (int(255 * a),))
         r = ease((lt - 0.3) / 0.7) * out; d.rectangle((150, 236, 150 + (W - 300) * r, 239), fill=INK + (int(200 * out),))
     items = pr['items']; colw = (W - 300) / len(items)
+    size = 170 if len(items) < 3 else 140  # one size for every value on the card, shrunk until the widest fits its column
+    while size > 70 and max(text_w(d, it['value'], font('head', size)) for it in items) > colw - 60:  # film 76: "15.000 – 20.000" ran off the edge
+        size -= 6
+    f = font('head', size)
     for k, it in enumerate(items):
         at = it.get('at', 0.6 + 0.45 * k)  # card seconds; set from the word that names the item (A/B/C read out one by one)
         b = ease((lt - at) / 0.45) * out
         if b <= 0: continue
-        cx = 150 + colw * (k + 0.5); f = font('head', 170 if len(items) < 3 else 140)
+        cx = 150 + colw * (k + 0.5)
         if it.get('pre'):
             fp = font('head', 34); d.text((cx - text_w(d, it['pre'], fp) / 2, 400), it['pre'], font=fp, fill=INK + (int(220 * b),))
         v = it['value']; w = text_w(d, v, f); y = 440 + 24 * (1 - b)
