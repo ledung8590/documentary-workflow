@@ -21,7 +21,11 @@ PY scripts/doc.py studio <job>          # = PY studio/server.py <job>; opens htt
 
 `render/studio/picture_state.json` records which video and overlay clips `picture.mp4` contains, so the studio knows which ranges are *dirty*. These are shown red on the ruler and overview, and in *Bản dựng*. On the first open of a rendered film, the studio assumes the current tracks match `picture.mp4`. It also writes each photo's Ken Burns direction into `motion`, which `render.Photo` otherwise derives from the clip's index inside its render chunk. The picture does not change, and later splits or inserts no longer shift every move after them.
 
-**Replacing an image file in place** (same path, e.g. a regenerated `media/scenes/025.png`) is invisible to the running studio. The server caches each Photo, so F5 still shows the old picture. Restart `doc.py studio` after swapping files. Story 89 (2026-11-03): the user pressed F5 and saw the old images.
+**Replacing a media file in place** (same path, e.g. a regenerated `media/scenes/025.png`) is picked up without a restart.
+- The Photo cache key and each picture clip's signature carry the file's size and mtime (`_media_stamp`).
+- So F5 shows the new picture, the clip's range turns dirty, playback draws it live instead of from `picture.mp4`, and the export re-renders that range.
+- Before 2026-11-03 neither happened: the user saw the old images after F5 in story 89 and again in a /genvideo session, and an export would have kept them.
+- A studio server started before this fix still runs the old code: restart it once.
 
 ## UI (Vietnamese)
 Layout: tool panels on the left, preview in the middle, *Thuộc tính* (inspector of the selected clip) on the right, timeline below. `Studio.bat` in the repo root starts it with a double-click.

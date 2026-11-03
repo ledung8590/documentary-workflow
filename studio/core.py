@@ -464,8 +464,22 @@ def _file_sig(p):
     return hashlib.sha1(p.read_bytes()).hexdigest()[:12] if p.exists() else None
 
 
+def _media_stamp(proj, c):
+    """size:mtime of the media file a picture clip draws (src, or an effect's params.src). A file replaced under the same
+    name (a regenerated scene image) changes no clip field, yet its range must be dirty: on 2026-11-03 the studio kept
+    showing, and an export would have kept, the old pictures ("F5 vẫn cũ", story 89 and again in a /genvideo session)."""
+    rel = c.get('src') or (c.get('params') or {}).get('src')
+    if not rel:
+        return None
+    try:
+        st = resolve_media(proj, rel).stat()
+    except (OSError, PermissionError):
+        return None
+    return f'{st.st_size}:{st.st_mtime_ns}'
+
+
 def picture_sig(proj, tl):
-    return {'clips': {tr['id']: {c['id']: [_num(c['start']), _num(c['end']), _sig(c)] for c in tr['clips']}
+    return {'clips': {tr['id']: {c['id']: [_num(c['start']), _num(c['end']), _sig(c), _media_stamp(proj, c)] for c in tr['clips']}
                       for tr in tl['tracks'] if is_pic(tr) and not tr.get('hidden')},
             'subtitle_style': json.dumps(_num(tl.get('subtitle_style') or {}), sort_keys=True),
             'subs': {k: v for k, v in sub_spans(proj, tl).items()},
@@ -525,7 +539,7 @@ def load_state(proj):
         return None
     st = json.loads(p.read_text(encoding='utf-8'))
     if st.get('v') != 2:  # states written before numbers were normalised: compare like with like
-        st['clips'] = {tid: {k: [_num(x[0]), _num(x[1]), json.dumps(_num(json.loads(x[2])), sort_keys=True, ensure_ascii=False)]
+        st['clips'] = {tid: {k: [_num(x[0]), _num(x[1]), json.dumps(_num(json.loads(x[2])), sort_keys=True, ensure_ascii=False)] + x[3:]
                              for k, x in cs.items()} for tid, cs in st['clips'].items()}
         st['fx'] = json.dumps(_num(json.loads(st.get('fx') or '{}')), sort_keys=True)
         st['v'] = 2; p.write_text(json.dumps(st, ensure_ascii=False), encoding='utf-8')
@@ -602,8 +616,11 @@ def dirty_ranges(proj, tl, pad=0.0):
     for tid in set(st['clips']) | set(cur['clips']):
         a, b = st['clips'].get(tid, {}), cur['clips'].get(tid, {})
         for cid in set(a) | set(b):
-            if a.get(cid) != b.get(cid):
-                spans += [[x[0], x[1]] for x in (a.get(cid), b.get(cid)) if x]
+            x, y = a.get(cid), b.get(cid)
+            if x and y and len(x) == 3:  # state saved before media stamps: compare clip fields only
+                y = y[:3]
+            if x != y:
+                spans += [[z[0], z[1]] for z in (x, y) if z]
     a, b = st.get('subs', {}), cur.get('subs', {})
     for k in set(a) | set(b):
         if a.get(k) != b.get(k):
@@ -731,7 +748,9 @@ class Framer:
         path = resolve_media(self.proj, c['src'])
         if c.get('kind') == 'video' or str(c['src']).lower().endswith(('.mp4', '.webm', '.mov', '.mkv')):
             return _VideoAt(self, path, c)
-        key = (c['id'], c['src'], c.get('grade'), json.dumps([c.get('motion'), c.get('color')], sort_keys=True), c['start'], c['end'], k)
+        st = path.stat() if path.exists() else None   # a file replaced under the same name must not show the cached old picture
+        key = (c['id'], c['src'], c.get('grade'), json.dumps([c.get('motion'), c.get('color')], sort_keys=True), c['start'], c['end'], k,
+               (st.st_size, st.st_mtime_ns) if st else None)
         if key not in self.photos:
             if len(self.photos) > 24:
                 self.photos.pop(next(iter(self.photos)))
@@ -770,7 +789,7 @@ class Framer:
             for e in act:
                 src = (e.get('params') or {}).get('src')
                 if e['type'] == 'media_overlay' and src:
-                    key = (src, json.dumps(e['params'], sort_keys=True))
+                    key = (src, json.dumps(e['params'], sort_keys=True), _media_stamp(self.proj, e))
                     if key not in self.media:
                         if len(self.media) > 8:
                             self.media.pop(next(iter(self.media)))
