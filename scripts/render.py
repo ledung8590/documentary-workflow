@@ -720,6 +720,14 @@ def mix_graph(d, tl, t0=0.0, t1=None, only=None):
                      if tr['id'] == 'music' else '')
             if win:
                 src_in = round(src_in + skip, 3)
+            # key-line dips on music beds ("dips": [[start, end, dB], ...] in film seconds, from sound.txt "| dip |"):
+            # after the levelling above, so dynaudnorm cannot lift the bed back; 0.6 s ramps either side
+            if tr['id'] == 'music' and c.get('dips'):
+                off, parts = c['start'] + skip, []
+                for a, b, db in c['dips']:
+                    r = 0.6
+                    parts.append(f'(1-{1 - 10 ** (db / 20):.4f}*max(0,min(1,min((t+{off:.3f}-{a - r:.3f})/{r},({b + r:.3f}-t-{off:.3f})/{r}))))')
+                level += f"volume='{'*'.join(parts)}':eval=frame,"
             (hits if tr['id'] == 'sfx' else beds).append(
                 (k, f'[{k}:a]atrim=start={src_in}:duration={dur - skip:.3f},asetpts=PTS-STARTPTS,{level}'
                     f'{fade_in}afade=t=out:st={max(0, dur - fo - skip):.3f}:d={fo},volume={gain}dB,'

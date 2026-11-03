@@ -40,19 +40,58 @@ VOICE_HI = float(np.median(_vh[_v > _v.max() - 25]))  # the voice above 400 Hz, 
 _lvl = {}
 
 
-def gain_for(rel, under):
-    """Broadband level sets the gain; but a sub-bass hit (titlehit, chapterhit, impact, reveal are ~95 % below 150 Hz) would then be
-    inaudible on small speakers, so its band above 400 Hz is lifted to at most `under` + 6 dB below the voice's, by up to 8 dB more."""
-    if rel not in _lvl:
-        f = plan.asset('sfx/' + rel).replace('../../', str(plan.ROOT) + '/')
-        _lvl[rel] = (float(_mom(_pcm(f)).max()), float(_mom(_pcm(f, hp=True)).max()))
-    b, h = _lvl[rel]
-    g_b, g_h = VOICE - under - b, VOICE_HI - under - 6 - h
-    return round(max(-40.0, min(12.0, max(g_b, min(g_h, g_b + 8)))), 1)
+# Levels in LUFS on both sides (memory sfx-level-relative-to-voice; film 89 moved archival off the 400 ms peak method, which
+# left story 51's risers 15-18 dB under and film 75's hits over the voice): gain = voice integrated LUFS - LUFS of the section
+# of the file that plays (0..dur) - UNDER[type]. Card hits 3 dB under, risers 4, whoosh/drop 6; types not listed keep `under`.
+UNDER = {'cardslam': 5, 'impact': 4, 'chapterhit': 6, 'titlehit': 5, 'stamp': 5, 'reveal': 7, 'navalblast': 3, 'missilelaunch': 3,
+         'sublaunch': 3, 'icecrack': 4, 'revswell': 6, 'riser': 4, 'whoosh': 8, 'subdrop': 9, 'steamburst': 6, 'klaxon': 6,
+         'sonarping': 8, 'mapping': 8, 'typewriter': 10, 'typebell': 8, 'mouseclick': 6, 'subscribed': 5, 'notifybell': 7}
+# Cards stack 2-4 of these at once (chapter: whoosh + chapterhit + subdrop + cardslam): the per-file offsets above put the
+# STACK about 3 dB under the voice, measured on the sfx stem (film 89: single-file offsets of 3 made the chapter stack equal the voice).
 
 
-def add(t, rel, under, dur):
-    out.append(f'START+{t:.3f} | sfx/{rel} | {gain_for(rel, under)} | {dur}')
+def _file(rel):
+    return plan.asset('sfx/' + rel).replace('../../', str(plan.ROOT) + '/')
+
+
+def _lufs(f, dur=None, _c={}):
+    import re as _re
+    if (f, dur) not in _c:
+        o = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', *(['-t', f'{dur:.3f}'] if dur else []), '-i', f, '-af', 'ebur128',
+                            '-f', 'null', '-'], capture_output=True, text=True, encoding='utf-8', errors='replace').stderr
+        v = _re.findall(r'I:\s+(-?[\d.]+) LUFS', o)
+        _c[(f, dur)] = float(v[-1]) if v else -70.0
+    return _c[(f, dur)]
+
+
+def _clipped(f, _c={}):  # % of samples at full scale: hard-clipped ElevenLabs files crackle at any gain
+    if f not in _c:
+        x = _pcm(f); _c[f] = float((np.abs(x) > 0.97).mean() * 100) if len(x) else 0.0
+    return _c[f]
+
+
+def _clean(rel):
+    """The least-clipped file of the type when `rel` is clipped over 1 % (subdrop/el_01 is 49 %)."""
+    if _clipped(_file(rel)) <= 1.0:
+        return rel
+    name = rel.split('/')[0]
+    alts = [f'{name}/{q.stem}' for q in (plan.ROOT / 'assets' / 'sfx' / name).glob('el_*.*') if q.suffix in ('.mp3', '.wav')]
+    best = min(alts, key=lambda r: _clipped(_file(r)))
+    if _clipped(_file(best)) > 1.0:
+        print(f'!! sfx {best} is {_clipped(_file(best)):.1f} % clipped (crackles): regenerate it')
+    return best
+
+
+VOICE_LUFS = _lufs(str(D / 'voice' / 'voice.wav'))
+
+
+def gain_for(rel, under, dur=None, force=False):  # force: this line's own offset beats the UNDER table
+    return round(max(-40.0, min(12.0, VOICE_LUFS - _lufs(_file(rel), dur) - (under if force else UNDER.get(rel.split('/')[0], under)))), 1)
+
+
+def add(t, rel, under, dur, force=False):
+    rel = _clean(rel)
+    out.append(f'START+{t:.3f} | sfx/{rel} | {gain_for(rel, under, dur, force)} | {dur}')
 
 
 # ---- cards
@@ -129,7 +168,7 @@ for s in plan.shots():
         for at, rel, under, dur in FIRE[key]:
             add(s['t0'] + at, rel, under, round(min(dur, s['t1'] - s['t0'] - at + 0.15), 2))
 
-# ---- typed text in JS scenes (scenes/typing-NAME.txt: "start end" per line on the 10 s scale)
+# ---- typed text in JS scenes (scenes/typing-NAME.txt: "start end [dB under the voice]" per line on the 10 s scale)
 for s in plan.shots():
     k, _, name = s['src'].partition(':')
     p = D / 'scenes' / f'typing-{name}.txt'
@@ -142,7 +181,7 @@ for s in plan.shots():
             except (ValueError, IndexError):
                 continue
             if a < s['t1'] - s['t0']:
-                add(s['t0'] + a, 'typewriter/el_03', 12, round(b - a + 0.08, 2))
+                add(s['t0'] + a, 'typewriter/el_03', float(x[2]) if len(x) > 2 else 12, round(b - a + 0.08, 2), len(x) > 2)
 
 # ---- subscribe sequence: first click on the subscribe word (docs/SCENES.md, Subscribe overlay: 3-6 dB under the voice)
 b = SUBSCRIBE_AT

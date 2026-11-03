@@ -304,8 +304,18 @@ def fetch_range(src, start, dur, out):
     return out
 
 
+def dvids_full(c):
+    """DVIDS search only returns a 122x92 thumbnail; the asset call names the full-size image (film 89 shipped 32 thumbnails)."""
+    if c.get('source') != 'dvids' or c.get('kind') == 'video' or '/thumbs/' not in (c.get('download') or ''):
+        return c
+    a = json.loads(_get('https://api.dvidshub.net/asset?' + urllib.parse.urlencode({'id': c['id'], 'api_key': _key('DVIDS_API_KEY')})))
+    a = a.get('results', a)
+    return {**c, 'download': a['image']} if a.get('image') else c
+
+
 def download(c, folder):
     folder = Path(folder); folder.mkdir(parents=True, exist_ok=True)
+    c = dvids_full(c)
     ext = Path(urllib.parse.urlparse(c['download']).path).suffix.lower()
     ext = ext if ext in ('.jpg', '.jpeg', '.png', '.tif', '.tiff', '.webp') else '.jpg'
     p = folder / f"{c['source'].split(':')[0]}-{re.sub(r'[^A-Za-z0-9_-]', '', str(c['id']))[:40]}{ext}"

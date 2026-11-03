@@ -38,7 +38,8 @@ LIB = {  # type -> [(seconds, prompt)]
                # clean re-takes (2026-11-02): earlier files are hard-clipped and crackle; story.py picks the cleanest
                (2.5, 'Heavy cinematic braam hit, low brass and deep sub boom, dark, long tail, clean mix with headroom, not distorted, not clipped, no music')],
     'riser': [(3.0, 'Dark cinematic riser building tension into a hit, reverse swell, no melody')],
-    'reveal': [(1.2, 'Short low whoosh with soft metallic shimmer for a text reveal, cinematic, no music')],
+    'reveal': [(1.2, 'Short low whoosh with soft metallic shimmer for a text reveal, cinematic, no music'),
+               (1.2, 'Short low whoosh with soft metallic shimmer for a text reveal, cinematic, clean mix with headroom, not distorted, not clipped, no music')],
     'mapping': [(1.5, 'Subtle digital UI sweep and soft beep for a map marker appearing, military briefing, no music')],
     # espionage / night-story foley (first used by nguoi-gac-dem)
     'knock': [(2.5, 'Three slow firm knocks on an old wooden door at night, close, dry, no music')],
@@ -70,7 +71,9 @@ LIB = {  # type -> [(seconds, prompt)]
                             'climbing away, no music')],
     # audible layer over the sub-bass card hits (impact/titlehit are ~100 % below 150 Hz: inaudible on laptop speakers)
     'cardslam': [(1.5, 'Punchy cinematic trailer slam hit, sharp metallic transient with a mid-range body and short bright tail, '
-                       'close, no music')],
+                       'close, no music'),
+                 (1.5, 'Punchy cinematic trailer slam hit, sharp metallic transient with a mid-range body and short bright tail, '
+                       'close, clean mix with headroom, not distorted, not clipped, no music')],
     # subscribe call-to-action overlay (scenes/kit/subscribe.js; user review 2026-10-31)
     'mouseclick': [(0.5, 'Single crisp computer mouse button click, close, dry, no music')],
     'subscribed': [(1.5, 'Bright satisfying UI confirmation pop with a short sparkling chime, clean, modern, no music')],
@@ -142,6 +145,11 @@ LIB = {  # type -> [(seconds, prompt)]
     'ambhills': [(20.0, 'Calm morning on tea plantation hills, gentle wind, distant birdsong, faint rooster far away, no music, no voices')],
     'ambforest': [(20.0, 'Dense tropical jungle ambience, insects, distant birds, light dripping after rain, leaves rustling, no music, no voices')],
     'waterfall': [(20.0, 'Mountain waterfall at night in heavy rain, steady roar of falling water, no music')],
+    'klaxon': [(3.0, 'Submarine dive alarm klaxon, two harsh electronic honks echoing in a steel control room, no music, no voices')],
+    'icecrack': [(3.0, 'Thick sea ice sheet cracking and shattering violently, deep groaning crack then sharp splintering, chunks tumbling, no music'),
+                 (2.0, 'Distant underwater ice pops and creaks, Arctic pack ice grinding, short, no music')],
+    'sublaunch': [(3.0, 'Submarine-launched ballistic missile breaking the sea surface and igniting: water burst, then a deep roaring rocket motor climbing away, clean mix with headroom, not distorted, not clipped, no music')],
+    'steamburst': [(2.0, 'Sudden high-pressure steam burst, loud hiss and deep whoomp in a steel tube, no music')],
 }
 
 

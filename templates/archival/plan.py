@@ -1,4 +1,4 @@
-"""Template: templates/archival/plan.py, copied into projects/<id>/ by `doc.py plan JOB`. Edit HIDE_SUBS per film.
+"""Template: templates/archival/plan.py, copied into projects/<id>/ by `doc.py plan JOB`. Edit SUBS_OVER per film.
 
 Build this film's picture, overlay, sfx and music tracks from the plan files (shots.txt, overlays.txt, sound.txt).
 
@@ -8,7 +8,7 @@ Build this film's picture, overlay, sfx and music tracks from the plan files (sh
 
 Anchor syntax: `S012` sentence start · `S012 "word phrase"` first word of that phrase · `S012+1.5` / `S012 "x"-0.3` offset
 · `S012$` sentence end. shots.txt:  ANCHOR | SRC | caption      SRC = scene:NAME · map:NAME · pick:TAG#K · vid:TAG#K@IN · card
-overlays.txt: ANCHOR .. ANCHOR | type | {json props}      sound.txt: ANCHOR | sfx/type/el_01 | gain [| dur]   or   ANCHOR .. ANCHOR | music/mood/el_01 | gain
+overlays.txt: ANCHOR .. ANCHOR | type | {json props}      sound.txt: ANCHOR | sfx/type/el_01 | gain [| dur]   or   ANCHOR .. ANCHOR | music/mood/el_01 | gain   or   ANCHOR .. ANCHOR | dip | dB (music dips under a key line)
 """
 import json, re, sys, unicodedata
 from pathlib import Path
@@ -32,7 +32,7 @@ CREDITS = {  # on-screen credit lines follow the script language
     'fr': ('Relief : AWS Terrain Tiles · Satellite : Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) · Positions, flèches : schématiques', 'Graphique animé (illustratif)', 'Effets'),
 }
 MAPCREDIT, SCENECREDIT, FXNAME = CREDITS.get(LANG, CREDITS['en'])
-HIDE_SUBS = set()  # scenes that must draw text in the subtitle band (y > 860): subtitles step aside there only
+SUBS_OVER = set()  # scenes with no text of their own: subtitles stay on. Every other scene hides them (films 74-88; user review)
 
 
 def norm(w):
@@ -174,7 +174,7 @@ def apply(sound_only=False):
         c['end_anchor'] = anchors.anchor(s['t1'])
         if k == 'scene':
             c.update(src=f'media/scene-{rest}.mp4', kind='video', grade='none', credit=SCENECREDIT, caption=s['caption'], mute=True, **{'in': 0.0})
-            if rest in HIDE_SUBS:  # render.hide_under_text
+            if rest not in SUBS_OVER:  # graphics with their own text: subtitles step aside (render.hide_under_text)
                 c['hide_subtitles'] = True
         elif k == 'map':
             c.update(src=f'media/map-{rest}.mp4', kind='video', grade='none', credit=MAPCREDIT, caption=s['caption'], mute=True, bloom=True, **{'in': 0.0})
@@ -202,9 +202,12 @@ def apply(sound_only=False):
                 it['at'] = round(resolve(it['at']) - t0, 2)
         ovs.append({'id': f'O{j + 1:03d}', 'type': r[1], 'start': t0, 'end': t1, 'props': props,
                     'anchor': anchors.anchor(t0), 'end_anchor': anchors.anchor(t1), 'frame': round(t0 * FPS)})
-    sfx, mus, fx = [], [], []
+    sfx, mus, fx, dips = [], [], [], []
     for j, r in enumerate(lines('sound.txt') + lines('sound_scenes.txt')):
-        if r[1].startswith('music/'):
+        if r[1] == 'dip':  # key line: the music drops (or pauses, -40) under it, user guide rule 6 (assets/music/MOODS.md)
+            a, b = [x.strip() for x in r[0].split('..')]
+            dips.append([round(resolve(a), 3), round(resolve(b), 3), float(r[2]) if len(r) > 2 else -6.0])
+        elif r[1].startswith('music/'):
             a, b = [x.strip() for x in r[0].split('..')]
             def _pt(x):
                 return float(x[6:]) if x.startswith('START+') else resolve(x)
@@ -227,6 +230,9 @@ def apply(sound_only=False):
             if len(r) > 4 and r[4] == 'loop':
                 c.update(loop=True, fade_out=2)
             sfx.append(c)
+
+    for m in mus:
+        m['dips'] = [d for d in dips if d[0] < m['end'] and d[1] > m['start']]
 
     def edit(tl):
         for tr in tl['tracks']:
@@ -288,6 +294,8 @@ def crop_box(im):
     ys, xs = [p[0] for p in best], [p[1] for p in best]
     y0, y1, x0, x1 = min(ys), max(ys) + 1, min(xs), max(xs) + 1
     if (y1 - y0) * (x1 - x0) > 0.88 * h * w or (y1 - y0) * (x1 - x0) < 0.12 * h * w:
+        return None
+    if not 0.4 < (x1 - x0) / (y1 - y0) < 2.6:  # a sliver (sky band, shoreline) is not the photo: film 89 cut a sub away
         return None
     fx, fy = im.width / (w * bs) * (a.shape[1] / (w * bs)) ** 0, im.height / (h * bs)
     fx = im.width / a.shape[1]; fy = im.height / a.shape[0]
