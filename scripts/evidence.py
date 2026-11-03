@@ -7,7 +7,8 @@ Moves (not copies) the deliverables, the media files on screen, the project's re
 fetches each source's licence record (NARA catalog record, Commons file metadata + page, DVIDS asset + page),
 copies the music/SFX actually used from assets/ (assets stay in place for later films) and writes INDEX.csv
 (film time -> file -> source -> licence) and README.md (how to answer a claim). What stays in projects/<id>/ is
-regenerable cache (render/, unused candidates, studio history) and is reported, never deleted here.
+regenerable cache (render/, unused candidates, studio history) and is reported, not deleted here: delete the
+project folder afterwards (user rule 2026-11-03: nothing that is not evidence stays).
 """
 import argparse, csv, json, re, shutil, sys, urllib.parse
 from glob import escape as glob_escape
@@ -191,7 +192,7 @@ Built {__import__('datetime').date.today()} from `projects/{a.job}` after upload
 5. Music and SFX: see `audio/LICENSES.md`. ElevenLabs Sound Effects are used under the Starter plan's commercial licence.
 """, encoding='utf-8')
     left = sum(p.stat().st_size for p in proj.rglob('*') if p.is_file())
-    print(f'done: {dst}\nleft in {proj}: {left / 1e9:.2f} GB of regenerable cache (render/, unused candidates, voice clips, studio history)')
+    print(f'done: {dst}\nleft in {proj}: {left / 1e9:.2f} GB of regenerable cache (render/, unused candidates, voice clips, studio history): delete it (not evidence)')
 
 
 if __name__ == '__main__':

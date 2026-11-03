@@ -139,5 +139,5 @@ Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py
 - **Written:**
   - `INDEX.csv`: film time, file, source, licence and record;
   - `README.md`: how to answer a claim, including 17 U.S.C. § 105 for US government works.
-- **Leftovers:** what remains in `projects/<id>/` is regenerable cache (render, unused candidates, voice clips). Ask before deleting it.
+- **Leftovers:** once the pack is built, delete everything left in `projects/<id>/` (render, unused candidates, voice clips, working notes, logs) without asking: anything not needed as evidence goes (user rule 2026-11-03). Before deleting, copy into `evidence/<name>/project/` whatever the evidence still needs that evidence.py does not move (e.g. the image-model sources of the thumbnail in `thumb/`, intro.txt, note.txt).
 - **Reruns:** the script can be rerun after a partial run. A folder the studio holds open is copied and its empty shell is left behind.
