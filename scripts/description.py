@@ -49,7 +49,9 @@ ORGS = [(r'National Archives|\bNARA\b', 'U.S. National Archives'), (r'U\.?S\.? N
 
 
 def clean_author(a, page):
-    a = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', a or '')).strip()
+    a = re.sub(r'<[^>]+>', '', a or '')
+    a = re.sub(r'(?:br|span|div)\s*/?>', ' ', a)  # cut-off tags ("Wikipediabr/>", film 89): YouTube refuses < and >
+    a = re.sub(r'\s+', ' ', a.replace('<', ' ').replace('>', ' ')).strip()
     a = re.sub(r'^(?:Unknown author|unknown)(?:\s*(?:Unknown author|unknown))*', 'unknown author', a, flags=re.I)
     a = re.split(r'\s*\((?:Original|Originaltext)|\s+—\s+|\.\s+\(', a)[0].strip()
     if 'Fortepan' in a:
@@ -126,7 +128,7 @@ def main():
         if other:
             out += [L['other']] + sorted(set(other))
         out += [L['maps'], L['music'], '', ' '.join(hashtags), '', 'TAGS', ', '.join(tags)]
-        return '\n'.join(out)
+        return '\n'.join(out).replace('<', '').replace('>', '')  # YouTube rejects angle brackets anywhere in a description
 
     n = len(pd)
     txt = build(n)
