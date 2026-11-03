@@ -1,5 +1,7 @@
 # Canonical /gendoc procedure
 
+**Reply to the user in Vietnamese at every step** (AGENTS.md); film text follows the script language.
+
 Fiction over the user's own images is a different path: `/gentruyen`, `docs/STORY_MODE.md`.
 
 Run from the workspace root with `.venv/Scripts/python.exe` (PY). Built stages are marked **[built]**; the others are **[planned]**: say so plainly and stop there, do not improvise a substitute. Stage 10 is a hard stop: the user reviews in the studio before any final output. Every paying command dry-runs first to show the cost; the user has pre-authorized AI84 and ElevenLabs spend for quality (2026-11-01), so then run it with `--run` without asking.

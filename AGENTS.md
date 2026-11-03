@@ -32,5 +32,5 @@ Style: real archival photos and film, real terrain/satellite maps with attributi
 - Run everything through `scripts/doc.py`. Work in `projects/<id>/`; `timeline.json` is the single source of truth for the agent, the studio and the renderer. Anchor clips to sentences/words so a voice change retimes them.
 - **Self-review rendered frames** and listen-checks you can actually perform; never fake QA, listening, STT results or source verification. Mock voice (`tts --mock`) is for timing tests only and must never be delivered.
 - Read progressively: WORKFLOW first, then the stage doc you need (VOICE, MEDIA, MUSIC, SOUND, SCHEMA, STUDIO). Do not read all docs at once.
-- Report in the user's chat language (Vietnamese); film text follows the script language. Never upload or publish. No watermark.
+- **ALWAYS reply to the user in Vietnamese (every chat message, progress note, recap, question and button label), even when the script, docs or tool output are English: the user does not read English (user rule 2026-11-03).** Only the film's own text (voice, overlays, captions, description) follows the script language. Never upload or publish. No watermark.
 - Stages marked *planned* in WORKFLOW are not built yet: say so plainly instead of improvising a substitute.

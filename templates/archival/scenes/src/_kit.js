@@ -252,3 +252,86 @@ const K = {
   },
   ground(c, y, col = '#2a241d') { c.fillStyle = col; c.fillRect(0, y, 1920, 1080 - y); },
 };
+
+// ---- WWII aircraft (film 90, P-63 Kingcobra): side and top silhouettes in 1000-unit hull coords, nose to the right.
+const A = {
+  // side view. o.kind 'p63' (mid-engine, nose cannon, tricycle gear) | 'tail' (nose engine, tailwheel: Bf 109 / Fw 190 / Ki-43) | 'jet' (MiG-15 style swept tail)
+  side(c, x, y, len, o = {}) {
+    const k = o.kind || 'p63', s = len / 1000;
+    c.save(); c.translate(x, y); c.scale((o.dir || 1) * s, s); if (o.rot) c.rotate(o.rot); c.globalAlpha *= o.alpha ?? 1;
+    const g = c.createLinearGradient(0, -130, 0, 80); g.addColorStop(0, o.top || '#8b8f86'); g.addColorStop(1, o.col || '#3c4038');
+    c.fillStyle = o.fill || g; if (o.glow) { c.shadowColor = o.glowColor || 'rgba(237,231,220,0.6)'; c.shadowBlur = o.glow; }
+    c.beginPath();
+    if (k === 'jet') {
+      c.moveTo(500, 0); c.lineTo(470, -38); c.bezierCurveTo(380, -62, 250, -66, 120, -64); c.lineTo(-380, -40); c.lineTo(-500, -18); c.lineTo(-500, 18);
+      c.lineTo(-380, 40); c.bezierCurveTo(100, 66, 380, 60, 470, 38); c.closePath();
+      c.moveTo(-250, -42); c.lineTo(-430, -250); c.lineTo(-510, -250); c.lineTo(-470, -30); c.closePath();
+      c.moveTo(-440, -240); c.lineTo(-560, -240); c.lineTo(-560, -225); c.lineTo(-440, -222); c.closePath();
+    } else {
+      c.moveTo(505, 0); c.bezierCurveTo(500, -30, 475, -44, 440, -48); c.bezierCurveTo(330, -58, 230, -62, 170, -62);
+      c.lineTo(-420, -42); c.lineTo(-500, -30); c.lineTo(-505, 10); c.lineTo(-420, 26); c.bezierCurveTo(-200, 62, 150, 72, 380, 56);
+      c.bezierCurveTo(440, 50, 480, 36, 505, 0); c.closePath();
+      c.moveTo(-330, -48); c.bezierCurveTo(-390, -120, -430, -215, -455, -232); c.lineTo(-500, -228); c.lineTo(-505, -36); c.closePath();  // fin
+      if (k === 'p63') { c.moveTo(-10, -62); c.lineTo(-30, -84); c.lineTo(-110, -84); c.lineTo(-150, -56); c.closePath(); }  // carburettor scoop behind the cockpit
+    }
+    c.fill(); c.shadowBlur = 0;
+    // canopy
+    c.fillStyle = o.glass || 'rgba(170,200,215,0.75)'; c.beginPath();
+    if (k === 'jet') { c.moveTo(330, -62); c.bezierCurveTo(300, -118, 210, -122, 170, -66); c.closePath(); }
+    else if (k === 'p63') { c.moveTo(170, -62); c.bezierCurveTo(150, -118, 60, -124, 10, -64); c.closePath(); }
+    else { c.moveTo(40, -60); c.bezierCurveTo(20, -112, -60, -116, -110, -56); c.closePath(); }
+    c.fill();
+    // wing (seen edge-on) and tailplane
+    c.fillStyle = o.wing || 'rgba(30,32,28,0.9)';
+    c.beginPath(); c.ellipse(k === 'tail' ? 160 : 70, 42, 150, 13, 0, 0, Math.PI * 2); c.fill();
+    c.fillRect(-520, -8, 120, 12);
+    if (o.cannon !== false && k === 'p63') { c.fillStyle = '#1c1d1a'; c.fillRect(495, -7, 70, 14); }  // 37 mm barrel through the hub
+    // propeller disc
+    if (k !== 'jet') { c.strokeStyle = 'rgba(237,231,220,0.35)'; c.lineWidth = 6 / s; c.beginPath(); c.moveTo(512, -150); c.lineTo(512, 150); c.stroke(); }
+    // gear
+    if (o.gear !== false) {
+      c.strokeStyle = '#22231f'; c.fillStyle = '#151513'; c.lineWidth = 14;
+      const wheel = (wx, wy, r) => { c.beginPath(); c.moveTo(wx, 50); c.lineTo(wx, wy - r); c.stroke(); c.beginPath(); c.arc(wx, wy, r, 0, 7); c.fill(); };
+      if (k === 'p63' || k === 'jet') { wheel(360, 138, 28); wheel(40, 146, 34); }
+      else { wheel(230, 146, 34); c.beginPath(); c.moveTo(-420, 20); c.lineTo(-440, 60); c.stroke(); c.beginPath(); c.arc(-440, 70, 16, 0, 7); c.fill(); }
+    }
+    if (o.star) {  // red star on the fin
+      c.fillStyle = '#c8372d'; c.beginPath();
+      for (let i = 0; i < 10; i++) { const r = i % 2 ? 22 : 54, a = -Math.PI / 2 + i * Math.PI / 5; c.lineTo(-440 + Math.cos(a) * r, -130 + Math.sin(a) * r); }
+      c.closePath(); c.fill(); c.strokeStyle = '#ede7dc'; c.lineWidth = 4; c.stroke();
+    }
+    if (o.rim) { c.strokeStyle = o.rim; c.lineWidth = (o.rimW || 2) / s; }
+    c.restore();
+  },
+  // P-63 internal layout for cutaways, in the same coords as A.side (call inside your own translate/scale)
+  P63: { engine: [-230, -42, 200, 84], driveshaft: [[-30, 8], [440, 8]], gearbox: [420, -18, 40, 36], cockpit: [20, -60, 150, 110], cannon: [380, -10, 190, 20], ammo: [300, -40, 60, 40] },
+  // top view, nose to angle (rad); span ≈ 1.17 × length
+  top(c, x, y, len, o = {}) {
+    const s = len / 1000; c.save(); c.translate(x, y); c.rotate(o.angle || 0); c.scale(s, s); c.globalAlpha *= o.alpha ?? 1;
+    c.fillStyle = o.color || '#9a9e94'; if (o.glow) { c.shadowColor = o.glowColor || c.fillStyle; c.shadowBlur = o.glow; }
+    c.beginPath(); c.ellipse(0, 0, 500, 55, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.moveTo(150, -40); c.lineTo(80, -585); c.lineTo(-10, -585); c.lineTo(-60, -40); c.lineTo(-60, 40); c.lineTo(-10, 585); c.lineTo(80, 585); c.lineTo(150, 40); c.closePath(); c.fill();
+    c.beginPath(); c.moveTo(-400, -30); c.lineTo(-440, -210); c.lineTo(-500, -210); c.lineTo(-500, 210); c.lineTo(-440, 210); c.lineTo(-400, 30); c.closePath(); c.fill();
+    if (o.star) { c.fillStyle = '#c8372d'; [-1, 1].forEach(sd => { c.beginPath(); for (let i = 0; i < 10; i++) { const r = i % 2 ? 26 : 62, a = -Math.PI / 2 + i * Math.PI / 5; c.lineTo(30 + Math.cos(a) * r, sd * 400 + Math.sin(a) * r); } c.closePath(); c.fill(); }); }
+    c.restore();
+  },
+};
+Object.assign(A, {
+  // dusk sky gradient with slow drifting cloud banks; o.horizon y of the ground line (none if 0)
+  sky(c, L, t, o = {}) {
+    const g = c.createLinearGradient(0, 0, 0, 1080); g.addColorStop(0, o.topCol || '#1a2230'); g.addColorStop(1, o.botCol || '#4a4a48');
+    c.fillStyle = g; c.fillRect(0, 0, 1920, 1080);
+    for (let i = 0; i < (o.n ?? 9); i++) {
+      const w = 260 + L.rnd(i, 1) * 420, y = 80 + L.rnd(i, 2) * 820, x = ((L.rnd(i, 3) * 2600 - t * (12 + 18 * L.rnd(i, 4)) * (o.speed ?? 1)) % 2600 + 2600) % 2600 - 340;
+      const gr = c.createRadialGradient(x, y, 0, x, y, w); gr.addColorStop(0, `rgba(210,205,195,${0.10 + 0.08 * L.rnd(i, 5)})`); gr.addColorStop(1, 'rgba(210,205,195,0)');
+      c.save(); c.translate(x, y); c.scale(1, 0.28); c.translate(-x, -y); c.fillStyle = gr; c.fillRect(x - w, y - w, 2 * w, 2 * w); c.restore();
+    }
+    if (o.horizon) { const gg = c.createLinearGradient(0, o.horizon, 0, 1080); gg.addColorStop(0, o.groundTop || '#3a3528'); gg.addColorStop(1, o.groundBot || '#1c1a14'); c.fillStyle = gg; c.fillRect(0, o.horizon, 1920, 1080 - o.horizon); }
+  },
+  // short bright tracer streak from (x0,y0) toward (x1,y1); u 0..1 position along the line
+  tracer(c, x0, y0, x1, y1, u, col = '255,200,90', len = 0.08) {
+    if (u < 0 || u > 1) return; const a = Math.max(0, u - len);
+    c.save(); c.strokeStyle = `rgba(${col},0.95)`; c.lineWidth = 5; c.shadowColor = `rgb(${col})`; c.shadowBlur = 16; c.lineCap = 'round';
+    c.beginPath(); c.moveTo(x0 + (x1 - x0) * a, y0 + (y1 - y0) * a); c.lineTo(x0 + (x1 - x0) * u, y0 + (y1 - y0) * u); c.stroke(); c.restore();
+  },
+});

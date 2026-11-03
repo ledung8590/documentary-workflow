@@ -125,6 +125,8 @@ LIB = {  # type -> [(seconds, prompt)]
     'planeflyby': [(4.0, 'WWII single-engine piston fighter flying low and fast past the camera, roaring V12 engine doppler fly-by, no music'),
                    (5.0, 'Several WWII piston fighter planes passing overhead in formation, deep droning engines, doppler, no music')],
     'enginestart': [(5.0, 'WWII aircraft V12 piston engine cranking, coughing and catching, then roaring up to a rough idle, propeller, no music')],
+    'gau8': [(3.0, 'A-10 Warthog GAU-8 30 mm rotary cannon firing one long burst, deep tearing BRRRT roar heard from the ground at a distance, open air, no music')],
+    'rivetgun': [(4.0, 'WWII aircraft factory floor, pneumatic rivet guns hammering in short bursts, metallic clatter echoing in a large hall, no music')],
     'cannon37': [(2.0, 'Single heavy 37 mm aircraft autocannon shot, deep thudding boom with metallic punch, short echo in open air, no music'),
                  (3.0, 'Heavy aircraft autocannon firing three slow powerful thumping rounds, 37 mm, open air, no music')],
     'mg50': [(2.0, 'Short burst of WWII .50 caliber aircraft machine guns firing, fast heavy rattle, open air, no music')],

@@ -2,7 +2,7 @@
 # Template: templates/archival/render_all.sh (copied by `doc.py plan JOB`).
 # Render every JS scene and map of this film (skips ones newer than their source), 3 at a time, each with a hard timeout,
 # plus the subscribe overlay in the film's language. Run after `plan.py durations`, `scenes/src/build.py`, `maps/write_maps.py`.
-P=$(cd "$(dirname "$0")" && pwd); R="$P/../.."
+P=$(cd "$(dirname "$0")" && (pwd -W 2>/dev/null || pwd)); R="$P/../.."  # pwd -W: Windows python reads brief.json below
 cd "$R"
 LANG_=$(.venv/Scripts/python.exe -c "import json;print(json.load(open('$P/brief.json',encoding='utf-8')).get('language','en'))")
 jobs() {

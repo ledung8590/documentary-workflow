@@ -33,6 +33,7 @@ CREDITS = {  # on-screen credit lines follow the script language
 }
 MAPCREDIT, SCENECREDIT, FXNAME = CREDITS.get(LANG, CREDITS['en'])
 SUBS_OVER = set()  # scenes with no text of their own: subtitles stay on. Every other scene hides them (films 74-88; user review)
+ORIGINAL = {}  # film clips whose own field sound plays: {'v-tag#K': gain dB}; only after Scribe tags it as no music/speech (docs/SOUND.md)
 
 
 def norm(w):
@@ -188,6 +189,8 @@ def apply(sound_only=False):
             c.update(src=None, caption=s['caption'])
             if k == 'vid':
                 c['mute'] = True
+                if f'{tag}#{kk}' in ORIGINAL:  # real field sound (film 90: riveting under the factory line, instead of a generated SFX)
+                    c.update(mute=False, original_audio=True, gain_db=ORIGINAL[f'{tag}#{kk}'])
         else:
             raise SystemExit(f'unknown src {s["src"]}')
         vids.append(c)

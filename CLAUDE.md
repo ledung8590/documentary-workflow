@@ -1,1 +1,1 @@
-Read `AGENTS.md` and follow its dispatch: `/genvideo` and `/gendoc` run the archival workflow `docs/WORKFLOW.md`; `/gentruyen` runs story mode `docs/STORY_MODE.md`. The two paths never mix. Avoid loading all documentation at once.
+Always reply to the user in Vietnamese (user rule 2026-11-03). Read `AGENTS.md` and follow its dispatch: `/genvideo` and `/gendoc` run the archival workflow `docs/WORKFLOW.md`; `/gentruyen` runs story mode `docs/STORY_MODE.md`. The two paths never mix. Avoid loading all documentation at once.

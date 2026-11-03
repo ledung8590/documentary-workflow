@@ -125,7 +125,10 @@ MAP = {'gunshot': ('musket/el_01', 10, 1.5), 'volley': ('rifles/el_01', 8, 2.5),
        'burst': ('shellburst/el_01', 8, 2.5), 'clash': ('sabre/el_01', 11, 1.5), 'fall': ('knockfloor/el_01', 13, 1.2),
        'thud': ('stamp/el_02', 12, 1.2), 'drum': ('drum/el_01', 12, 2), 'thunder': ('thunder/el_01', 8, 3),
        'spearvolley': ('spearvolley/el_01', 9, 2.5), 'spearhit': ('spearhit/el_01', 10, 1.2), 'swordclash': ('swordclash/el_01', 10, 1.8),
-       'warcry': ('warcry/el_01', 10, 3.5), 'firecrackle': ('firecrackle/el_01', 12, 4), 'rainforest': ('rainforest/el_01', 14, 6)}
+       'warcry': ('warcry/el_01', 10, 3.5), 'firecrackle': ('firecrackle/el_01', 12, 4), 'rainforest': ('rainforest/el_01', 14, 6),
+       # WWII air war (film 90)
+       'cannon37': ('cannon37/el_01', 6, 1.8), 'mg': ('mg50/el_01', 8, 1.6), 'dive': ('planedive/el_02', 8, 3), 'flyby': ('planeflyby/el_01', 8, 3),
+       'steam': ('steamburst/el_01', 8, 2.5), 'clang': ('clang/el_01', 9, 1.2), 'crash': ('impact/el_02', 7, 1.5), 'engine': ('enginestart/el_01', 12, 2.5)}
 ALT = {'gunshot': ['musket/el_01', 'gunshot/el_03'], 'cannon': ['cannon/el_01', 'cannon/el_02', 'artillery/el_01']}
 GAP = {'gunshot': 0.6}  # thin out dense fire: one shot per 0.6 s reads as a firefight, not a wall of noise
 sd = json.loads((D / 'scenes' / 'src' / 'durations.json').read_text(encoding='utf-8'))
