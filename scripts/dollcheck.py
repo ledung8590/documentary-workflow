@@ -1,7 +1,7 @@
 """Drawn-character (K.doll) budget for a film's shot list. Archival first: dolls only where no real picture exists.
 
 Called from each film's `plan.py check` (and runnable alone: PY scripts/dollcheck.py JOB, reads timeline.json).
-A doll scene is scenes/src/NAME.js that calls `K.doll(`. Rules (user, 2026-11-02, after film 75 drew dolls in 31 % of shots):
+A doll scene is scenes/src/NAME.js that calls `K.doll(`. Rules (user, 2026-11-02; cap raised to 35 % on 2026-11-03 because film 75 at 31 % did well with viewers):
   - at most MAX_SHARE of the shots and of the running time;
   - never more than MAX_RUN doll shots in a row;
   - none in the first HOOK_S seconds (the hook is real film/pictures);
@@ -10,7 +10,7 @@ A doll scene is scenes/src/NAME.js that calls `K.doll(`. Rules (user, 2026-11-02
 import json, re, sys
 from pathlib import Path
 
-MAX_SHARE, MAX_RUN, HOOK_S = 0.10, 2, 60.0
+MAX_SHARE, MAX_RUN, HOOK_S = 0.35, 2, 60.0  # 0.10 until 2026-11-03: film 75 (31 %) was well received by viewers, so the user lifted the cap
 REASON = re.compile(r'//\s*no-real-media:\s*\S')
 
 
@@ -20,7 +20,7 @@ def doll_scenes(d):
         if f.name.startswith('_'):
             continue
         s = f.read_text(encoding='utf-8')
-        if 'K.doll(' in s:
+        if 'K.doll(' in s or 'K.stage(' in s:  # K.stage (film 6) draws dolls from a config
             out[f.stem] = bool(REASON.search(s))
     return out
 

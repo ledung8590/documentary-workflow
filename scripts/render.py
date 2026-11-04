@@ -33,9 +33,11 @@ VIDEO_ENC = X264  # the studio switches to NVENC for previews and whole-picture 
 def font(kind, size):
     """kind: head (Oswald Bold), mono, monomed, body (Be Vietnam Pro SemiBold), bodyreg,
     military (Saira Condensed Bold), stencil (Saira Stencil One), blackops (Black Ops One); all OFL, assets/fonts."""
-    key = (kind, size)
+    key = (kind, size, LANG == 'ja')
     if key not in _fc:
-        if kind == 'head':
+        if LANG == 'ja':  # the house fonts have no kana/kanji: M PLUS 1p Bold (OFL, user's font 2026-11-04) draws everything
+            f = ImageFont.truetype(str(FONTS / 'MPLUS1p-Bold.ttf'), size)
+        elif kind == 'head':
             f = ImageFont.truetype(str(FONTS / 'Oswald.ttf'), size)
             try:
                 f.set_variation_by_axes([700])
@@ -317,15 +319,26 @@ def draw_overlay(lay, o, lt):
     return False
 
 
+def halves(s):
+    """Two balanced lines: split at a space, or between characters when the text has none (Japanese)."""
+    sep = ' ' if len(s.split()) > 1 else ''
+    words = s.split() if sep else list(s)
+    if len(words) < 2:
+        return [s]
+    n = len(sep.join(words))  # Japanese: prefer the break right after 、。！？ when it is near the middle
+    cut = min(range(1, len(words)), key=lambda i: abs(len(sep.join(words[:i])) - len(sep.join(words[i:])))
+              - (n / 3 if not sep and words[i - 1] in '、。！？」・' else 0))
+    return [sep.join(words[:cut]), sep.join(words[cut:])]
+
+
 def card_title(d, pr, lt, out):
     a = ease((lt - 0.2) / 0.6) * out; s = pr['text']; size = 132; y = pr.get('y', H / 2 - 120)
     lines = [s]
     if text_w(d, s, font('head', size)) > W - 240:  # long title (film 76 ran off both edges): two balanced lines, then shrink to fit
-        words = s.split(); cut = min(range(1, len(words)), key=lambda i: abs(len(' '.join(words[:i])) - len(' '.join(words[i:]))))
-        lines = [' '.join(words[:cut]), ' '.join(words[cut:])]
+        lines = halves(s)
         while size > 72 and max(text_w(d, ln, font('head', size)) for ln in lines) > W - 240:
             size -= 6
-    f = font('head', size); lh = size * 1.1; y0 = y - (len(lines) - 1) * lh / 2
+    f = font('head', size); lh = size * (1.4 if LANG == 'vi' else 1.1); y0 = y - (len(lines) - 1) * lh / 2
     for i, ln in enumerate(lines):
         d.text(((W - text_w(d, ln, f)) / 2, y0 + i * lh + 16 * (1 - a)), ln, font=f, fill=OFFWHITE + (int(255 * a),))
     if pr.get('sub'):
@@ -337,18 +350,18 @@ def card_question(d, pr, lt, out):
     a = ease((lt - 0.15) / 0.4) * out; s = pr['text'].upper(); size = 170
     lines = [s]
     if text_w(d, s, font('head', size)) > W - 240:  # long question: two balanced lines, then shrink to fit
-        words = s.split(); cut = min(range(1, len(words)), key=lambda i: abs(len(' '.join(words[:i])) - len(' '.join(words[i:]))))
-        lines = [' '.join(words[:cut]), ' '.join(words[cut:])]
+        lines = halves(s)
         while size > 80 and max(text_w(d, ln, font('head', size)) for ln in lines) > W - 240:
             size -= 6
-    f = font('head', size); lh = size * 1.12; y0 = H / 2 - 130 - (len(lines) - 1) * lh / 2
+    # Vietnamese stacks marks above caps (Ế, Ầ) and below (Ọ): 1.12 let line 2's hats hit line 1's dots (film 6, V013)
+    f = font('head', size); lh = size * (1.4 if LANG == 'vi' else 1.12); y0 = H / 2 - 130 - (len(lines) - 1) * lh / 2
     for i, ln in enumerate(lines):
         d.text(((W - text_w(d, ln, f)) / 2, y0 + i * lh), ln, font=f, fill=RED + (int(255 * a),))
 
 
 def card_chapter(d, pr, lt, out):
     a = ease((lt - 0.1) / 0.5) * out
-    k = f"{LOC['chapter'].get(LANG, 'CHAPTER')} {pr.get('n', '')}"; fk = font('monomed', 28); d.text(((W - text_w(d, k, fk)) / 2, 300), k, font=fk, fill=(220, 210, 195, int(230 * a)))
+    k = f"第{pr.get('n', '')}章" if LANG == 'ja' else f"{LOC['chapter'].get(LANG, 'CHAPTER')} {pr.get('n', '')}"; fk = font('monomed', 28); d.text(((W - text_w(d, k, fk)) / 2, 300), k, font=fk, fill=(220, 210, 195, int(230 * a)))
     fn = font('head', 230); n = str(pr.get('n', '')); d.text(((W - text_w(d, n, fn)) / 2, 330 + 20 * (1 - a)), n, font=fn, fill=RED + (int(255 * a),))
     b = ease((lt - 0.5) / 0.5) * out; ft = font('head', 76); s = pr['title'].upper(); w = text_w(d, s, ft)
     d.text(((W - w) / 2, 640), s, font=ft, fill=OFFWHITE + (int(255 * b),))

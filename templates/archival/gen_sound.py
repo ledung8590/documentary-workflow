@@ -128,6 +128,8 @@ MAP = {'gunshot': ('musket/el_01', 10, 1.5), 'volley': ('rifles/el_01', 8, 2.5),
        'warcry': ('warcry/el_01', 10, 3.5), 'firecrackle': ('firecrackle/el_01', 12, 4), 'rainforest': ('rainforest/el_01', 14, 6),
        # WWII air war (film 90)
        'cannon37': ('cannon37/el_01', 6, 1.8), 'mg': ('mg50/el_01', 8, 1.6), 'dive': ('planedive/el_02', 8, 3), 'flyby': ('planeflyby/el_01', 8, 3),
+       'whoosh': ('whoosh/el_01', 12, 1.5), 'hit': ('impact/el_01', 7, 2.5),
+       'clock': ('clock/el_01', 12, 6), 'gallop': ('gallop/el_01', 12, 4), 'rain': ('rainroof/el_01', 14, 6),
        'steam': ('steamburst/el_01', 8, 2.5), 'clang': ('clang/el_01', 9, 1.2), 'crash': ('impact/el_02', 7, 1.5), 'engine': ('enginestart/el_01', 12, 2.5)}
 ALT = {'gunshot': ['musket/el_01', 'gunshot/el_03'], 'cannon': ['cannon/el_01', 'cannon/el_02', 'artillery/el_01']}
 GAP = {'gunshot': 0.6}  # thin out dense fire: one shot per 0.6 s reads as a firefight, not a wall of noise

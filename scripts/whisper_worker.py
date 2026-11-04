@@ -15,7 +15,8 @@ PROMPTS = {
     'es': 'Hola, este es un documental y un análisis narrativo.',
     'de': 'Hallo, dies ist eine Dokumentation und eine militärhistorische Analyse.',
     'th': 'สวัสดี นี่คือเนื้อหาภาษาไทย về lịch sử và phim tài liệu',
-    'zh': '你好，这是关于历史与军事的深度纪录片分析内容。',
+    'ja': 'こんにちは。これは歴史と軍事を分析するドキュメンタリーです。',
+    'zh':'你好，这是关于历史与军事的深度纪录片分析内容。',
 }
 
 

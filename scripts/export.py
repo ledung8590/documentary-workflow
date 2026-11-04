@@ -44,7 +44,7 @@ def main():
     if out.exists():
         out = outd / f'video-{time.strftime("%Y%m%d-%H%M%S")}.mp4'
     R.mux(proj.picture, mix, out); log(f'muxed -> {out}')
-    used = {c['src'] for t in tl['tracks'] for c in t['clips'] if c.get('src') and t['id'] != 'voice'}
+    used = {c['src'] for t in tl['tracks'] for c in t['clips'] if c.get('src') and t['id'] != 'voice'} | {u for t in tl['tracks'] for c in t['clips'] for u in c.get('uses', [])}  # photos drawn inside a JS scene (film 6)
     rows = (proj.d / 'LICENSES.md').read_text(encoding='utf-8').split('\n')
     (outd / 'LICENSES.md').write_text('\n'.join(r for r in rows if not r.startswith('| media/') or r.split('|')[1].strip() in used), encoding='utf-8')
     lines = sorted({c['line'] + (f' - {c["page"]}' if c.get('page') else '') for c in tl.get('credits', []) if c['file'] in used})

@@ -44,6 +44,10 @@ def strings(v):
 def main(job):
     d = ROOT / 'projects' / job
     tl = json.loads((d / 'timeline.json').read_text(encoding='utf-8'))
+    if (tl.get('language') or '')[:2] == 'ja':  # render.py and the scene/map engines draw Japanese films in M PLUS 1p
+        jp = TTFont(str(FONTS / 'MPLUS1p-Bold.ttf')).getBestCmap()
+        for k in FILES:
+            CMAP[k] = jp; FILES[k] = 'MPLUS1p-Bold.ttf'
     found = {}
 
     def note(miss, where):
@@ -66,7 +70,7 @@ def main(job):
         src = re.sub(r'//[^\n]*', '', src)  # comments are never drawn
         for m in re.finditer(r"'((?:[^'\\\n]|\\.)*)'|\"((?:[^\"\\\n]|\\.)*)\"|`([^`]*)`", src):
             s = next(g for g in m.groups() if g is not None)
-            if re.search(r'[A-Za-zÀ-ÿ]', s):
+            if re.search(r'[A-Za-zÀ-ÿ぀-ヿ一-鿿]', s):
                 note(missing(s, CARD), f'scene {js.stem} "{s[:40]}"')
     for mp in sorted((d / 'maps').glob('*.json')):
         for L in json.loads(mp.read_text(encoding='utf-8')).get('layers', []):

@@ -73,7 +73,7 @@ window.SCENE = { duration: 8, bg: 'brown', draw(c, t, L) { /* paint frame t (s) 
 - **Stay in the house style.** Use only the house palette and fonts. Keep text large: at least 26 px for body, 34 px for labels.
 - **Drawn characters (`K.doll`) are the last resort.** Use them only where no real picture and no modern stand-in exists (`docs/WORKFLOW.md` stage 6, picture priority).
   - Put `// no-real-media: <what was searched>` in the scene file.
-  - `scripts/dollcheck.py` holds the budget: 10 % of shots, at most 2 in a row, none in the first 60 s.
+  - `scripts/dollcheck.py` holds the budget: 35 % of shots, at most 2 in a row, none in the first 60 s.
   - Opposing armies must read apart at a glance.
 - **Treat it as an illustration.** Its credit line is "Animated graphic (illustrative)", plus the data source when there is one.
   - The timeline clip gets `kind: video`, `grade: none`.

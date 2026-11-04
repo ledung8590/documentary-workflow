@@ -16,7 +16,7 @@ The `.srt` here is the **timing the images were made for** (one image per `secon
 Optional `input/<name>.json` (or `job.json` in the folder): `title`, `language`, `voice`, and `"story": {"grade": "archival|film|modern|none", "seconds_per_image": 8, "music": true, "card_sfx": true, "title_card": true}`.
 
 ## Language and market
-`ingest` detects the script language (vi / es / de / en; `language` overrides) and picks the narrator (`VOICES` in `doc.py`: en Brian, es Alberto, de Robert Ranger, vi Tung Dang). Every on-screen word follows it: title, `CHAPTER`/`CHƯƠNG`/`CAPÍTULO`/`KAPITEL`, cards, subtitles.
+`ingest` detects the script language (ja / vi / es / de / en; `language` overrides) and picks the narrator (`VOICES` in `doc.py`: en Brian, es Alberto, de Robert Ranger, vi Tung Dang, ja Koichi Yashiro). Every on-screen word follows it: title, `CHAPTER`/`CHƯƠNG`/`CAPÍTULO`/`KAPITEL`, cards, subtitles.
 
 ## Voice
 Vietnamese and US English stories use the user's MiniMax cloned voices on AI84 by default: TUNG_DUY_V2 (vi) and LS_US (en). Whole chunks of up to 9,500 characters each are read with the voice's own expression, then Whisper cuts them into sentences for the subtitles (`docs/VOICE.md`, MiniMax section). Other languages keep the per-sentence AI84 eleven_v4 voice. The script must pass `storycheck.py` before any voice, so the voice is always generated here, never outside.

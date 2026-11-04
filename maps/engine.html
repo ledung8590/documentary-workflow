@@ -4,6 +4,8 @@
 <style>
 @font-face { font-family: Oswald; src: url(/assets/fonts/Oswald.ttf); font-weight: 200 700; }
 @font-face { font-family: BeVN; src: url(/assets/fonts/BeVietnamPro-SemiBold.ttf); }
+@font-face { font-family: Oswald; src: url(/assets/fonts/MPLUS1p-Bold.ttf); font-weight: 200 700; unicode-range: U+3000-30FF, U+31F0-31FF, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF; }  /* Japanese films: kana/kanji */
+@font-face { font-family: BeVN; src: url(/assets/fonts/MPLUS1p-Bold.ttf); unicode-range: U+3000-30FF, U+31F0-31FF, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF; }  /* Japanese films: kana/kanji */
 html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #0c0b0a; }
 #map, #fx { position: absolute; inset: 0; width: 1920px; height: 1080px; }
 #fx { pointer-events: none; }
@@ -66,7 +68,7 @@ window.setup = async (s) => {
              'fill-extrusion-opacity': 0.93, 'fill-extrusion-vertical-gradient': true } });
   try { map.setSky({ 'sky-color': '#1d2329', 'horizon-color': '#6b747b', 'fog-color': '#4a535a', 'sky-horizon-blend': 0.7,
                      'horizon-fog-blend': 0.55, 'fog-ground-blend': 0.75, 'atmosphere-blend': 0.6 }); } catch (e) {}
-  await document.fonts.load('700 44px Oswald'); await document.fonts.load('26px BeVN'); await document.fonts.ready;
+  await document.fonts.load('700 44px Oswald', 'Aあ漢'); await document.fonts.load('26px BeVN', 'Aあ漢'); await document.fonts.ready;
   return true;
 };
 

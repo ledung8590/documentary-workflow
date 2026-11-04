@@ -20,23 +20,29 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 T = {
     'en': dict(ch='CHAPTERS', first='Introduction', src='SOURCES & CREDITS', own='Narration, maps and animated graphics: original work of this channel.',
-               pd='Public domain', cc='Creative Commons files on Wikimedia Commons (licences: creativecommons.org/licenses; file page: commons.wikimedia.org/?curid=ID):',
-               maps='Map imagery: Sentinel-2 cloudless 2016 by EOX IT Services GmbH (CC BY 4.0, s2maps.eu). Terrain: AWS Terrain Tiles.',
-               music='Music and sound effects: ElevenLabs (commercial licence).', other='Other open licences:', ccc='Creative Commons files on Wikimedia Commons, by licence (creativecommons.org/licenses) and author:'),
+               pd='Public domain', cc='Creative Commons files on Wikimedia Commons (ID = Commons page ID):',
+               maps='Map imagery: Sentinel-2 cloudless 2016 by EOX IT Services GmbH (CC BY 4.0). Terrain: AWS Terrain Tiles.',
+               music='Music and sound effects: ElevenLabs (commercial licence).', other='Other open licences:', ccc='Creative Commons files on Wikimedia Commons, by licence and author:'),
     'de': dict(ch='KAPITEL', first='Einleitung', src='QUELLEN & NACHWEISE', own='Sprechertext, Karten und animierte Grafiken: eigenes Werk dieses Kanals.',
-               pd='Gemeinfrei', cc='Creative-Commons-Bilder von Wikimedia Commons (Lizenzen: creativecommons.org/licenses; Dateiseite: commons.wikimedia.org/?curid=ID):',
-               maps='Kartenbilder: Sentinel-2 cloudless 2016 von EOX IT Services GmbH (CC BY 4.0, s2maps.eu). Gelände: AWS Terrain Tiles.',
-               music='Musik und Soundeffekte: ElevenLabs (kommerzielle Lizenz).', other='Weitere offene Lizenzen:', ccc='Creative-Commons-Bilder von Wikimedia Commons, nach Lizenz (creativecommons.org/licenses) und Urheber:'),
+               pd='Gemeinfrei', cc='Creative-Commons-Bilder von Wikimedia Commons (ID = Commons-Seiten-ID):',
+               maps='Kartenbilder: Sentinel-2 cloudless 2016 von EOX IT Services GmbH (CC BY 4.0). Gelände: AWS Terrain Tiles.',
+               music='Musik und Soundeffekte: ElevenLabs (kommerzielle Lizenz).', other='Weitere offene Lizenzen:', ccc='Creative-Commons-Bilder von Wikimedia Commons, nach Lizenz und Urheber:'),
     'vi': dict(ch='CHƯƠNG', first='Mở đầu', src='NGUỒN & GHI CÔNG', own='Lời bình, bản đồ và đồ hoạ động: sản phẩm của kênh.',
-               pd='Phạm vi công cộng', cc='Ảnh Creative Commons trên Wikimedia Commons (giấy phép: creativecommons.org/licenses; trang tệp: commons.wikimedia.org/?curid=ID):',
-               maps='Ảnh bản đồ: Sentinel-2 cloudless 2016 của EOX IT Services GmbH (CC BY 4.0, s2maps.eu). Địa hình: AWS Terrain Tiles.',
+               pd='Phạm vi công cộng', cc='Ảnh Creative Commons trên Wikimedia Commons (ID = mã trang tệp trên Commons):',
+               maps='Ảnh bản đồ: Sentinel-2 cloudless 2016 của EOX IT Services GmbH (CC BY 4.0). Địa hình: AWS Terrain Tiles.',
                music='Nhạc và hiệu ứng âm thanh: ElevenLabs (giấy phép thương mại).', other='Giấy phép mở khác:'),
     'es': dict(ch='CAPÍTULOS', first='Introducción', src='FUENTES Y CRÉDITOS', own='Narración, mapas y gráficos animados: obra original de este canal.',
-               pd='Dominio público', cc='Archivos Creative Commons en Wikimedia Commons (licencias: creativecommons.org/licenses; página: commons.wikimedia.org/?curid=ID):',
-               maps='Imágenes de mapas: Sentinel-2 cloudless 2016 de EOX IT Services GmbH (CC BY 4.0, s2maps.eu). Relieve: AWS Terrain Tiles.',
+               pd='Dominio público', cc='Archivos Creative Commons en Wikimedia Commons (ID = ID de página en Commons):',
+               maps='Imágenes de mapas: Sentinel-2 cloudless 2016 de EOX IT Services GmbH (CC BY 4.0). Relieve: AWS Terrain Tiles.',
                music='Música y efectos de sonido: ElevenLabs (licencia comercial).', other='Otras licencias abiertas:'),
 }
 LIMIT = 5000
+# no web addresses at all: a new channel without advanced-feature verification may not put external links in a description
+URL = re.compile(r'\s*:?\s*https?://[^\s,]+|\s*:?\s*\b(?:www\.)?[\w-]+(?:\.[\w-]+)*\.(?:com|org|net|eu|be|gov|edu|io|uk|fr|de|vn|ru|jp|info)\b(?:/[^\s,]*)?', re.I)
+
+
+def nolinks(s):
+    return URL.sub('', s.replace('flickr.com', 'Flickr')).replace(' ,', ',')
 # public-domain credits are named by archive, not by raw metadata strings
 ORGS = [(r'National Archives|\bNARA\b', 'U.S. National Archives'), (r'U\.?S\.? Navy|\bUSN\b|Naval History', 'U.S. Navy'),
         (r'USAAF|U\.?S\.? Air Force|\bUSAF\b|United States Air Force', 'U.S. Air Force / USAAF'),
@@ -85,7 +91,7 @@ def main():
     hashtags = a.hashtags.replace(',', ' ').split()
     if len(hashtags) != 7 or not all(re.fullmatch(r'#\w+', h) for h in hashtags):
         sys.exit(f'need 7 one-word hashtags like #ColdWar, got {hashtags}')
-    used = {c['src'] for t in tl['tracks'] if t['id'] == 'video' for c in t['clips'] if c.get('src')}
+    used = {c['src'] for t in tl['tracks'] if t['id'] == 'video' for c in t['clips'] if c.get('src')} | {u for t in tl['tracks'] for c in t['clips'] for u in c.get('uses', [])}  # photos drawn inside a JS scene (film 6)
     rows = []
     for line in (d / 'LICENSES.md').read_text(encoding='utf-8').splitlines():
         if line.startswith('| media/'):
@@ -133,7 +139,7 @@ def main():
         if other:
             out += [L['other']] + sorted(set(other))
         out += [L['maps'], L['music'], '', ' '.join(hashtags), '', 'TAGS', ', '.join(tags)]
-        return '\n'.join(out).replace('<', '').replace('>', '')  # YouTube rejects angle brackets anywhere in a description
+        return nolinks('\n'.join(out)).replace('<', '').replace('>', '')  # YouTube rejects angle brackets anywhere in a description
 
     n = len(pd)
     txt = build(n)

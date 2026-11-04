@@ -9,7 +9,7 @@ Run from the workspace root with `.venv/Scripts/python.exe` (PY). Built stages a
 ## 1. Ingest [built]
 `PY scripts/doc.py doctor` (setup: `powershell -ExecutionPolicy Bypass -File scripts/setup.ps1`). Then `PY scripts/doc.py ingest`.
 **Default input:** a narration script `input/<name>.txt` (or `input/<name>/script.txt`), with mode `tts`.
-- Ingest detects the language (vi/es/de/en; `job.json` "language" overrides) and picks the narrator voice for it (`VOICES` in doc.py: en Brian, es Alberto, de Robert Ranger, vi Tung Dang; `voice.voice_id` overrides).
+- Ingest detects the language (ja/vi/es/de/en; `job.json` "language" overrides) and picks the narrator voice for it (`VOICES` in doc.py: en Brian, es Alberto, de Robert Ranger, vi Tung Dang, ja Koichi Yashiro - Deep Cinematic `4oeIbMTUt5QeJy4ZX1FC`, chosen by the user 2026-11-04; `voice.voice_id` overrides). Japanese is detected by kana. Japanese text is drawn in M PLUS 1p Bold (`assets/fonts/MPLUS1p-Bold.ttf`, OFL, the user's font 2026-11-04): render.py uses it for every card and subtitle when the language is ja, and the scene and map engines fall back to it for kana and kanji only (Latin keeps Oswald, Be Vietnam Pro and Plex). Card titles break between characters, preferring after 、。 The chapter label is 第N章. fontcheck.py checks Japanese films against M PLUS 1p.
 - The voice is generated per sentence through AI84 eleven_v4 with emotion tags, and the SRT is generated from those clips.
 - **Everything visible follows the script language:** overlays, captions, "illustrative" notes, map labels, card words, credits wording.
 - **Supplied narration** (`<name>.wav` + `<name>.srt`, mode `narration`) is still supported; its voice is only re-paced, never regenerated, unless the user asks for `voice`.
@@ -44,6 +44,17 @@ Real, licensed archival material only (`docs/MEDIA.md`); this workflow is for hi
   - Never use a stock explosion: a Mark 14 dud "thud" or a radar contact must not become a blast.
   - **Real combat film in the first ~10 s, even when the cold open is calm** (user review 2026-10-31: a ship photo at 0:06 was "nhạt"). Put 1–2 short cuts of weapons firing (a launch, a torpedo or missile hit, gunfire; DVIDS SINKEX/launch film) on the line that names the threat or the weapon ("a heavily armed adversary"), with launch/blast SFX 2–3 dB under the voice. Where the script's moment is a dud or a near miss, show the firing, not a blast.
   - Plan the hook in STORY.md at Stage 2.
+  - **The whole intro is creative motion design** (user review 2026-11-04, film 6). The intro is the cold open plus the setup lines up to the first chapter, about 60–90 s. Its first draft was photos with a few cards; the user called it "quá nhạt… khán giả dễ bỏ đi" (too bland, viewers leave easily) and said you are free to think creatively ("phải biết tư duy sáng tạo, ko hẳn theo khuôn"), in the style of a military-history analysis documentary.
+    - Design each intro sentence as its own visual idea, not one template. Examples:
+      - an old map with marching lines that race to one point and pop a portrait frame, with a flash;
+      - a portrait that flies in, with a light sweep, a name plate and a crack;
+      - accusation words slammed as stamps;
+      - province plates flipping to the enemy flag;
+      - a year counter rewinding;
+      - two civilisations colliding on a diagonal split;
+      - a life counter, plus measured panels for wall thickness and muzzle velocity.
+    - **The motion graphics come on top of combat film, never instead of it** (user 2026-11-04: "vẫn ưu tiên kèm cả video nổ đầu đó"). Real combat film still comes first in the opening: gunfire, cannon salvos, blasts, burning positions. Put it in the first ~10 s and cut it between the designed scenes, with blast SFX 2–3 dB under the voice. For pre-film eras, use reenactment fire and blast film, labelled illustrative (film 6: cannon crews firing).
+    - Build with real archival images inside JS scenes (`images:` + `K.photo`, `K.stamp`, `K.sweep`, `K.flashAt`, `K.streaks`), with SFX on every hit. Reference: film 6 `evidence/6. Phan Thanh Giản…/project/scenes/src/o-*.js`.
 - **Weapons footage.** Wherever the narration names a weapon or a strike, show real weapons film (DVIDS SINKEX and launch footage, `docs/MEDIA.md`) with blast or launch SFX on the hit frame. Under the voice, keep SFX peaks 2–3 dB below the voice peaks.
 - **Subscribe call-to-action.** The narration's "subscribe" line always gets the animated subscribe overlay: the button, a cursor click, the switch to "Subscribed" with FX, and the bell, with click SFX (`docs/SCENES.md`, Subscribe overlay). This rule comes from the user review on 2026-10-31.
 - Never more than ~25 s without a map, scene, card or callout. Still photos fill at most about half the screen time.
@@ -54,7 +65,7 @@ Real, licensed archival material only (`docs/MEDIA.md`); this workflow is for hi
   2. If that is rare: a modern stand-in (reenactment, museum object, the place today, later painting), captioned "(illustrative)" in the script's language.
   3. A 3D map or a JS graphic without figures (data, diagram, timeline, document).
   4. Only then a JS scene with drawn period figures (`K.doll`).
-  - Budget, enforced by `plan.py check` via `scripts/dollcheck.py`: at most **10 %** of shots and of running time, never more than **2** doll shots in a row, none in the first **60 s**, and every doll scene file carries `// no-real-media: <what was searched>`.
+  - Budget, enforced by `plan.py check` via `scripts/dollcheck.py`: at most **35 %** of shots and of running time (was 10 %; raised 2026-11-03: film 75 at 31 % did well with viewers, and pre-photography eras need drawn people for key moments), never more than **2** doll shots in a row, none in the first **60 s**, and every doll scene file carries `// no-real-media: <what was searched>`.
   - A film's `plan.py` is copied from the newest `evidence/*/project/plan.py`. Its `check()` must end with `dollcheck.check(D, sh)`; add the call if the copy lacks it. Fix every `!!` line before the draft render.
   - One drawing style per film: only `K.doll` on the kit's backgrounds; no second character style.
 **Edit plan (the archival toolkit, never `doc.py story`).** The picture, overlays and sound are written as plan files and built into the timeline by the film's `plan.py`. Do not fill per-sentence slots one by one: that gave the "crude slideshow" of 2026-10-31.
@@ -122,6 +133,7 @@ Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py
   - public-domain sources by archive;
   - every Creative Commons file on screen, with author, licence and Commons ID (grouped by author; Bundesarchiv as "Bundesarchiv, Bild …");
   - map and music credits;
+  - no web addresses at all: the channel is not verified for external links, so the script strips every URL and domain (author pages included), and intro.txt and note.txt must contain none either;
   - a line of 7 #hashtags (one word each, script language) just above TAGS, so YouTube picks them up and shows them above the title (user request, 2026-11-01);
   - the TAGS line.
   The text must be ready to paste into YouTube and stay under 5,000 characters. Never write "see credits.txt" or point to any internal file: the viewer cannot see them (user review 2026-11-01).

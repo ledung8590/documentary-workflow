@@ -25,7 +25,7 @@ RECORD = ['timeline.json', 'script.txt', 'STORY.md', 'FACTS.md', 'brief.json', '
           'description_youtube.txt', 'thumbnail.py', 'scenes', 'maps', 'voice/voice.wav', 'voice/voice.srt', 'voice/words.json',
           # the edit plan that built the timeline (film 74 left these behind in projects/)
           'plan.py', 'gen_sound.py', 'shots.txt', 'overlays.txt', 'sound.txt', 'sound_scenes.txt', 'PICKS.md',
-          'searches.txt', 'searches3.txt', 'build_timeline.py']
+          'searches.txt', 'searches3.txt', 'build_timeline.py', 'intro.txt', 'note.txt', 'thumb']
 
 
 def hms(t):
@@ -109,6 +109,8 @@ def main():
                 assets.add(src[len('../../assets/'):]); continue
             if src.startswith('media/'):
                 used.setdefault(src, []).append(c)
+            for u in c.get('uses', []):  # photos drawn inside a JS scene (film 6)
+                used.setdefault(u, []).append(c)
     for src, cs in used.items():
         own = next((OWN[k] for k in OWN if Path(src).name.startswith(k)), None)
         r = lic.get(src) or (own and {'page': '', 'author': 'this channel', 'licence': own, 'date': ''})

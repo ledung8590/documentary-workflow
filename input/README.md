@@ -11,6 +11,7 @@ Bạn không cần gen giọng hay SRT trước. Pipeline tự làm các việc 
   | US/EN | Brian - Deep, Resonant and Comforting |
   | ES | Alberto Rodríguez - Serious, Narrative |
   | DE | Robert Ranger - Cool Storyteller |
+  | JA | Koichi Yashiro - Deep Cinematic (`4oeIbMTUt5QeJy4ZX1FC`) |
   | VI | Tung Dang - Deep, Warm and Resonant |
 
 - **Gen từng câu, mỗi câu có thẻ cảm xúc** (`[dramatic]`, `[thoughtful]`…). Câu nào chưa ưng thì gen lại riêng câu đó.

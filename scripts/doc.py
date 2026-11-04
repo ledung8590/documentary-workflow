@@ -40,7 +40,8 @@ DEFAULTS = {
 VOICES = {'en': ('Gubgw9l4dtIoQA9YZHgx', 'Brian - Deep, Resonant and Comforting'),
           'es': ('l1zE9xgNpUTaQCZzpNJa', 'Alberto Rodríguez - Serious, Narrative'),
           'vi': ('3VnrjnYrskPMDsapTr8X', 'Tung Dang - Deep, Warm and Resonant'),
-          'de': ('ML23UVoFL5mI6APbRAeR', 'Robert Ranger - Cool Storyteller')}
+          'de': ('ML23UVoFL5mI6APbRAeR', 'Robert Ranger - Cool Storyteller'),
+          'ja': ('4oeIbMTUt5QeJy4ZX1FC', 'Koichi Yashiro - Deep Cinematic')}  # chosen by the user 2026-11-04 for 30-60 min military films
 # story narrators (/gentruyen): the user's MiniMax cloned voices on AI84, sent as whole chunks that the voice reads with its own
 # expression (viewers liked them: TUNG_DUY_V2 for Vietnamese, LS_US for US English stories, 2026-11-02); job.json voice overrides
 STORY_VOICES = {'vi': 'TUNG_DUY_V2', 'en': 'LS_US'}
@@ -59,9 +60,11 @@ def merge(a, b):
 
 
 def detect_language(text):
-    """vi / es / de / en from the script itself (job.json 'language' overrides). Cheap and transparent: Vietnamese
-    tone marks, Spanish marks and stop words; English otherwise."""
+    """ja / vi / es / de / en from the script itself (job.json 'language' overrides). Cheap and transparent: Japanese
+    kana, Vietnamese tone marks, Spanish marks and stop words; English otherwise."""
     t = text.lower()
+    if len(re.findall(r'[぀-ヿ]', t)) > max(20, len(t) // 50):  # hiragana / katakana (Chinese has none)
+        return 'ja'
     if len(re.findall(r'[ăâđêôơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]', t)) > max(5, len(t) // 200):
         return 'vi'
     words = re.findall(r'[a-záéíóúñüäöß]+', t)
@@ -1043,7 +1046,7 @@ def build(job, what):
     if what == 'all':
         out = ROOT / 'output' / d.name / 'video.mp4'
         R.mux(pic, aud, out)
-        used = {c['src'] for t in tl['tracks'] for c in t['clips'] if c.get('src') and t['id'] != 'voice'}
+        used = {c['src'] for t in tl['tracks'] for c in t['clips'] if c.get('src') and t['id'] != 'voice'} | {u for t in tl['tracks'] for c in t['clips'] for u in c.get('uses', [])}  # photos drawn inside a JS scene (film 6)
         rows = (d / 'LICENSES.md').read_text(encoding='utf-8').split('\n')
         keep = [r for r in rows if not r.startswith('| media/') or r.split('|')[1].strip() in used]
         (out.parent / 'LICENSES.md').write_text('\n'.join(keep), encoding='utf-8')  # only media actually on screen

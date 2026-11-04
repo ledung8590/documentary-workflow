@@ -33,6 +33,7 @@ CREDITS = {  # on-screen credit lines follow the script language
 }
 MAPCREDIT, SCENECREDIT, FXNAME = CREDITS.get(LANG, CREDITS['en'])
 SUBS_OVER = set()  # scenes with no text of their own: subtitles stay on. Every other scene hides them (films 74-88; user review)
+SCENE_MEDIA = {}  # JS scenes that draw real photos (film 6): {'scene-name': ('credit line', ['media/x.jpg', ...])}; listed as `uses` so LICENSES/credits keep them
 ORIGINAL = {}  # film clips whose own field sound plays: {'v-tag#K': gain dB}; only after Scribe tags it as no music/speech (docs/SOUND.md)
 
 
@@ -177,6 +178,8 @@ def apply(sound_only=False):
         c['end_anchor'] = anchors.anchor(s['t1'])
         if k == 'scene':
             c.update(src=f'media/scene-{rest}.mp4', kind='video', grade='none', credit=SCENECREDIT, caption=s['caption'], mute=True, **{'in': 0.0})
+            if rest in SCENE_MEDIA:
+                c.update(credit=f'{SCENECREDIT} · {SCENE_MEDIA[rest][0]}', uses=SCENE_MEDIA[rest][1])
             if rest not in SUBS_OVER:  # graphics with their own text: subtitles step aside (render.hide_under_text)
                 c['hide_subtitles'] = True
         elif k == 'map':

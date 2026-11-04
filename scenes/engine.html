@@ -4,6 +4,9 @@
 @font-face { font-family: Oswald; src: url(/assets/fonts/Oswald.ttf); font-weight: 200 700; }
 @font-face { font-family: BeVN; src: url(/assets/fonts/BeVietnamPro-SemiBold.ttf); }
 @font-face { font-family: Plex; src: url(/assets/fonts/IBMPlexMono-Medium.ttf); }
+@font-face { font-family: Oswald; src: url(/assets/fonts/MPLUS1p-Bold.ttf); font-weight: 200 700; unicode-range: U+3000-30FF, U+31F0-31FF, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF; }  /* Japanese films: kana/kanji */
+@font-face { font-family: BeVN; src: url(/assets/fonts/MPLUS1p-Bold.ttf); unicode-range: U+3000-30FF, U+31F0-31FF, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF; }  /* Japanese films: kana/kanji */
+@font-face { font-family: Plex; src: url(/assets/fonts/MPLUS1p-Bold.ttf); unicode-range: U+3000-30FF, U+31F0-31FF, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF; }  /* Japanese films: kana/kanji */
 html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #0c0b0a; }
 canvas { position: absolute; inset: 0; }
 </style>
@@ -13,9 +16,13 @@ canvas { position: absolute; inset: 0; }
 // Motion-graphics scene engine: deterministic per-frame rendering for the headless recorder (scripts/jsscene.mjs).
 // A scene file sets window.SCENE = {duration, bg, draw(c, t, L)}; draw paints frame t (seconds) on the 2D context c.
 window.setup = async (src) => {
-  await Promise.all(['700 40px Oswald', '400 40px Oswald', '30px BeVN', '30px Plex'].map(f => document.fonts.load(f)));
+  await Promise.all(['700 40px Oswald', '400 40px Oswald', '30px BeVN', '30px Plex'].map(f => document.fonts.load(f, 'Aあ漢')));
   await document.fonts.ready;
   await new Promise((ok, bad) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = bad; document.head.appendChild(s); });
+  // SCENE.images = {key: '/projects/<id>/media/x.jpg'}: real photos a scene draws (K.photo); loaded before the first frame (film 6)
+  window.IMG = {};
+  if (SCENE.images) await Promise.all(Object.entries(SCENE.images).map(([k, u]) => new Promise((ok, bad) => {
+    const im = new Image(); im.onload = () => { IMG[k] = im; ok(); }; im.onerror = () => bad(new Error('image ' + u)); im.src = u; })));
   return { duration: SCENE.duration };
 };
 window.renderAt = (t) => {
