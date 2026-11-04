@@ -53,7 +53,10 @@ Real, licensed archival material only (`docs/MEDIA.md`); this workflow is for hi
       - a year counter rewinding;
       - two civilisations colliding on a diagonal split;
       - a life counter, plus measured panels for wall thickness and muzzle velocity.
-    - **The motion graphics come on top of combat film, never instead of it** (user 2026-11-04: "vẫn ưu tiên kèm cả video nổ đầu đó"). Real combat film still comes first in the opening: gunfire, cannon salvos, blasts, burning positions. Put it in the first ~10 s and cut it between the designed scenes, with blast SFX 2–3 dB under the voice. For pre-film eras, use reenactment fire and blast film, labelled illustrative (film 6: cannon crews firing).
+    - **This is a separate rule from the combat-film rule above; both apply** (user 2026-11-04: "vẫn ưu tiên kèm cả video nổ đầu đó… nó riêng").
+      - The real combat/blast clips in the first ~10 s (the bullet above) stay as their own full-frame cuts, with priority. They are not a background under the graphics.
+      - The motion-design scenes are their own cuts too, never a replacement for the combat clips.
+      - For pre-film eras, use reenactment fire and blast film labelled illustrative (film 6: cannon crews firing).
     - Build with real archival images inside JS scenes (`images:` + `K.photo`, `K.stamp`, `K.sweep`, `K.flashAt`, `K.streaks`), with SFX on every hit. Reference: film 6 `evidence/6. Phan Thanh Giản…/project/scenes/src/o-*.js`.
 - **Weapons footage.** Wherever the narration names a weapon or a strike, show real weapons film (DVIDS SINKEX and launch footage, `docs/MEDIA.md`) with blast or launch SFX on the hit frame. Under the voice, keep SFX peaks 2–3 dB below the voice peaks.
 - **Subscribe call-to-action.** The narration's "subscribe" line always gets the animated subscribe overlay: the button, a cursor click, the switch to "Subscribed" with FX, and the bell, with click SFX (`docs/SCENES.md`, Subscribe overlay). This rule comes from the user review on 2026-10-31.
