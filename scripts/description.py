@@ -1,6 +1,6 @@
 """Paste-ready YouTube description (stage 13): projects/JOB/description_youtube.txt.
 
-  PY scripts/description.py JOB --intro intro.txt [--note note.txt] --tags "t1, t2, ..., t7" --hashtags "#A #B ... #G"
+  PY scripts/description.py JOB --intro intro.txt [--note note.txt] --tags "t1, t2, ..., t7" --hashtags "#A #B ... #G" [--no-links]
 
 The agent writes the intro (what the film is about) and an optional note (what is illustrative / reconstructed), in the
 script's language. This script adds everything else from the project's own records, so the text can be pasted into
@@ -11,6 +11,8 @@ YouTube as it is:
 - map basemap credit and music/SFX credit;
 - a line of 7 #hashtags just above TAGS (YouTube shows the first ones above the title; user request 2026-11-01);
 - the TAGS line (7 tags, comma-separated).
+Source links are on by default (user 2026-11-04: the channel passed advanced-feature verification): as many as fit 5,000 characters.
+--no-links strips every URL, only for a new channel the user names.
 It never refers to files the viewer cannot see (no "see credits.txt"; user review 2026-11-01) and keeps the text under
 YouTube's 5,000-character limit by shortening the public-domain author list first."""
 import argparse, json, re, sys
@@ -31,13 +33,18 @@ T = {
                pd='Phạm vi công cộng', cc='Ảnh Creative Commons trên Wikimedia Commons (ID = mã trang tệp trên Commons):',
                maps='Ảnh bản đồ: Sentinel-2 cloudless 2016 của EOX IT Services GmbH (CC BY 4.0). Địa hình: AWS Terrain Tiles.',
                music='Nhạc và hiệu ứng âm thanh: ElevenLabs (giấy phép thương mại).', other='Giấy phép mở khác:'),
+    'ja': dict(ch='チャプター', first='はじめに', src='出典とクレジット', own='ナレーション、地図、アニメーション図解: 当チャンネルのオリジナル制作。',
+               pd='パブリックドメイン', cc='Wikimedia Commons のクリエイティブ・コモンズ素材:',
+               maps='地図画像: Sentinel-2 cloudless 2016 (EOX IT Services GmbH, CC BY 4.0)。地形: AWS Terrain Tiles。',
+               music='音楽と効果音: ElevenLabs (商用ライセンス)。', other='その他のオープンライセンス:', ccc='Wikimedia Commons のクリエイティブ・コモンズ素材(ライセンスと作者別):',
+               idurl='各素材のページ: https://commons.wikimedia.org/?curid= の後に ID を付けてください。', pdids='パブリックドメイン素材の Commons ID:', pdpages='米国政府の映像:'),
     'es': dict(ch='CAPÍTULOS', first='Introducción', src='FUENTES Y CRÉDITOS', own='Narración, mapas y gráficos animados: obra original de este canal.',
                pd='Dominio público', cc='Archivos Creative Commons en Wikimedia Commons (ID = ID de página en Commons):',
                maps='Imágenes de mapas: Sentinel-2 cloudless 2016 de EOX IT Services GmbH (CC BY 4.0). Relieve: AWS Terrain Tiles.',
                music='Música y efectos de sonido: ElevenLabs (licencia comercial).', other='Otras licencias abiertas:'),
 }
 LIMIT = 5000
-# no web addresses at all: a new channel without advanced-feature verification may not put external links in a description
+# --no-links only: a new channel without advanced-feature verification may not put external links in a description
 URL = re.compile(r'\s*:?\s*https?://[^\s,]+|\s*:?\s*\b(?:www\.)?[\w-]+(?:\.[\w-]+)*\.(?:com|org|net|eu|be|gov|edu|io|uk|fr|de|vn|ru|jp|info)\b(?:/[^\s,]*)?', re.I)
 
 
@@ -79,7 +86,7 @@ def ts(s):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('job'); ap.add_argument('--intro', required=True); ap.add_argument('--note'); ap.add_argument('--tags', required=True)
-    ap.add_argument('--hashtags', required=True)
+    ap.add_argument('--hashtags', required=True); ap.add_argument('--no-links', action='store_true', help='new channel only: no URL anywhere')
     a = ap.parse_args()
     d = ROOT / 'projects' / a.job
     tl = json.loads((d / 'timeline.json').read_text(encoding='utf-8'))
@@ -99,7 +106,7 @@ def main():
             if c[1] in used:
                 rows.append({'file': c[1], 'page': c[2], 'author': c[3], 'licence': c[4].split(' http')[0]})
     latest = {r['file']: r for r in rows}  # the last row per file wins
-    pd, cc, other = Counter(), {}, []
+    pd, cc, other = Counter(), {}, []; pd_ids, pd_pages = [], []
     for r in latest.values():
         lic, au = r['licence'], clean_author(r['author'], r['page'])
         m = re.search(r'commons-(\d+)\.', r['file'])
@@ -109,6 +116,7 @@ def main():
             else:
                 cc.setdefault((au, lic), []).append('ID ' + m.group(1) if m else r['page'])  # one line per author + licence
         elif re.search(r'public domain|CC0|PDM|no restrictions|no known', lic, re.I):
+            (pd_ids.append(m.group(1)) if m else pd_pages.append(r['page']))
             org = next((name for rx, name in ORGS if re.search(rx, au + ' ' + r['page'])), None)
             if org:
                 pd[org] += 1
@@ -120,7 +128,8 @@ def main():
     intro = Path(a.intro).read_text(encoding='utf-8').strip()
     note = Path(a.note).read_text(encoding='utf-8').strip() if a.note else ''
 
-    def build(n_pd, compact=False):
+    def build(n_pd, compact=False, urls=False, with_ids=False):
+        link = lambda x: re.sub(r'^ID (\d+)$', r'https://commons.wikimedia.org/?curid=\1', x) if urls else x
         orgs = {name for _, name in ORGS}
         names = [k for k, _ in pd.most_common() if k in orgs] + [k for k, _ in pd.most_common() if k not in orgs][:min(n_pd, 12)]
         out = [intro, '', L['ch'], f'0:00 {L["first"]}'] + [f'{ts(s)} {t}' for s, t in sorted(chapters)]
@@ -130,7 +139,7 @@ def main():
         if pd:
             out.append(f'{L["pd"]}: ' + ', '.join(names) + (', …' if len(names) < len(pd) else '') + '.')
         if cc and not compact:
-            out += [L['cc']] + [f'- {au}, {lic}: ' + ', '.join(sorted(set(ids))) for (au, lic), ids in sorted(cc.items(), key=lambda x: x[0][0].lower())]
+            out += [L['cc']] + [f'- {au}, {lic}: ' + ', '.join(sorted({link(i) for i in ids})) for (au, lic), ids in sorted(cc.items(), key=lambda x: x[0][0].lower())]
         elif cc:  # many CC authors (film 76: 124): one line per licence, authors only (author + licence is the attribution)
             by = {}
             for (au, lic), _ in cc.items():
@@ -138,11 +147,19 @@ def main():
             out += [L.get('ccc', T['en']['ccc'])] + [f'- {lic}: ' + ', '.join(sorted(v, key=str.lower)) for lic, v in sorted(by.items())]
         if other:
             out += [L['other']] + sorted(set(other))
+        if not a.no_links:
+            if pd_pages:
+                out += [L.get('pdpages', 'Other public-domain sources:') + ' ' + ' '.join(sorted(set(pd_pages)))]
+            if with_ids and pd_ids:
+                out += [L.get('pdids', 'Public-domain files, Commons ID:') + ' ' + ', '.join(sorted(set(pd_ids)))]
+            if with_ids or not urls:
+                out += [L.get('idurl', 'File pages: https://commons.wikimedia.org/?curid= followed by the ID.')]
         out += [L['maps'], L['music'], '', ' '.join(hashtags), '', 'TAGS', ', '.join(tags)]
-        return nolinks('\n'.join(out)).replace('<', '').replace('>', '')  # YouTube rejects angle brackets anywhere in a description
+        txt = '\n'.join(out)
+        return (nolinks(txt) if a.no_links else txt).replace('<', '').replace('>', '')  # YouTube rejects angle brackets anywhere in a description
 
     n = len(pd)
-    txt = build(n)
+    txt = next((x for x in (build(n, urls=True, with_ids=True), build(n, urls=True), build(n, with_ids=True)) if len(x) <= LIMIT), build(n))  # the most links that fit
     while len(txt) > LIMIT and n > 3:
         n -= 3; txt = build(n)
     if len(txt) > LIMIT:

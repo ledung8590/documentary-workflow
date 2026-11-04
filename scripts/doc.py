@@ -512,9 +512,10 @@ def tts_ai84(d, cfg, voice, sents, todo, do_run):
         """Real character timings of a finished clip (Whisper, OmniVoice logic); a warning if little of it was heard."""
         audio, meta = clip_paths(d, s, voice); rec = read(meta)
         words = worker.transcribe(audio, lang, audio.with_suffix('.whisper.json'))
-        sp = s.get('say') or spoken(s['text'])
-        ratio = difflib.SequenceMatcher(None, sp.lower(), ' '.join(w['word'] for w in words).lower(), autojunk=False).ratio()
-        ct = WA.char_times(s['text'], words) if words else None
+        cjk = lang in ('zh', 'ja', 'ko', 'th')  # Whisper writes kanji, so a kana `say` is compared by its script text
+        sp = s['text'] if cjk else s.get('say') or spoken(s['text'])
+        ratio = difflib.SequenceMatcher(None, sp.lower(), ('' if cjk else ' ').join(w['word'] for w in words).lower(), autojunk=False).ratio()
+        ct = WA.char_times(s['text'], words, cjk) if words else None
         if ct:
             rec['alignment'] = {'characters': list(s['text']), 'character_start_times_seconds': [round(v, 3) for v in ct],
                                 'character_end_times_seconds': [round(v, 3) for v in ct[1:] + [ct[-1] + 0.08]], 'source': 'whisper'}
@@ -738,9 +739,13 @@ def words_from(alignment, shift, limit):
         return []
     ch, st, en = alignment['characters'], alignment['character_start_times_seconds'], alignment['character_end_times_seconds']
     words, cur = [], None
+    hira = lambda x: 'ぁ' <= x <= 'ゟ'
     for c, a, b in zip(ch, st, en):
         if c.isspace():
             cur = None; continue
+        # Japanese has no spaces: a new word after 、。 and where hiragana ends (漆黒の / 闇に / 包まれた); other languages never hit this
+        if cur is not None and (cur['w'][-1] in '、。！？」』）' or (hira(cur['w'][-1]) and not hira(c) and c not in '、。！？」』）・')):
+            cur = None
         if cur is None:
             cur = {'w': '', 'start': a, 'end': b}; words.append(cur)
         cur['w'] += c; cur['end'] = b
@@ -762,7 +767,7 @@ def srt_cues(sents, timing, char_t, lang=None):
         if not ts:
             spans += subtitle_cues(s['text'], timing[s['id']]['start'], timing[s['id']]['end'], timing[s['id']]['words']); continue
         pos = 0
-        for part in WA.split_subtitles(s['text'], is_cjk=cjk):
+        for part in WA.split_subtitles(s['text'], max_chars=26 if cjk else WA.MAX_CHARS, is_cjk=cjk):  # full-width glyphs: 34 chars at most fit the frame
             i = s['text'].find(part, pos)
             if i < 0:
                 i = pos
@@ -866,7 +871,7 @@ def status(job):
 def norm_words(text):
     text = unicodedata.normalize('NFKD', text.lower())
     text = ''.join(c for c in text if not unicodedata.combining(c)).replace('đ', 'd')
-    return re.findall(r'[a-z0-9]+', text)
+    return re.findall(r'[a-z0-9]+|[぀-ヿ一-鿿]', text)  # Japanese compares by character
 
 
 def qa(job, video, stt=False, do_run=False):

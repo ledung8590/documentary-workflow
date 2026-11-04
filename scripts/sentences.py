@@ -54,6 +54,8 @@ def _norm(s):
 def _split_paragraph(text, lang=None):
     """Split a paragraph into sentences; keeps abbreviations, decimals (7.5) and dotted numbers (1.954) intact.
     German ordinals ("III. Korps", "7. Kürassier-Regiment") are not sentence ends."""
+    if lang == 'ja':  # no spaces between sentences; 。 closes one, closing quotes stay with it
+        return [s.strip() for s in re.findall(r'.+?(?:[。！？!?…]+[」』）)”’]*|$)', text) if s.strip()]
     out, start = [], 0
     for m in re.finditer(r'(\.\.\.|…|[.!?])(["”’»)\]]*)(\s+|$)', text):
         end = m.end(2)
@@ -148,6 +150,8 @@ def design_pauses(sents):
     """Fill emotion (heuristic where missing) and pause_after (unless locked). Mutates and returns sents."""
     for i, s in enumerate(sents):
         words = len(s['text'].split())
+        if re.search(r'[぀-ヿ一-鿿]', s['text']):  # Japanese has no spaces: about 2.5 characters a word
+            words = max(1, round(len(s['text']) / 2.5))
         s['words'] = words
         if not s.get('emotion'):
             s['emotion'], s['source'] = guess_emotion(s['text'], i, words), 'heuristic'

@@ -61,7 +61,11 @@ Real, licensed archival material only (`docs/MEDIA.md`); this workflow is for hi
 - **Weapons footage.** Wherever the narration names a weapon or a strike, show real weapons film (DVIDS SINKEX and launch footage, `docs/MEDIA.md`) with blast or launch SFX on the hit frame. Under the voice, keep SFX peaks 2–3 dB below the voice peaks.
 - **Subscribe call-to-action.** The narration's "subscribe" line always gets the animated subscribe overlay: the button, a cursor click, the switch to "Subscribed" with FX, and the bell, with click SFX (`docs/SCENES.md`, Subscribe overlay). This rule comes from the user review on 2026-10-31.
 - Never more than ~25 s without a map, scene, card or callout. Still photos fill at most about half the screen time.
-- **Never merge shots to hide a missing picture, and never use the same picture twice in a film** (YouTube demonetises reused content). A shot with no unique archival picture gets a map, a JS scene or a card.
+- **Never merge shots to hide a missing picture, and never use the same picture twice in a film** (user rule). A shot with no unique archival picture gets a map, a JS scene or a card.
+- **Across films** (user 2026-11-04, film 88). YouTube's policy allows reused footage with a storyline or commentary, and it names no limit in seconds. The risk at hundreds of films is its "inauthentic content" rule: repetitive or mass-produced videos, judged across the channel. So films must not look like one template:
+  - `plan.py check` (`scripts/filmrepeat.py`) compares against `evidence/*/project/timeline.json`: `!!` for anything repeated in the first 90 s and for any repeated film cut, `!` for later stills, which may repeat.
+  - Every opening is its own idea drawn from that script's subject, in its era where possible. Do not start from the previous film's opening or from generic firing film; `cannon fire` searches return the same few files (film 88's first draft opened with the cannon of films 6 and 75).
+  - Tell media-search subagents which sources earlier films used.
 - Before the studio stop, count media keys used more than once (must be zero) and compare a contact sheet of the draft with the reference.
 - **Picture priority: archival first, drawn characters last** (user, 2026-11-02; film 75 drew dolls in 31 % of shots, which reads as a patchwork style).
   1. Real period media: photos, paintings, engravings, film.
@@ -136,7 +140,7 @@ Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py
   - public-domain sources by archive;
   - every Creative Commons file on screen, with author, licence and Commons ID (grouped by author; Bundesarchiv as "Bundesarchiv, Bild …");
   - map and music credits;
-  - no web addresses at all: the channel is not verified for external links, so the script strips every URL and domain (author pages included), and intro.txt and note.txt must contain none either;
+  - source links, on by default (user 2026-11-04: the channel passed advanced-feature verification), as many as fit 5,000 characters. Add `--no-links` only when the user says the film is for a new channel; it strips every URL and domain;
   - a line of 7 #hashtags (one word each, script language) just above TAGS, so YouTube picks them up and shows them above the title (user request, 2026-11-01);
   - the TAGS line.
   The text must be ready to paste into YouTube and stay under 5,000 characters. Never write "see credits.txt" or point to any internal file: the viewer cannot see them (user review 2026-11-01).

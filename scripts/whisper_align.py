@@ -196,6 +196,8 @@ def split_subtitles(text, max_chars=MAX_CHARS, is_cjk=False):
             in_word |= ch in '.,' and 0 < j < len(s) - 1 and s[j - 1].isdigit() and s[j + 1].isdigit()  # "19,05", "140.000" (de/es/vi digits)
             if ch in BREAK_MINOR and not in_word and len(part) >= 10 and rem >= 8:
                 parts.append(part.strip()); part = ''
+            elif len(part) >= max_chars and is_cjk and len(part) < max_chars + 8 and not ('ぁ' <= ch <= 'ゟ' and not 'ぁ' <= s[j + 1] <= 'ゟ'):
+                pass  # Japanese: wait for the end of a hiragana run, so a kanji compound is not cut in two
             elif len(part) >= max_chars:
                 if not is_cjk and ' ' in part and part.rfind(' ') > 12:
                     k = part.rfind(' ')

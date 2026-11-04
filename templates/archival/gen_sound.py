@@ -169,6 +169,8 @@ for s in plan.shots():
             rel = ALT[kind][n_ev % len(ALT[kind])]
         dur = round(min(dur, s['t1'] - s['t0'] - t + 0.15), 2)  # stop at the cut (render fades the last 0.3 s): no tail into the next shot
         add(s['t0'] + t, rel, under, dur); n_ev += 1
+        if rel.startswith('impact/') and t + 0.3 < s['t1'] - s['t0']:  # impact is sub-bass only (film 88: 44 dB under the voice above 400 Hz, silent on laptops): cardslam is what is heard
+            add(s['t0'] + t, 'cardslam/el_01', 1, round(min(1.5, s['t1'] - s['t0'] - t + 0.15), 2))
 
 # ---- archival/reenactment film clips: the shot they show (clip seconds of the first visible firing, measured on the clip's own audio)
 for s in plan.shots():

@@ -30,6 +30,7 @@ CREDITS = {  # on-screen credit lines follow the script language
     'es': ('Relieve: AWS Terrain Tiles · Satélite: Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) · Posiciones, flechas: esquemáticas', 'Gráfico animado (ilustrativo)', 'Efectos'),
     'vi': ('Địa hình: AWS Terrain Tiles · Vệ tinh: Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) · Vị trí, mũi tên: minh hoạ', 'Đồ hoạ động (minh hoạ)', 'Hiệu ứng'),
     'fr': ('Relief : AWS Terrain Tiles · Satellite : Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) · Positions, flèches : schématiques', 'Graphique animé (illustratif)', 'Effets'),
+    'ja': ('地形: AWS Terrain Tiles · 衛星画像: Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) · 位置・矢印は模式図', 'アニメーション図解(イメージ)', '効果'),
 }
 MAPCREDIT, SCENECREDIT, FXNAME = CREDITS.get(LANG, CREDITS['en'])
 SUBS_OVER = set()  # scenes with no text of their own: subtitles stay on. Every other scene hides them (films 74-88; user review)
@@ -54,6 +55,15 @@ def resolve(a):
         ws = [norm(w.get('w') or w.get('text') or w.get('word', '')) for w in s['words']]
         ph = [norm(x) for x in phrase.split()]
         hit = next((i for i in range(len(ws)) if ws[i:i + len(ph)] == ph), None)
+        if hit is None and LANG == 'ja':  # no spaces: the phrase may start inside a word; interpolate within it
+            joined, pos = ''.join(ws), ''.join(ph)
+            at = joined.find(pos)
+            if at >= 0:
+                for i, w in enumerate(ws):
+                    if at < len(w):
+                        x = s['words'][i]; t = x['start'] + (x['end'] - x['start']) * at / max(1, len(w))
+                        return round(t + float(off or 0), 3)
+                    at -= len(w)
         if hit is None:
             raise SystemExit(f'{a}: phrase not found in {sid}: {" ".join(ws)[:200]}')
         t = s['words'][hit]['start']
@@ -148,6 +158,8 @@ def check():
     warn += dollcheck.check(D, sh)
     import reviewcheck  # overlay text inside the frame, typing sound, firing sound (scripts/reviewcheck.py, film 76)
     warn += reviewcheck.check(D, sh)
+    import filmrepeat  # footage an earlier film already showed (scripts/filmrepeat.py, film 88)
+    warn += filmrepeat.check(D, sh)
     print({k: round(v) for k, v in kinds.items()}, f'total {DUR:.0f}s, {len(sh)} shots, {warn} warnings')
 
 

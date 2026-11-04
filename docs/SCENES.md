@@ -1,6 +1,6 @@
 # Animated JS graphic scenes
 
-These scenes fill shots that have no unique archival picture. Never merge shots or repeat a picture to cover a gap: YouTube demonetises reused content.
+These scenes fill shots that have no unique archival picture. Never merge shots or repeat a picture to cover a gap (`docs/WORKFLOW.md` stage 6).
 
 ## Commands
 - Render a still to check a frame:
