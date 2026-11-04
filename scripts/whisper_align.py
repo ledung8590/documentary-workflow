@@ -189,6 +189,8 @@ def split_subtitles(text, max_chars=MAX_CHARS, is_cjk=False):
             ch = s[j]; part += ch
             while j + 1 < len(s) and s[j + 1] in QUOTES_CLOSE:
                 part += s[j + 1]; j += 1
+            while is_cjk and j + 1 < len(s) and s[j + 1] in '、，。':  # a cue never starts with a comma (film 201: 40 cues did)
+                part += s[j + 1]; j += 1; ch = s[j]
             rem = len(s) - (j + 1)
             if rem < 6:
                 part += s[j + 1:]; parts.append(part.strip()); part = ''; break

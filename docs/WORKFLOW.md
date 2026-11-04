@@ -120,7 +120,7 @@ Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py
 (`doc.py build JOB` still does picture + mix + mux in one go without review: only when the user asks to skip the studio.)
 
 ## 12. QA [built: `doc.py qa`]
-`PY scripts/doc.py qa JOB --video FILE` on the exported file: black, freeze (flags anything not on an intentional card), loudness, true peak. `--stt` dry-runs; with the user's OK `--stt --run` transcribes with ElevenLabs Scribe and compares words with the SRT/script (target ≥ 97 %; judge names/spellings rather than hiding them). Then inspect real frames at every flagged time, transitions, maps and text cards. Record what was and was not checked.
+`PY scripts/doc.py qa JOB --video FILE` on the exported file: black, freeze (flags anything not on an intentional card), loudness, true peak. `--stt` dry-runs; with the user's OK `--stt --run` transcribes with ElevenLabs Scribe and compares words with the SRT/script (target ≥ 97 %; judge names/spellings rather than hiding them). Then inspect real frames at every flagged time, transitions and maps. `doc.py qa` does not read text: run `PY scripts/reviewcheck.py JOB --cards FILE` and look at every `qa/cards-NN.jpg` (each overlay cut from the exported file), never a sample; one text defect means scanning all cards and subtitles of that kind. Japanese cards that wrap need a chosen break, a space in the text (`plan.py check` flags them, cues that start with punctuation, and name cards or callouts under 2 s). Say a film is ready only after this. Record what was and was not checked.
 
 ## 13. Deliver
 `output/<id>/video.mp4` (or the approved `video-studio-<time>.mp4`), `LICENSES.md`, `credits.txt` (description-ready attribution), `qa.json`. Never upload.
@@ -140,7 +140,7 @@ Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py
   - public-domain sources by archive;
   - every Creative Commons file on screen, with author, licence and Commons ID (grouped by author; Bundesarchiv as "Bundesarchiv, Bild …");
   - map and music credits;
-  - source links, on by default (user 2026-11-04: the channel passed advanced-feature verification), as many as fit 5,000 characters. Add `--no-links` only when the user says the film is for a new channel; it strips every URL and domain;
+  - few links (user 2026-11-04: a block of 49 archive links looks like spam): sources are named in text, with one Commons ID link and no source-URL blocks. Add `--no-links` only when the user says the film is for a new channel; it strips every URL and domain;
   - a line of 7 #hashtags (one word each, script language) just above TAGS, so YouTube picks them up and shows them above the title (user request, 2026-11-01);
   - the TAGS line.
   The text must be ready to paste into YouTube and stay under 5,000 characters. Never write "see credits.txt" or point to any internal file: the viewer cannot see them (user review 2026-11-01).

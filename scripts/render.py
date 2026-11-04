@@ -288,6 +288,9 @@ def draw_overlay(lay, o, lt):
         if g <= 0: return False
         lay.alpha_composite(_shade(min(1.0, g * 1.4)))  # keeps small text readable over bright footage
         d = ImageDraw.Draw(lay)
+        if pr.get('plate'):  # dark plate behind the text over bright pictures (reviewcheck --cards flags them)
+            pw = max(text_w(d, pr.get('name', '').upper(), font('head', 84)), text_w(d, pr.get('sub', ''), font('body', 30)))
+            d.rectangle((x, y - 8, x + pw + 56, y + 190), fill=(16, 14, 12, int(170 * g)))
         d.rectangle((x, y + 172 * (1 - g), x + 7, y + 172), fill=RED + (int(255 * out),))
         k = pr.get('kicker', '').upper(); n = int(len(k) * min(1, max(0, (lt - 0.3) / 0.6)))
         d.text((x + 30, y + 2), k[:n], font=font('monomed', 30), fill=(225, 220, 210, int(235 * out)))
@@ -299,6 +302,8 @@ def draw_overlay(lay, o, lt):
         a = ease((lt - 0.25) / 0.5) * out
         if a <= 0: return False
         f = font('head', 78); s = pr['text'].upper(); w = text_w(d, s, f); x = (W - w) / 2; y = H - 300 + 14 * (1 - a)
+        if pr.get('plate'):
+            d.rectangle((x - 30, y + 2, x + w + 30, y + 130), fill=(16, 14, 12, int(170 * a)))
         shadow_text(d, (x, y), s, f, OFFWHITE + (int(255 * a),), int(160 * a))
         r = ease((lt - 0.55) / 0.6) * out
         d.rectangle((x, y + 112, x + w * r, y + 118), fill=RED + (int(255 * out),))

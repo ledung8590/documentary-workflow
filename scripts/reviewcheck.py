@@ -3,6 +3,7 @@
 Called from each film's `plan.py check` (checks 1-3) and runnable alone:
   PY scripts/reviewcheck.py JOB            checks 1-3 on timeline.json + the plan files
   PY scripts/reviewcheck.py JOB --sheet    also 4: contact sheets of every shot from render/picture.mp4 (qa/shots-NN.jpg)
+  PY scripts/reviewcheck.py JOB --cards FILE   also 7: every overlay at its fully-shown moment, cut from the exported FILE (qa/cards-NN.jpg)
 
 1. Overlay text inside the frame: every overlay is drawn by render.py's own draw_overlay at its fully-shown moment and each
    text box is measured; text past the safe margin is an error (film 76's title card ran off both edges at 132 px).
@@ -12,13 +13,19 @@ Called from each film's `plan.py check` (checks 1-3) and runnable alone:
    (film 76's Hürtgen turret fired on screen in silence).
 4. Contact sheets: the middle frame of every shot, captioned with shot id, time and caption, to look at all of them before
    the studio stop (sampling ~20 frames missed the title overflow).
+5. Card line breaks: a card that wraps and has no space was cut between characters by render.halves, wherever the middle fell
+   (film 201: 12 Japanese cards cut inside a word, seen only after the user uploaded). Put a space at the break you choose.
+6. Subtitle heads: a Japanese/Chinese cue may not start with a comma, full stop or closing mark (film 201: 40 cues started with 、).
+7. Card sheets: every overlay from the exported file. Automatic QA does not read text, so look at every sheet before delivering.
+8. Overlay time on screen: a name card or callout under MIN_SHOWN seconds cannot be read (film 201: name cards of 1.0-1.4 s).
 """
 import ast, json, re, subprocess, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 MARGIN = 40  # px from the frame edge; text beyond it is cut or touches the edge
-FIRE_WORDS = re.compile(r'feuer|beschuss|einschl[äa]g|schie(ß|ss)|abschuss|explo|salve|detonat|\bfir(e|es|ing)\b|launch|blast|'
+MIN_SHOWN = 2.0  # seconds a lower_third or callout must stay on screen
+FIRE_WORDS = re.compile(r'爆発|炸裂|爆煙|火球|発射|砲撃|射撃|砲火|被弾|着弾|feuer|beschuss|einschl[äa]g|schie(ß|ss)|abschuss|explo|salve|detonat|\bfir(e|es|ing)\b|launch|blast|'
                         r'\bshell|bắn|nổ|phóng|dispar|explos|tir(e|ent|s)\b', re.I)
 
 
@@ -28,6 +35,7 @@ def overlay_fit(d):
     import render as R
     from PIL import Image, ImageDraw
     tl = json.loads((Path(d) / 'timeline.json').read_text(encoding='utf-8'))
+    R.LANG = tl.get('language') or 'en'  # measure with the font the film is drawn in
     ovs = [c for t in tl['tracks'] if t.get('id') == 'overlay' or t.get('kind') == 'overlay' for c in t.get('clips', [])]
     boxes, orig = [], ImageDraw.ImageDraw.text
 
@@ -54,9 +62,32 @@ def overlay_fit(d):
                 if x0 < MARGIN or x1 > R.W - MARGIN or y0 < MARGIN / 2 or y1 > R.H - MARGIN / 2:
                     errs.append(f'!! overlay {o.get("id")} ({o.get("type")}) at {o["start"]:.1f}s: text leaves the frame '
                                 f'(x {x0:.0f}-{x1:.0f}, y {y0:.0f}-{y1:.0f}): "{s[:60]}"')
+            x = (o.get('props') or {}).get('title' if o.get('type') == 'title_card' else 'text', '').upper()
+            if o.get('type') in ('question', 'title_card') and x and not x.split()[1:] and len(boxes) > 1 and boxes[0][1] + boxes[1][1] == x:
+                errs.append(f'!! overlay {o.get("id")} ({o.get("type")}) at {o["start"]:.1f}s: wraps without a chosen break, cut as '
+                            f'"{boxes[0][1]} / {boxes[1][1]}": put a space where the line should break')
     finally:
         ImageDraw.ImageDraw.text = orig
     return errs
+
+
+def overlay_shown(d):
+    """Errors for name cards and callouts too short to read."""
+    tl = json.loads((Path(d) / 'timeline.json').read_text(encoding='utf-8'))
+    return [f'!! overlay {o.get("id")} ({o["type"]}) at {o["start"]:.1f}s: on screen {o["end"] - o["start"]:.1f} s, under {MIN_SHOWN:g} s: '
+            f'move its end anchor: "{(o.get("props") or {}).get("text") or (o.get("props") or {}).get("name")}"'
+            for t in tl['tracks'] if t.get('id') == 'overlay' for o in t.get('clips', [])
+            if o.get('type') in ('lower_third', 'callout') and o['end'] - o['start'] < MIN_SHOWN]
+
+
+def subtitle_heads(d):
+    """Errors for Japanese/Chinese cues that start with punctuation, which belongs at the end of the cue before."""
+    sys.path[:0] = [str(ROOT / 'scripts'), str(ROOT / 'studio')]
+    import render as R
+    tl = json.loads((Path(d) / 'timeline.json').read_text(encoding='utf-8'))
+    if tl.get('language') not in ('ja', 'zh'):
+        return []
+    return [f'!! subtitle at {a:.1f}s starts with punctuation: "{x[:30]}"' for a, _, x in R.subtitles(Path(d), tl) if x[0] in '、。，．！？）」』】・ー々']
 
 
 def typing_sound(d, shots):
@@ -91,10 +122,10 @@ def firing_sound(d, shots):
 
 
 def check(d, shots):
-    """Checks 1-3. Prints findings, returns the warning count (plan.py check adds it to its own)."""
+    """Checks 1-3, 5, 6, 8. Prints findings, returns the warning count (plan.py check adds it to its own)."""
     errs = typing_sound(d, shots) + firing_sound(d, shots)
     if (Path(d) / 'timeline.json').exists():
-        errs += overlay_fit(d)
+        errs += overlay_fit(d) + subtitle_heads(d) + overlay_shown(d)
     for e in errs:
         print(e)
     return len(errs)
@@ -126,6 +157,38 @@ def sheets(d, per=56, cols=7):
     return out
 
 
+def card_sheets(d, video, per=30, cols=5):
+    """Check 7: qa/cards-NN.jpg, every overlay at its fully-shown moment, large enough to read, cut from the exported file."""
+    from PIL import Image, ImageDraw
+    d = Path(d)
+    tl = json.loads((d / 'timeline.json').read_text(encoding='utf-8'))
+    ovs = sorted((c for t in tl['tracks'] if t.get('id') == 'overlay' for c in t.get('clips', [])), key=lambda c: c['start'])
+    tw, th = 384, 216; out = []; bright = []
+    for p in range(0, len(ovs), per):
+        part = ovs[p:p + per]; rows = (len(part) + cols - 1) // cols
+        sheet = Image.new('RGB', (cols * tw, rows * (th + 16)), 'black'); dr = ImageDraw.Draw(sheet)
+        for i, c in enumerate(part):
+            t = max(c['start'], c['end'] - 0.4)
+            raw = subprocess.run(['ffmpeg', '-v', 'error', '-ss', f'{t:.3f}', '-i', str(video), '-frames:v', '1', '-vf', f'scale={tw}:{th}',
+                                  '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-'], capture_output=True).stdout
+            x, y = (i % cols) * tw, (i // cols) * (th + 16)
+            if len(raw) == tw * th * 3:
+                im = Image.frombytes('RGB', (tw, th), raw); sheet.paste(im, (x, y))
+                pr = c.get('props') or {}; s = tw / 1920
+                if c.get('type') in ('callout', 'lower_third') and not pr.get('plate'):  # white text needs a dark picture behind it
+                    n = len(pr.get('text') or pr.get('name') or ''); half = min(850, n * 39)
+                    x0, x1 = (960 - half, 960 + half) if c['type'] == 'callout' else (110, 110 + min(1200, n * 84))
+                    g = sorted(im.crop((int(x0 * s), int(790 * s), int(x1 * s), int(885 * s))).convert('L').tobytes())
+                    if g and g[len(g) // 2] >= 100:
+                        bright.append(f'{c["id"]} {int(t // 60)}:{t % 60:04.1f}')
+            dr.text((x + 3, y + th + 2), f'{c["id"]} {c.get("type")} {int(t // 60)}:{t % 60:04.1f}', fill=(255, 220, 0))
+        f = d / 'qa' / f'cards-{p // per + 1:02d}.jpg'; f.parent.mkdir(exist_ok=True); sheet.save(f, quality=85); out.append(f)
+    print(f'{len(ovs)} overlays on {len(out)} sheets: ' + ', '.join(str(f.relative_to(d)) for f in out) + ' -> look at every sheet')
+    if bright:
+        print(f'!! {len(bright)} overlays have white text on a bright picture, set "plate": true: ' + ', '.join(bright))
+    return out
+
+
 if __name__ == '__main__':
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     job = Path(sys.argv[1]); d = job if job.is_dir() else ROOT / 'projects' / sys.argv[1]
@@ -135,3 +198,5 @@ if __name__ == '__main__':
     print(f'reviewcheck: {n} warning(s)')
     if '--sheet' in sys.argv:
         sheets(d)
+    if '--cards' in sys.argv:
+        card_sheets(d, sys.argv[sys.argv.index('--cards') + 1])

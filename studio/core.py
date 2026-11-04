@@ -1085,9 +1085,10 @@ def splice(proj, tl, ranges, log=print):
         seg = render_range(proj, tl, a, b, work / f'seg-{i:02d}.mp4', log)
         if a > pos + 1e-6:
             # the concat demuxer cuts on decode time: stop just before the keyframe's DTS (B-frames delay it ~2 frames)
-            # and state the duration, so the next file starts exactly at a
+            # and state the duration, so the next file starts exactly at a. Half a tick, not half a frame: at an earlier
+            # seam the frame before can sit one tick before the keyframe's DTS (film 201 lost 6 frames on a second splice)
             lines += [f"file '{proj.picture.as_posix()}'", f'inpoint {pos:.6f}' if pos else '',
-                      f'outpoint {kfd[a] - 0.5 / fps:.6f}', f'duration {a - pos:.6f}']
+                      f'outpoint {kfd[a] - 0.00004:.6f}', f'duration {a - pos:.6f}']
         lines.append(f"file '{seg.as_posix()}'")
         pos = b
     if pos < dur - 1e-6:
