@@ -913,7 +913,11 @@ def qa(job, video, stt=False, do_run=False):
         if not do_run:
             print('STT dry run: transcribing costs credits per audio minute; add --run after the user agrees')
         else:
-            res = transcribe(video, cfg['qa']['stt_model'], cfg['voice'].get('language_code'))
+            # send a small mono mp3 of the film's sound, never the video itself (film 77: a 4 GB mp4 upload timed out)
+            aud = d / 'qa' / 'stt-audio.mp3'
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-i', str(video), '-vn', '-ac', '1', '-ar', '22050',
+                            '-b:a', '48k', str(aud)], check=True)
+            res = transcribe(aud, cfg['qa']['stt_model'], cfg['voice'].get('language_code'))
             write(d / 'qa' / 'stt.json', res)
             src = read(d / 'pacing.json')['units'] if cfg.get('mode') == 'narration' else read(d / 'sentences.json')['sentences']
             ref = norm_words(' '.join(s['text'] for s in src))

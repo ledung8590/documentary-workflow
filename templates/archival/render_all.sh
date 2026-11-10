@@ -8,7 +8,7 @@ LANG_=$(.venv/Scripts/python.exe -c "import json;print(json.load(open('$P/brief.
 jobs() {
   for js in "$P"/scenes/*.js; do n=$(basename "$js" .js); out="$P/media/scene-$n.mp4"
     [ -f "$out" ] && [ "$out" -nt "$js" ] && continue; echo "scene|$js|$out"; done
-  for js in "$P"/maps/m-*.json; do n=$(basename "$js" .json); out="$P/media/map-$n.mp4"
+  for js in "$P"/maps/*.json; do n=$(basename "$js" .json); out="$P/media/map-$n.mp4"
     [ -f "$out" ] && [ "$out" -nt "$js" ] && continue; echo "map|$js|$out"; done
 }
 jobs | xargs -P 3 -I{} bash -c 'IFS="|" read k src out <<< "{}"

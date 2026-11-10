@@ -15,6 +15,6 @@ def write(dur=None):
                 if f in L: L[f] = round(L[f] * k, 2)
             ls.append(L)
         a, b = s['camera']
-        (here / f'{name}.json').write_text(json.dumps({'duration': d, **base, 'camera': [{'t': 0, **a}, {'t': d, **b}], 'layers': ls}, ensure_ascii=False), encoding='utf-8')
+        (here / f'{name}.json').write_text(json.dumps({'duration': d, **base, **{k: s[k] for k in ('shade', 'exaggeration', 'brightness', 'saturation') if k in s}, 'camera': [{'t': 0, **a}, {'t': d, **b}], 'layers': ls}, ensure_ascii=False), encoding='utf-8')
 if __name__ == '__main__':
     write(json.loads(pathlib.Path(sys.argv[1]).read_text()) if len(sys.argv) > 1 else None)

@@ -896,8 +896,8 @@ def range_timeline(proj, tl, t0, t1, work):
     (work / 'voice').mkdir(parents=True, exist_ok=True)
     srt = proj.d / 'voice' / 'voice.srt'
     rows = [s for s in R.subtitles(proj.d, tl) if s[0] < t1 and s[1] > t0] if srt.exists() else []
-    ex.pop('subtitle_overrides', None)
-    fmt = lambda t: f'{int(t // 3600):02d}:{int(t % 3600 // 60):02d}:{int(t % 60):02d},{int(round(t % 1 * 1000)) % 1000:03d}'
+    ex.pop('subtitle_overrides', None); ex['subs_cut'] = True  # rows below are already hidden: render.subtitles must not hide again
+    fmt =lambda t: f'{int(t // 3600):02d}:{int(t % 3600 // 60):02d}:{int(t % 60):02d},{int(round(t % 1 * 1000)) % 1000:03d}'
     (work / 'voice' / 'voice.srt').write_text('\n'.join(f'{k}\n{fmt(max(0.0, a - t0))} --> {fmt(min(b, t1) - t0)}\n{x}\n'
                                                        for k, (a, b, x) in enumerate(rows, 1)), encoding='utf-8')
     return ex

@@ -202,15 +202,28 @@ class Video:
         if clip.get('bloom'):  # glow on bright parts (map arrows, fire): threshold, blur, screen-blend back
             vf += (',split[a][b];[b]colorlevels=rimin=0.5:gimin=0.55:bimin=0.55,gblur=sigma=16[g];'
                    '[a][g]blend=all_mode=screen:all_opacity=0.8')
+        self.path, self.vf, self.fps = path, f'{vf},fps={fps},format=rgb24', fps
         self.p = subprocess.Popen(['ffmpeg', '-v', 'error', '-ss', str(clip.get('in', 0.0)), '-i', str(path), '-an',
-                                   '-vf', f'{vf},fps={fps},format=rgb24', '-f', 'rawvideo', '-'],
+                                   '-vf', self.vf, '-f', 'rawvideo', '-'],
                                   stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        self.last = np.zeros((H, W, 3), np.uint8)
+        self.last = None
+
+    def _tail(self):
+        """Last frame of the file: a clip longer than its source holds it. A range render that starts past the source's
+        end (splice export inside a 13 s clip of a 10 s map) reads nothing from the -ss stream (film 198: black maps)."""
+        raw = subprocess.run(['ffmpeg', '-v', 'error', '-sseof', '-1', '-i', str(self.path), '-an', '-vf', self.vf,
+                              '-f', 'rawvideo', '-'], capture_output=True).stdout
+        n = len(raw) // (W * H * 3)
+        if not n:
+            return np.zeros((H, W, 3), np.uint8)
+        return FX.apply_color(grade(np.frombuffer(raw[(n - 1) * W * H * 3:n * W * H * 3], np.uint8).reshape(H, W, 3), self.g), self.color)
 
     def frame(self, t):
         raw = self.p.stdout.read(W * H * 3) if self.p else b''
         if len(raw) == W * H * 3:
             self.last = FX.apply_color(grade(np.frombuffer(raw, np.uint8).reshape(H, W, 3), self.g), self.color)
+        elif self.last is None:
+            self.last = self._tail()
         return self.last
 
     def close(self):
@@ -454,7 +467,9 @@ def subtitles(d, tl):
         a2, b2, x2 = o.get('start', a), o.get('end', b), o.get('text', x)
         if x2 and x2.strip() and b2 > a2:
             out.append((a2, b2, x2))
-    return hide_under_text(sorted(out), tl)
+    # a range render's srt (studio/core.range_timeline) is already hidden and cut at the range edges: hiding again would
+    # drop a cue's sliver under min_len at every part seam (film 198: subtitles missing up to 0.6 s at splice/part seams)
+    return sorted(out) if tl.get('subs_cut') else hide_under_text(sorted(out), tl)
 
 
 SUB_HIDE = ('callout', 'lower_third', 'title_card', 'chapter', 'question', 'stat', 'quote', 'text')

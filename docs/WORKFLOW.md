@@ -19,6 +19,12 @@ Run from the workspace root with `.venv/Scripts/python.exe` (PY). Built stages a
 ## 2. Research and outline [manual, agent]
 Read the whole narration (SRT text, a chunk at a time for long films). Write `projects/<id>/FACTS.md` (claims, dates, places, sources, uncertainties) and `STORY.md` (acts, chapters, emotional curve, where the big beats and title cards go). If the script has a consequential factual error, record it and tell the user; never rewrite their narration silently.
 
+**Stray-note check (do it in this stage, before `split` and any voice):** AI-written scripts sometimes carry lines that are not narration, and the voice would read them aloud (a 2026-11-04 test script had `---` and a note "(TTSには入れない注記) ... 熱田一二型は誤り、正しくは熱田二一型 ... 直してください" in the middle, plus the wrong model number still in the narration). Scan the whole script, every line, for:
+- separator lines (`---`, `***`, `===`), markdown headings or bullets, and text in brackets that is a note, not speech: `(TTS...`, `(注記`, `(Ghi chú`, `(Note`, `[...]`;
+- phrases addressed to the editor, not the audience: "not for TTS", "TTSには入れない", "読み上げ前に", "please fix", "đừng đọc";
+- self-corrections between parts ("the earlier part said X, correct is Y"): the note itself AND the wrong detail it points to, which is still in the narration.
+List every hit to the user in Vietnamese with its line number and the line's text, and say what you would remove or change. Remove or rewrite only with the user's OK (same rule as above: never silently). Do not run `split` or `tts` while a hit is unresolved. Record anything left in `FACTS.md` as an uncertainty.
+
 ## 3a. Script jobs (default): sentences, emotion, voice [built]
 1. Run `split JOB`. The agent reviews every sentence's `emotion`, and may set `tag` (v4 audio tag), `say` (spoken form of numbers or names) or a locked `pause_after`.
 2. Run `tts JOB` (dry run: characters ≈ AI84 credits), then `tts JOB --run`. Each sentence is its own AI84 job (own emotion tag, speed and settings: quality first); after the last clip, Whisper (OmniVoice logic, loaded then and released after) gives each clip real word timings for the SRT (`docs/VOICE.md#ai84-voice-one-job-per-sentence--whisper-timing-default-tts-job`). `voice.chunked: true` is a faster, lower-quality opt-in. Results are cached; `--only S004` redoes one sentence. Read the list of poorly heard sentences it prints.

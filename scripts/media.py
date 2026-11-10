@@ -100,7 +100,10 @@ def commons(query, n=20, kind='photo'):
                     'preview': _as_thumb(_smaller(ii.get('thumburl')), ii.get('width'), PREVIEW_W),
                     'download': ii.get('url') if kind == 'video' else _as_thumb(ii.get('thumburl') or ii.get('url'), ii.get('width'), FULL_W),
                     'width': ii.get('width'), 'height': ii.get('height'), 'licence': g('LicenseShortName'),
-                    'licence_url': g('LicenseUrl'), 'author': g('Artist'), 'credit': g('Credit'),
+                    # Commons' {{Unknown|author}} renders its text twice ("Unknown authorUnknown author", film 198); empty {{Creator: }} = unknown
+                    'licence_url': g('LicenseUrl'), 'author': re.sub(r'(?i)^(unknown author)\s*unknown author$', r'\1',
+                                                                    re.sub(r'^\{?\{?Creator:\s*\}?\}?', '', g('Artist')).strip()) or 'Unknown author',
+                    'credit': g('Credit'),
                     'date': g('DateTimeOriginal'), 'description': g('ImageDescription')[:400]})
     return out
 
@@ -299,7 +302,7 @@ def fetch_range(src, start, dur, out):
     """Cut [start, start+dur] of a local video to an H.264/AAC intermediate."""
     import subprocess
     subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{start:.3f}', '-i', str(src), '-t', f'{dur:.3f}',
-                    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2', '-c:v', 'libx264', '-crf', '16', '-preset', 'veryfast', '-pix_fmt', 'yuv420p',
+                    '-vf', 'scale=trunc(iw*sar/2)*2:trunc(ih/2)*2,setsar=1', '-c:v', 'libx264', '-crf', '16', '-preset', 'veryfast', '-pix_fmt', 'yuv420p',  # the renderer ignores SAR: square the pixels (film 92: a 352x480 20:11 film drew as a narrow column)
                     '-c:a', 'aac', '-ar', '48000', '-ac', '2', str(out)], check=True, capture_output=True, timeout=600)
     return out
 

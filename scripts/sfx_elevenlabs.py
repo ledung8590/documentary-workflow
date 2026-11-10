@@ -68,7 +68,9 @@ LIB = {  # type -> [(seconds, prompt)]
                    (4.0, 'Huge close explosion on a warship hull, sharp violent blast, fireball roar, debris and metal shrapnel '
                          'raining down, no music')],
     'missilelaunch': [(4.0, 'Naval missile launch from a vertical launch cell, violent ignition blast then deafening rocket roar '
-                            'climbing away, no music')],
+                            'climbing away, no music'),
+                      (4.0, 'Ballistic missile lifting off from a launch pad, deep rocket motor ignition swelling into a steady '
+                            'roar climbing away, clean recording with headroom, no distortion, no voices, no music')],
     # audible layer over the sub-bass card hits (impact/titlehit are ~100 % below 150 Hz: inaudible on laptop speakers)
     'cardslam': [(1.5, 'Punchy cinematic trailer slam hit, sharp metallic transient with a mid-range body and short bright tail, '
                        'close, no music'),

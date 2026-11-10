@@ -45,7 +45,7 @@ def norm(w):
 
 def resolve(a):
     a = a.strip()
-    m = re.match(r'^(S\d{3})(\$)?(?:\s+"([^"]+)")?\s*([+-][\d.]+)?$', a)
+    m = re.match(r'^(S\d{3,4})(\$)?(?:\s+"([^"]+)")?\s*([+-][\d.]+)?$', a)
     if not m:
         raise SystemExit(f'bad anchor: {a}')
     sid, end, phrase, off = m.groups()
@@ -165,15 +165,17 @@ def check():
 
 def durations():
     import importlib.util
-    dur = {}
+    dur, maps = {}, set()
     for s in shots():
         k, _, name = s['src'].partition(':')
         if k in ('scene', 'map'):
             dur[name] = round(s['t1'] - s['t0'] + 0.25, 3)
-    sc = {k: v for k, v in dur.items() if not k.startswith('m-')}
+            if k == 'map':
+                maps.add(name)  # by shot kind, not name prefix (film 77 maps are m1-…, o-empire)
+    sc = {k: v for k, v in dur.items() if k not in maps}
     write(D / 'scenes' / 'src' / 'durations.json', sc)
     spec = importlib.util.spec_from_file_location('write_maps', D / 'maps' / 'write_maps.py'); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-    m.write({k: v for k, v in dur.items() if k.startswith('m-')})
+    m.write({k: v for k, v in dur.items() if k in maps})
     print(f'{len(sc)} scene durations, {len(dur) - len(sc)} map durations')
 
 

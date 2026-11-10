@@ -44,7 +44,7 @@ window.setup = async (s) => {
             'raster-saturation': s.saturation ?? -0.3, 'raster-brightness-max': s.brightness ?? 0.86,
             'raster-contrast': 0.15, 'raster-fade-duration': 0 } },
         { id: 'shade', type: 'hillshade', source: 'dem', paint: {
-            'hillshade-exaggeration': 0.5, 'hillshade-shadow-color': '#000000', 'hillshade-highlight-color': '#ffffff',
+            'hillshade-exaggeration': s.shade ?? 0.5, 'hillshade-shadow-color': '#000000', 'hillshade-highlight-color': '#ffffff',
             'hillshade-accent-color': '#000000' } },
       ],
       terrain: { source: 'dem', exaggeration: s.exaggeration ?? 2.6 },
@@ -77,7 +77,11 @@ const RAD = Math.PI / 180, ER = 6378137;
 const toM = (ll, o) => [(ll[0] - o[0]) * RAD * ER * Math.cos(o[1] * RAD), (ll[1] - o[1]) * RAD * ER];
 const fromM = (m, o) => [o[0] + m[0] / (ER * Math.cos(o[1] * RAD)) / RAD, o[1] + m[1] / ER / RAD];
 function geoCurve(pts, bend = 0.15, n = 40) {
-  if (pts.length > 2) return pts;
+  if (pts.length > 2) {  // polyline: densify so arrows grow smoothly (a bare 3-point path never reached the 4 points arrow() needs)
+    const out = [pts[0]], k = Math.max(4, Math.ceil(n / (pts.length - 1)));
+    for (let i = 1; i < pts.length; i++) for (let j = 1; j <= k; j++) out.push([lerp(pts[i - 1][0], pts[i][0], j / k), lerp(pts[i - 1][1], pts[i][1], j / k)]);
+    return out;
+  }
   const o = pts[0], a = [0, 0], b = toM(pts[1], o), c = [b[0] / 2 + b[1] * bend, b[1] / 2 - b[0] * bend], out = [];
   for (let i = 0; i <= n; i++) { const t = i / n;
     out.push(fromM([(1 - t) * (1 - t) * a[0] + 2 * (1 - t) * t * c[0] + t * t * b[0], (1 - t) * (1 - t) * a[1] + 2 * (1 - t) * t * c[1] + t * t * b[1]], o)); }

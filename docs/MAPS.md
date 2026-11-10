@@ -40,6 +40,7 @@
 - Terrarium tiles include bathymetry, so the seafloor relief shows through the sea under hillshade.
 - Use `exaggeration` 1.0–1.2, `brightness` ~0.75 and `saturation` ~-0.35, at zoom 3.5–5.
 - At this scale the extruded arrows can be clipped by land relief. Check frames, and use wider arrows or a red `route` if that happens.
+- World-scale maps (zoom under 3): set `"shade": 0, "exaggeration": 0.2` in the spec. Bathymetry hillshade reads as white marble swirls over the oceans at that scale (film 92).
 - English credit: "Terrain: AWS Terrain Tiles · Imagery: Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) · Positions illustrative".
 
 ## Colours

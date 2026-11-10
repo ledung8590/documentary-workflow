@@ -164,7 +164,9 @@ def _lufs_m(path):
     import re, subprocess
     o = subprocess.run(['ffmpeg', '-hide_banner', '-i', str(path), '-af', 'ebur128=metadata=1,ametadata=print:key=lavfi.r128.M',
                         '-f', 'null', '-'], capture_output=True, text=True).stderr
-    return np.array([float(x) for x in re.findall(r'lavfi.r128.M=(-?[\d.]+)', o)])
+    # digital silence prints "nan"/"-inf": keep it as -120 so the 10/s index stays aligned with the timeline (dropping it
+    # shifted the music stem against the voice and left the last beds 18-21 dB under, Berlin story 2026-11-07)
+    return np.array([float(x) if x[-1].isdigit() else -120.0 for x in re.findall(r'lavfi.r128.M=(\S+)', o)])
 
 
 def _level_music(d, tl, log):
@@ -349,6 +351,13 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
         i = order.index(ch['sentence'])
         a = {'sentence': order[i - 1], 'edge': 'end', 'offset': 0.3} if i > 0 else {'sentence': ch['sentence'], 'edge': 'start', 'offset': -3.6}
         gap = timing[ch['sentence']]['start'] - (timing[order[i - 1]]['end'] if i > 0 else 0)
+        if title_a and i > 0 and order[i - 1] == title_a['sentence']:
+            # chapter 1 straight after the opening paragraph: its card follows the 5 s title card instead of covering it
+            # (Königsberg 2026-11-09: both cards at 52 s); lock that sentence's pause at ~9 s in sentences.json
+            a = {'sentence': order[i - 1], 'edge': 'end', 'offset': round(title_a['offset'] + 5.0 + 0.25, 2)}
+            gap -= a['offset'] - 0.3
+            if gap < 2.8:
+                log(f'!! chapter {n} card has {gap:.1f} s after the title card: lock a ~9 s pause on {order[i - 1]}')
         card('chapter', a, round(max(2.4, min(3.4, gap - 0.4)), 2), n=n, title=ch['title'])
         chap_a.append((a, ch['sentence']))
     track['overlay']['clips'] = ov
