@@ -781,6 +781,9 @@ def srt_time(t):
     return f'{h:02d}:{m:02d}:{s:02d},{ms:03d}'
 
 
+STORY_NOTICE_LEAD = 10.0   # s of silence before a story's first sentence: black + ambience + the typed notice
+
+
 def assemble(job):
     d = job_dir(job)
     cfg = read(d / 'brief.json')
@@ -798,6 +801,9 @@ def assemble(job):
         for c in next((tr['clips'] for tr in read(d / 'timeline.json')['tracks'] if tr['id'] == 'music'), []):
             m = load_audio((d / c['src']).resolve(), 22050)
             beats += [c['start'] + b - c.get('in', 0.0) for b in PACE.beat_grid(m, 22050)]
+    if cfg.get('genre') == 'story' and (cfg.get('story') or {}).get('notice', True) is not False:
+        # room for the typed "images are illustrations" notice over the black opening (story.py, user rule 2026-11-12)
+        voice = dict(voice, lead_in=max(float(voice['lead_in']), STORY_NOTICE_LEAD))
     t, pieces, timing, edge_bad, mocked = float(voice['lead_in']), [], {}, [], False
     char_t = {}  # sentence id -> absolute time of each character (Whisper-aligned clips)
     for k, s in enumerate(sents):
@@ -988,7 +994,7 @@ def media_strip(job, tag, k, every=3.0):
     print(f'filmstrip every {every:g} s: {out}  (then pick with --in at the shot you want)')
 
 
-def media_pick(job, slot, tag, k, caption, t_in=0.0, dur=None):
+def media_pick(job, slot, tag, k, caption, t_in=0.0, dur=None, exact=False):
     import media as M
     d = job_dir(job)
     c = read(d / 'media' / 'candidates' / tag / 'candidates.json')['candidates'][k - 1]
@@ -1000,7 +1006,9 @@ def media_pick(job, slot, tag, k, caption, t_in=0.0, dur=None):
         need = dur or (clip['end'] - clip['start'] + 0.5)
         dst = d / 'media' / f'{slot}-{c["source"].split(":")[0]}-{c["id"]}.mp4'
         src = M.fetch_video(c, d / 'media' / 'candidates' / tag)
-        t_use, cuts = M.clean_in(src, t_in, need)  # keep the shot inside one camera take
+        # keep the shot inside one camera take; exact (plan `@IN!`) keeps a hand-checked in-point: clean_in reads a muzzle
+        # flash or blast as a camera cut and slid film 95's salvo shots 6-8 s away onto spray and an end title
+        t_use, cuts = (t_in, []) if exact else M.clean_in(src, t_in, need)
         if abs(t_use - t_in) > 0.01:
             print(f'{slot}: camera cut inside {t_in:.2f}+{need:.2f} s, moved the in-point to {t_use:.2f} s')
         elif any(t_in + 0.05 < x < t_in + need - 0.05 for x in cuts):

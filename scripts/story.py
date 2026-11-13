@@ -146,6 +146,7 @@ EMO_GAIN = {'urgent': 2.5, 'dramatic': 2.0, 'tense': 1.5, 'hook': 1.5, 'question
             'hopeful': 0.0, 'somber': -0.5, 'sad': -0.5, 'calm': -1.0, 'reflective': -1.5, 'warm': -1.0}  # music follows the voice: up in tension, down in reflection
 MIN_RUN = 35.0       # an emotion run shorter than this joins its neighbour (no bed changes every few sentences)
 MUSIC_UNDER = 11.0   # neutral narration bed: dB under the voice (LUFS over speech); tense beds come up to BED_GAP_MIN
+SWELL_MIN, SWELL_CUT_MAX = 6.0, 5.0     # a bed's loudest 3 s over speech stays >= 6 dB under the voice (cut up to 5 dB more)
 BED_GAP_MIN, BED_GAP_MAX = 9.0, 13.5    # ducked music sits this many dB under the voice (measured; 13-15 dB sounded like a bare reading)
 
 
@@ -169,7 +170,7 @@ def _lufs_m(path):
     return np.array([float(x) if x[-1].isdigit() else -120.0 for x in re.findall(r'lavfi.r128.M=(\S+)', o)])
 
 
-def _level_music(d, tl, log):
+def _level_music(d, tl, log, under=MUSIC_UNDER):
     """Level EACH bed against the voice it plays under (perceived loudness, momentary LUFS over the bed's speech),
     so no bed comes closer than BED_GAP_MIN dB: a film-wide average of 8.6 dB still had tense beds 4.7 dB under the voice
     on story 89 ("nhạc to hơn voice"). Target gap per bed = MUSIC_UNDER - its emotion offset (EMO_GAIN), clamped."""
@@ -183,17 +184,25 @@ def _level_music(d, tl, log):
         render.premix(d, tl, pv, only={'voice'}); render.premix(d, tl, pm, only={'music'})
         V, M = _lufs_m(pv), _lufs_m(pm)
     k = min(len(V), len(M)); V, M = V[:k], M[:k]; sp = V > -40
-    before, after = [], []
+    before, after, swells = [], [], []
+    shift = under - MUSIC_UNDER   # brief story.music_under moves the whole range (default 11)
     for c in clips:
         a, b = int(c['start'] * 10) + 20, int(c['end'] * 10) - 20     # skip the crossfades
         w = slice(max(0, a), min(k, b)); s = sp[w]
         if s.sum() < 30:
             continue
         g = float(np.median(V[w][s]) - np.median(M[w][s]))
-        want = float(np.clip(MUSIC_UNDER - EMO_GAIN.get(c.get('emotion'), 0.0), BED_GAP_MIN, BED_GAP_MAX))
-        c['gain_db'] = round(c['gain_db'] + g - want, 1); before.append(g); after.append(want)
+        want = float(np.clip(under - EMO_GAIN.get(c.get('emotion'), 0.0), BED_GAP_MIN + shift, BED_GAP_MAX + shift))
+        # swell guard: a bed's median can sit 9 dB under while its crescendos come within 0-2 dB of the voice (Army Group
+        # Centre 2026-11-12, "nhạc nền bị to quá voice"): its loudest 3 s windows over speech must stay SWELL_MIN under
+        ws = [float(np.median(V[i:i + 30][sp[i:i + 30]]) - np.median(M[i:i + 30][sp[i:i + 30]]))
+              for i in range(w.start, w.stop - 30, 30) if sp[i:i + 30].sum() >= 10]
+        low = (np.percentile(ws, 5) - (g - want)) if ws else want
+        extra = float(min(SWELL_CUT_MAX, max(0.0, SWELL_MIN - low)))
+        c['gain_db'] = round(c['gain_db'] + g - want - extra, 1); before.append(g); after.append(want + extra); swells.append(low + extra)
     log(f'music: per-bed levelling, gaps under the voice were {min(before):.1f}-{max(before):.1f} dB '
-        f'(median {np.median(before):.1f}), now {min(after):.1f}-{max(after):.1f} dB (LUFS, over speech)')
+        f'(median {np.median(before):.1f}), now {min(after):.1f}-{max(after):.1f} dB (LUFS, over speech); '
+        f'loudest swells {min(swells):.1f} dB under (guard {SWELL_MIN:.0f})')
     return float(np.median(after))
 
 
@@ -236,6 +245,19 @@ END_WORDS = {'vi': ('CẢM ƠN CÁC BẠN ĐÃ XEM', 'Xem tiếp những câu ch
              'es': ('GRACIAS POR VER', 'Más historias del canal'), 'de': ('DANKE FÜRS ZUSEHEN', 'Weitere Geschichten vom Kanal')}
 SUB_WORDS = {'vi': 'đăng ký', 'en': 'subscribe', 'es': 'suscr', 'de': 'abonn'}   # the narration's subscribe call
 CHANNEL_WORDS = {'vi': 'kênh', 'en': 'channel', 'es': 'canal', 'de': 'kanal'}     # fallback: the welcome / sign-off
+# typed over the black opening, every story (user rule 2026-11-12, after a viewer called the AI pictures "impossible to
+# watch"): the images are illustrations, listen to the story. brief story.notice: false = off, or {kicker, lines} to reword
+NOTICE = {
+    'en': ('A NOTE BEFORE WE BEGIN', ['No camera followed these men', 'into the places this story goes.',
+                                      'The images are illustrations only.', 'Close your eyes if you like, and listen.']),
+    'vi': ('ĐÔI LỜI TRƯỚC KHI BẮT ĐẦU', ['Không ống kính nào theo được họ', 'vào những nơi câu chuyện đi qua.',
+                                        'Hình ảnh trong video chỉ là minh họa.', 'Hãy lắng nghe, như một podcast.']),
+    'de': ('EIN WORT VORAB', ['Keine Kamera folgte diesen Männern', 'an die Orte dieser Geschichte.',
+                              'Die Bilder sind nur Illustrationen.', 'Schließen Sie die Augen und hören Sie zu.']),
+    'es': ('UNA NOTA ANTES DE EMPEZAR', ['Ninguna cámara siguió a estos hombres', 'a los lugares de esta historia.',
+                                         'Las imágenes son solo ilustraciones.', 'Cierre los ojos si quiere, y escuche.']),
+}
+NOTICE_CPS = 26   # typing speed (characters per second)
 
 
 def end_screen_image(d, bg_img, lang):
@@ -360,6 +382,17 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
                 log(f'!! chapter {n} card has {gap:.1f} s after the title card: lock a ~9 s pause on {order[i - 1]}')
         card('chapter', a, round(max(2.4, min(3.4, gap - 0.4)), 2), n=n, title=ch['title'])
         chap_a.append((a, ch['sentence']))
+    # the notice: typed on black from 0.4 s, gone 1.4 s before the first word (doc.py assemble leaves 10 s of lead-in)
+    notice_a = None; t0 = timing[order[0]]['start']
+    nt = st.get('notice', True)
+    if nt is not False and st.get('cold_black', True):
+        kicker, lines = (nt['kicker'], nt['lines']) if isinstance(nt, dict) else NOTICE.get(lang, NOTICE['en'])
+        need = 0.7 + sum(map(len, lines)) / NOTICE_CPS + 1.5
+        if t0 - 1.8 >= need:
+            notice_a = {'sentence': order[0], 'edge': 'start', 'offset': round(-t0 + 0.4, 3)}
+            card('quote', notice_a, round(t0 - 1.8, 2), kicker=kicker, lines=lines, cps=NOTICE_CPS, background='black', y=round(560 - 48 * len(lines)))
+        else:
+            log(f'!! no room for the illustration notice ({t0:.1f} s before the first word, needs {need + 2.2:.1f}): run assemble again')
     track['overlay']['clips'] = ov
 
     # music: drum-free beds per section (cold open, title, each chapter), each at most one file pass, 2 s crossfades, measured 9 dB under the voice
@@ -464,7 +497,7 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
     track['music']['clips'] = music
     if music:
         try:
-            _level_music(d, tl, log)
+            _level_music(d, tl, log, float(st.get('music_under', MUSIC_UNDER)))
         except Exception as e:  # noqa: BLE001  (a failed measurement must not lose the build; studio gains stay adjustable)
             log(f'!! music level not measured ({e}); check the music against the voice by ear')
 
@@ -503,6 +536,10 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
             sfx('whooshdark', sh(a, -0.55), 1.5, VI - 6)
             sfx('chapterhit', sh(a, 0.05), 3.0, VI - 3, f='01' if n % 2 else '02', fade_out=0.8)
             sfx('subdrop', sh(a, 0.05), 3.0, VI - 6, fade_out=1.0)
+        if notice_a:   # typewriter keys while the notice types, the bell as the last line lands
+            typed = sum(len(x) for x in ov[-1]['props']['lines']) / NOTICE_CPS
+            sfx('typewriter', sh(notice_a, 0.7), round(typed, 2), VI - 8, f='03', fade_out=0.2)   # el_03: 10 s steady keys
+            sfx('typebell', sh(notice_a, round(0.7 + typed, 2)), 1.5, VI - 8, fade_out=0.4)
         log(f'card sfx: voice {VI:.1f} LUFS; hits 3 dB, riser 4 dB, whoosh/drop 6 dB under it (LUFS of the part that plays)')
     # subscribe call in the narration -> animated button, cursor click, SUBSCRIBED, bell, with their SFX (memory rule, every film)
     sub_at = None
@@ -579,6 +616,20 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
     if brief.get('title'):
         tl['title'] = brief['title']
     moved, orphan, loose = TL.retime(tl, timing)
+    # long static images: YouTube treats them as low-effort/reused content (monetization risk) and the picture drifts off
+    # the words (user, Königsberg 2026-11-10). STORY_MODE: ~8 s per image; flag every image over 8 s that no title shot covers
+    covers = [(c['start'], c['end']) for c in track.get('fx', {}).get('clips', []) if c.get('type') == 'media_overlay']
+    long_ = []
+    for c in track['video']['clips']:
+        a, b = c.get('start', 0.0), c.get('end', 0.0)
+        if not str(c.get('src', '')).split('/')[-1][:3].isdigit():
+            continue
+        shown = (b - a) - sum(max(0.0, min(b, y) - max(a, x)) for x, y in covers)
+        if shown > st.get('max_image_secs', 8.0) + 0.05:
+            long_.append(f'{Path(str(c["src"])).name} {shown:.1f}s @{a:.0f}s')
+    if long_:
+        log(f'!! {len(long_)} images over {st.get("max_image_secs", 8.0):.0f} s (split their beats, docs/STORY_MODE.md pacing): '
+            + ', '.join(long_[:12]) + (' …' if len(long_) > 12 else ''))
     msg = (f'{len(vids)} images ({"aligned to " + Path(st["srt"]).name if st.get("srt") else "spread evenly"}), '
            f'{len(ov)} cards, {len(music)} music tiles, {len(fx)} card sfx; orphans {orphan}')
     log(msg)

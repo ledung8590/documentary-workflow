@@ -4,7 +4,70 @@
     {
       "name": "studio",
       "runtimeExecutable": ".venv/Scripts/python.exe",
-      "runtimeArgs": ["studio/server.py", "--no-browser"],
+      "runtimeArgs": [
+        "studio/server.py",
+        "--no-browser"
+      ],
+      "port": 5280
+    },
+    {
+      "name": "studio-91",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "studio/server.py",
+        "91-soviets-send-kirov-to-sea-a-nuclear-powered-missile-giant",
+        "--port",
+        "5281",
+        "--no-browser"
+      ],
+      "port": 5281
+    },
+    {
+      "name": "studio-92",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "studio/server.py",
+        "92-project-pluto-decoded-a-us-nuclear-powered-missile-faces-",
+        "--port",
+        "5282",
+        "--no-browser"
+      ],
+      "port": 5282
+    },
+    {
+      "name": "studio-konigsberg",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "studio/server.py",
+        "surrounded-in-konigsberg-as-the-last-roads-closed-memoirs-of",
+        "--port",
+        "5283",
+        "--no-browser"
+      ],
+      "port": 5283
+    },
+    {
+      "name": "studio-barbarossa",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "studio/server.py",
+        "unternehmen-barbarossa-1941-der-fehler-der-den-krieg-im-oste",
+        "--port",
+        "5284",
+        "--no-browser"
+      ],
+      "port": 5284
+    },
+    {
+      "name": "studio-198",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "studio/server.py",
+        "198-was-ware-wenn-napoleon-bei-waterloo-vor-bluchers-ankunft",
+        "--port",
+        "5280",
+        "--no-browser"
+      ],
       "port": 5280
     }
   ]

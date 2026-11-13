@@ -302,7 +302,8 @@ def draw_overlay(lay, o, lt):
         lay.alpha_composite(_shade(min(1.0, g * 1.4)))  # keeps small text readable over bright footage
         d = ImageDraw.Draw(lay)
         if pr.get('plate'):  # dark plate behind the text over bright pictures (reviewcheck --cards flags them)
-            pw = max(text_w(d, pr.get('name', '').upper(), font('head', 84)), text_w(d, pr.get('sub', ''), font('body', 30)))
+            pw = max(text_w(d, pr.get('name', '').upper(), font('head', 84)), text_w(d, pr.get('sub', ''), font('body', 30)),
+                     text_w(d, (pr.get('kicker') or '').upper(), font('monomed', 30)) - 26)  # long kickers ran off the plate over the photo (Barbarossa, 2026-11-13)
             d.rectangle((x, y - 8, x + pw + 56, y + 190), fill=(16, 14, 12, int(170 * g)))
         d.rectangle((x, y + 172 * (1 - g), x + 7, y + 172), fill=RED + (int(255 * out),))
         k = pr.get('kicker', '').upper(); n = int(len(k) * min(1, max(0, (lt - 0.3) / 0.6)))
@@ -382,6 +383,8 @@ def card_chapter(d, pr, lt, out):
     k = f"第{pr.get('n', '')}章" if LANG == 'ja' else f"{LOC['chapter'].get(LANG, 'CHAPTER')} {pr.get('n', '')}"; fk = font('monomed', 28); d.text(((W - text_w(d, k, fk)) / 2, 300), k, font=fk, fill=(220, 210, 195, int(230 * a)))
     fn = font('head', 230); n = str(pr.get('n', '')); d.text(((W - text_w(d, n, fn)) / 2, 330 + 20 * (1 - a)), n, font=fn, fill=RED + (int(255 * a),))
     b = ease((lt - 0.5) / 0.5) * out; ft = font('head', 76); s = pr['title'].upper(); w = text_w(d, s, ft)
+    if w > W - 240:  # long titles touched the frame edge (Königsberg ch. 3/4, 2026-11-10): keep >= 120 px margins
+        ft = font('head', int(76 * (W - 240) / w)); w = text_w(d, s, ft)
     d.text(((W - w) / 2, 640), s, font=ft, fill=OFFWHITE + (int(255 * b),))
     r = ease((lt - 0.8) / 0.6) * out; d.rectangle((W / 2 - 70 * r, 752, W / 2 + 70 * r, 758), fill=RED + (int(255 * out),))
 
@@ -414,13 +417,17 @@ def card_stat(d, pr, lt, out):
 
 def card_quote(d, pr, lt, out):
     a = ease((lt - 0.1) / 0.4) * out
+    if pr.get('y'):  # block placed by the caller (story notice: centred on black, kicker above it with a red rule)
+        y0 = pr['y']; d.text((150, y0 - 110), pr.get('kicker', '').upper(), font=font('monomed', 32), fill=(205, 190, 170, int(230 * a)))
+        d.rectangle((150, y0 - 58, 150 + 90 * ease((lt - 0.3) / 0.4), y0 - 53), fill=RED + (int(255 * out),))
+        pr = {**pr, 'kicker': None}
     if pr.get('kicker'):
         d.text((150, 170), pr['kicker'].upper(), font=font('mono', 24), fill=(205, 190, 170, int(220 * a)))
     if pr.get('title'):
         d.text((150, 204), pr['title'].upper(), font=font('head', 50), fill=OFFWHITE + (int(255 * a),))
         d.rectangle((150, 280, 150 + 70 * ease((lt - 0.3) / 0.4), 285), fill=RED + (int(255 * out),))
     f = font('monomed', 62); cps = pr.get('cps', 16); start = 0.7
-    lines = pr['lines']; y = 380; shown = max(0, (lt - start) * cps)
+    lines = pr['lines']; y = pr.get('y', 380); shown = max(0, (lt - start) * cps)
     hl = pr.get('highlight', '')
     for ln in lines:
         n = int(min(len(ln), shown)); shown -= len(ln)

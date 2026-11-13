@@ -63,7 +63,7 @@ def _split_paragraph(text, lang=None):
         word = re.findall(r'([\w.]+)$', before)
         if m.group(1) == '.' and word and word[0].lower().rstrip('.') in ABBR and m.end() < len(text):
             continue
-        if m.group(1) == '.' and word and re.fullmatch(r'[A-Z]', word[0]) and m.end() < len(text):  # "John A. Walker"
+        if m.group(1) == '.' and word and re.fullmatch(r'[A-Z](?:\.[A-Z])*', word[0]) and m.end() < len(text):  # "John A. Walker", "J.P. Morgan"
             continue
         if (lang == 'de' and m.group(1) == '.' and word and m.end() < len(text)
                 and re.fullmatch(r'\d{1,2}|[IVXL]{2,}|[VXL]', word[0])):

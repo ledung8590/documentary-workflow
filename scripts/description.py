@@ -143,7 +143,12 @@ def main():
         elif cc:  # many CC authors (film 76: 124): one line per licence, authors only (author + licence is the attribution)
             by = {}
             for (au, lic), _ in cc.items():
-                by.setdefault(lic, set()).add(re.sub(r',?\s*\d{4}-\d\d-\d\d[\d: ]*$', '', au))
+                s = re.sub(r',?\s*\d{4}-\d\d-\d\d[\d: ]*$', '', au)
+                # a 2.6 h film had 157 CC authors (Barbarossa, 2026-11-13): short names so the list fits 5,000 characters
+                s = 'Bundesarchiv' if s.startswith('Bundesarchiv') else s
+                s = re.sub(r'\s*\([^)]*\)', '', re.sub(r'\s+from\s+.*$', '', re.sub(r'\s*/\s*[^,/]*$', '', s))).strip(' ,')
+                s = re.sub(r'https?://(www\.)?([^/]+)/?\S*', r'\2', s)
+                by.setdefault(lic, set()).add(s[:40])
             out += [L.get('ccc', T['en']['ccc'])] + [f'- {lic}: ' + ', '.join(sorted(v, key=str.lower)) for lic, v in sorted(by.items())]
         if other:
             out += [L['other']] + sorted(set(other))

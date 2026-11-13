@@ -107,8 +107,15 @@ def fire_table(d):
         return {}
     for node in ast.parse(p.read_text(encoding='utf-8')).body:
         if isinstance(node, ast.Assign) and any(getattr(t, 'id', '') == 'FIRE' for t in node.targets):
-            return ast.literal_eval(node.value)
-    return {}
+            fire = ast.literal_eval(node.value); break
+    else:
+        fire = {}
+    for f in sorted(Path(d).glob('sfx-notes-*.txt')):  # group editors' flash notes, merged into FIRE by gen_sound.py
+        for ln in f.read_text(encoding='utf-8').splitlines():
+            q = [x.strip() for x in ln.split('|')]
+            if len(q) >= 3 and q[0].startswith('vid:') and not ln.lstrip().startswith('#'):
+                fire.setdefault(q[0][4:], [])
+    return fire
 
 
 def firing_sound(d, shots):

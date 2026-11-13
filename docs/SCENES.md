@@ -71,9 +71,10 @@ window.SCENE = { duration: 8, bg: 'brown', draw(c, t, L) { /* paint frame t (s) 
 - **Fit the beat.** One scene covers one beat (usually 1–3 shots, 4–12 s). Each element appears on the narrator's word.
 - **Keep it moving.** Something must move in every second.
 - **Stay in the house style.** Use only the house palette and fonts. Keep text large: at least 26 px for body, 34 px for labels.
-- **Drawn characters (`K.doll`) are the last resort.** Use them only where no real picture and no modern stand-in exists (`docs/WORKFLOW.md` stage 6, picture priority).
+- **Drawn characters (`K.doll`) carry the key human moments** that no real picture shows (decisions, meetings, orders, soldiers' and civilians' experience; `docs/WORKFLOW.md` stage 6, picture mix).
+  - Style is exactly film 75's: the kit's egg doll, no other character style. Costumes: 1806–1815 armies, Vietnam 1860s, and since 2026-11-14 `wehr`, `sov`, `us`, `tommy`, `jap`, `navy`, `suit`, `work` with hats `stahlhelm`, `pilotka`, `ushanka`, `m1`, `brodie`, `jpcap`, `peaked`, `fedora`, `flatcap` (sheet: `templates/archival/scenes/doll_sheet.jpg`). A missing costume is added to the kit's `doll()` in the same drawing style.
   - Put `// no-real-media: <what was searched>` in the scene file.
-  - `scripts/dollcheck.py` holds the budget: 35 % of shots, at most 2 in a row, none in the first 60 s.
+  - `scripts/dollcheck.py` holds the budget: target 20–30 % of running time, `!!` below 15 % or above 35 %; no limit on shots in a row, dolls allowed in the opening.
   - Opposing armies must read apart at a glance.
 - **Treat it as an illustration.** Its credit line is "Animated graphic (illustrative)", plus the data source when there is one.
   - The timeline clip gets `kind: video`, `grade: none`.

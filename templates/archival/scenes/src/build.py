@@ -5,7 +5,7 @@ from pathlib import Path
 
 SRC = Path(__file__).parent
 OUT = SRC.parent
-kit = (SRC / '_kit.js').read_text(encoding='utf-8')
+kit = '\n'.join((SRC / f).read_text(encoding='utf-8') for f in ['_kit.js'] + sorted(x.name for x in SRC.glob('_*.js') if x.name != '_kit.js'))  # _kit.js + film helpers (_j.js, _m.js ...)
 dur = json.loads((SRC / 'durations.json').read_text(encoding='utf-8')) if (SRC / 'durations.json').exists() else {}
 names = sys.argv[1:] or [p.stem for p in SRC.glob('*.js') if not p.stem.startswith('_')]
 for n in names:

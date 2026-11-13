@@ -1,16 +1,18 @@
-"""Drawn-character (K.doll) budget for a film's shot list. Archival first: dolls only where no real picture exists.
+"""Drawn-character (K.doll) budget for a film's shot list. Film 75 egg style for key human moments with no real picture; floor and cap.
 
 Called from each film's `plan.py check` (and runnable alone: PY scripts/dollcheck.py JOB, reads timeline.json).
 A doll scene is scenes/src/NAME.js that calls `K.doll(`. Rules (user, 2026-11-02; cap raised to 35 % on 2026-11-03 because film 75 at 31 % did well with viewers):
+  - at least MIN_SHARE of the running time (2026-11-14: after film 75 the "last resort" wording left films 76-Barbarossa at 0-2 %,
+    all maps and graphs, which the user found dry; drawn people now carry the key human moments in the film 75 egg style);
   - at most MAX_SHARE of the shots and of the running time;
-  - never more than MAX_RUN doll shots in a row;
-  - none in the first HOOK_S seconds (the hook is real film/pictures);
+  - no limit on doll shots in a row and dolls are allowed in the opening (2026-11-14: the user dropped the old
+    "max 2 in a row" and "none in the first 60 s" rules; film 75 opened on dolls and ran them in sequences, and viewers liked it);
   - each doll scene file states what real media was searched for: a `// no-real-media: ...` comment.
 """
 import json, re, sys
 from pathlib import Path
 
-MAX_SHARE, MAX_RUN, HOOK_S = 0.35, 2, 60.0  # 0.10 until 2026-11-03: film 75 (31 %) was well received by viewers, so the user lifted the cap
+MIN_SHARE, MAX_SHARE = 0.15, 0.35  # 0.10 until 2026-11-03: film 75 (31 %) was well received by viewers, so the user lifted the cap
 REASON = re.compile(r'//\s*no-real-media:\s*\S')
 
 
@@ -36,14 +38,10 @@ def check(d, shots):
     if n > MAX_SHARE * len(shots) or secs > MAX_SHARE * total:
         msg = '!! ' + msg + ': replace dolls with real pictures, modern stand-ins (illustrative), maps or plain graphics'
         warn += 1
+    elif secs < MIN_SHARE * total:
+        msg = '!! ' + msg + f': below the {MIN_SHARE:.0%} floor; draw the key human moments (decisions, meetings, orders, soldiers, civilians) as K.doll scenes (target 20-30 %), add missing costumes to the kit doll()'
+        warn += 1
     print(msg)
-    run = 0
-    for i, (s, k) in enumerate(zip(shots, is_doll)):
-        run = run + 1 if k else 0
-        if run == MAX_RUN + 1:
-            print(f'!! {run}+ doll shots in a row from shot {i - run + 1} ({shots[i - run + 1]["t0"]:.1f}s)'); warn += 1
-        if k and s['t0'] < HOOK_S:
-            print(f'!! doll scene {s["src"]} at {s["t0"]:.1f}s inside the {HOOK_S:.0f}s hook'); warn += 1
     used = {s['src'][6:] for s, k in zip(shots, is_doll) if k}
     for name in sorted(used):
         if not dolls[name]:

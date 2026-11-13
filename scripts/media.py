@@ -51,6 +51,13 @@ def _get(url, headers=None, timeout=40, tries=4):
             time.sleep(wait)
 
 
+def clean_author(a):
+    """Commons' {{Unknown|author}} renders its text twice: "Unknown authorUnknown author (or not provided)", "UnknownUnknown"."""
+    a = re.sub(r'(?i)^(unknown(?: author)?)\s*\1', r'\1', (a or '').strip())
+    a = re.sub(r'(?i)^unknown author or not provided$', 'Unknown author', a)
+    return 'Unknown author' if not a or a.lower() == 'unknown' else a
+
+
 def _text(v):
     return re.sub(r'\s+', ' ', html.unescape(re.sub(r'<[^>]+>', '', v or ''))).strip()
 
@@ -101,8 +108,8 @@ def commons(query, n=20, kind='photo'):
                     'download': ii.get('url') if kind == 'video' else _as_thumb(ii.get('thumburl') or ii.get('url'), ii.get('width'), FULL_W),
                     'width': ii.get('width'), 'height': ii.get('height'), 'licence': g('LicenseShortName'),
                     # Commons' {{Unknown|author}} renders its text twice ("Unknown authorUnknown author", film 198); empty {{Creator: }} = unknown
-                    'licence_url': g('LicenseUrl'), 'author': re.sub(r'(?i)^(unknown author)\s*unknown author$', r'\1',
-                                                                    re.sub(r'^\{?\{?Creator:\s*\}?\}?', '', g('Artist')).strip()) or 'Unknown author',
+                    # also "Unknown authorUnknown author or not provided" and "UnknownUnknown" (film 2026-11-13: 166 on-screen credits)
+                    'licence_url': g('LicenseUrl'), 'author': clean_author(re.sub(r'^\{?\{?Creator:\s*\}?\}?', '', g('Artist')).strip()),
                     'credit': g('Credit'),
                     'date': g('DateTimeOriginal'), 'description': g('ImageDescription')[:400]})
     return out

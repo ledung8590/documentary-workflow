@@ -44,7 +44,7 @@ Story mode only (`docs/STORY_MODE.md`). Archival films follow `docs/WORKFLOW.md`
 ### Running the check
 - `PY scripts/storycheck.py input/<story>.txt` runs after ingest and **before** `split`/`tts`.
 - It compares the script with itself and with every earlier story in `stories/published/` (that folder is kept out of git). After the user confirms an upload, copy the script there.
-- `!!` lines must be fixed: rewrite the script, or, if the user wrote it, report them and get the user's OK before fixing. `!` lines are to be read and judged.
+- `!!` lines must be fixed: rewrite the script yourself, even if the user wrote it, without asking (user rule 2026-11-12), and report what you changed. `!` lines are to be read and judged.
 
 ## Prompt block for an outside writer (GPT/Gemini)
 When the user writes with another model, give it this (Vietnamese) on top of their own prompt:

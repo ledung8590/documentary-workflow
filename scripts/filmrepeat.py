@@ -13,9 +13,13 @@ def source_id(name):
     return f'{m.group(1)}-{m.group(2)}' if m else None
 
 
+RANGES = {}  # source id -> [(film, source_in, source_out)] of earlier film cuts (a long reel's other seconds are new footage)
+PAD = 5.0
+
+
 def past_films():
-    """{source id: [film number or name, ...]} from every finished film."""
-    out = {}
+    """{source id: [film number or name, ...]} from every finished film; fills RANGES for film cuts."""
+    out = {}; RANGES.clear()
     for p in sorted(ROOT.glob('evidence/*/project/timeline.json')):
         film = p.parents[1].name.split('.')[0]
         try:
@@ -30,6 +34,8 @@ def past_films():
                     k = source_id(s) if s else None
                     if k and film not in out.setdefault(k, []):
                         out[k].append(film)
+                    if k and s == c.get('src') and c.get('source_in') is not None:
+                        RANGES.setdefault(k, []).append((film, float(c['source_in']), float(c['source_in']) + float(c.get('end', 0)) - float(c.get('start', 0))))
     return out
 
 
@@ -47,6 +53,12 @@ def check(D, sh):
         key = f"{c['source'].split(':')[0]}-{re.sub(r'[^A-Za-z0-9_-]', '', str(c['id']))}"
         if key in past:
             hard = s['t0'] < HARD_SECONDS or kind == 'vid'  # the opening and film cuts are what viewers recognise; later stills may repeat
-            print(f'{"!!" if hard else "!"} shot {i} {s["src"]}: already in film {", ".join(past[key])} ({key})')
+            note = ''
+            if kind == 'vid' and s['t0'] >= HARD_SECONDS and key in RANGES and '@' in s['src']:
+                a = float(s['src'].split('@')[1].rstrip('!')); b = a + s['t1'] - s['t0']
+                hit = [r for r in RANGES[key] if a < r[2] + PAD and b > r[1] - PAD]
+                if not hit:  # same long reel, footage never shown before (user rule: repeated footage, not the file, is the risk)
+                    hard = False; note = f' (same reel, other seconds than {", ".join(f"film {r[0]} {r[1]:.0f}-{r[2]:.0f}s" for r in RANGES[key])})'
+            print(f'{"!!" if hard else "!"} shot {i} {s["src"]}: already in film {", ".join(past[key])} ({key}){note}')
             warn += 1
     return warn

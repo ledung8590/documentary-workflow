@@ -83,6 +83,9 @@ def asset(rel):
 
 
 def lines(name):
+    part = __import__('os').environ.get('PLAN_PART')  # group agents check their own shots-X.txt / overlays-X.txt
+    if part and name in ('shots.txt', 'overlays.txt'):
+        name = name.replace('.txt', f'-{part}.txt')
     p = D / name
     if not p.exists():
         return []
@@ -139,7 +142,7 @@ def check():
             except (OSError, IndexError, ValueError, KeyError):
                 flag += ' !! MISSING candidate'
             if kind == 'vid':  # several cuts from one long film are different shots; overlapping ranges are not
-                t_in = float(tin or 0)
+                t_in = float((tin or '0').rstrip('!'))
                 for (pk, a, b) in [x for x in vid_ranges if x[0] == key]:
                     if t_in < b and a < t_in + L:
                         flag += ' !! OVERLAPS another cut of this film'
@@ -202,7 +205,7 @@ def apply(sound_only=False):
             c.update(src=None, kind='card')
         elif k in ('pick', 'vid'):
             tag, _, kk = rest.partition('#'); kk, _, tin = kk.partition('@')
-            picks.append((c['id'], tag, int(kk), s['caption'], float(tin or 0), k == 'vid'))
+            picks.append((c['id'], tag, int(kk), s['caption'], tin or '0', k == 'vid'))  # '@IN!' = exact in-point, no clean_in
             c.update(src=None, caption=s['caption'])
             if k == 'vid':
                 c['mute'] = True
@@ -259,7 +262,7 @@ def apply(sound_only=False):
     def edit(tl):
         for tr in tl['tracks']:
             if tr['id'] == 'video' and not sound_only: tr['clips'] = vids
-            if tr['id'] == 'overlay' and not sound_only: tr['clips'] = ovs
+            if tr['id'] == 'overlay': tr['clips'] = ovs  # overlays need no downloads: `plan.py sound` refreshes them too
             if tr['id'] == 'sfx': tr['clips'] = sfx
             if tr['id'] == 'music': tr['clips'] = mus
         f = next((t for t in tl['tracks'] if t['id'] == 'fx'), None)
@@ -279,7 +282,7 @@ def apply(sound_only=False):
     for slot, tag, k, cap, tin, isvid in picks:
         try:
             if isvid:
-                doc.media_pick(JOB, slot, tag, k, cap, tin)
+                doc.media_pick(JOB, slot, tag, k, cap, float(tin.rstrip('!')), exact=tin.endswith('!'))
             else:
                 doc.media_pick(JOB, slot, tag, k, cap)
         except Exception as e:  # noqa: BLE001
