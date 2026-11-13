@@ -44,8 +44,11 @@ VOICES = {'en': ('Gubgw9l4dtIoQA9YZHgx', 'Brian - Deep, Resonant and Comforting'
           'ja': ('4oeIbMTUt5QeJy4ZX1FC', 'Koichi Yashiro - Deep Cinematic')}  # chosen by the user 2026-11-04 for 30-60 min military films
 # story narrators (/gentruyen): the user's MiniMax cloned voices on AI84, sent as whole chunks that the voice reads with its own
 # expression (viewers liked them: TUNG_DUY_V2 for Vietnamese, LS_US for US English stories, 2026-11-02); job.json voice overrides
-STORY_VOICES = {'vi': 'TUNG_DUY_V2', 'en': 'LS_US'}
-MINIMAX_LANG = {'vi': 'Vietnamese', 'en': 'English', 'de': 'German', 'es': 'Spanish', 'fr': 'French'}
+# the user's MiniMax cloned voices on AI84, read in whole chunks (no emotion tags): stories AND archival films since 2026-11-14
+# (viewers disliked the sudden emphasis of per-sentence eleven_v4 jobs with emotion tags)
+MINIMAX_VOICES = {'vi': 'TUNG_DUY_V2', 'en': 'LS_US', 'es': 'LS_TBN', 'ja': 'LS_NHAT', 'de': 'LS_ĐỨC'}
+STORY_VOICES = MINIMAX_VOICES
+MINIMAX_LANG = {'vi': 'Vietnamese', 'en': 'English', 'de': 'German', 'es': 'Spanish', 'fr': 'French', 'ja': 'Japanese'}
 EDGE_DB = -40.0          # clip head/tail must be quieter than this after trimming
 TRIM_DB = -42.0          # speech onset/offset threshold (10 ms RMS)
 HEAD_PAD, TAIL_PAD = 0.04, 0.09
@@ -186,8 +189,8 @@ def ingest(folder, story=False, only=None):
             (p / 'script.txt').write_text(text, encoding='utf-8')
             cfg['language'] = cfg.get('language') or detect_language(text)
             cfg['voice']['language_code'] = cfg['voice'].get('language_code') or cfg['language']
-            if st and cfg['voice'].get('provider', 'ai84') == 'ai84' and not cfg['voice'].get('voice_id') and cfg['language'] in STORY_VOICES:
-                cfg['voice'].update(provider='minimax', voice_name=STORY_VOICES[cfg['language']], model='speech-2.6-hd',
+            if cfg['voice'].get('provider', 'ai84') == 'ai84' and not cfg['voice'].get('voice_id') and cfg['language'] in MINIMAX_VOICES:
+                cfg['voice'].update(provider='minimax', voice_name=MINIMAX_VOICES[cfg['language']], model='speech-2.6-hd',
                                     chunked=True, chunk_chars=9500, audio_tags=False)
             if not cfg['voice'].get('voice_id') and cfg['language'] in VOICES and cfg['voice'].get('provider') != 'minimax':
                 cfg['voice']['voice_id'], cfg['voice']['voice_name'] = VOICES[cfg['language']]
