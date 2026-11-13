@@ -40,6 +40,7 @@ const lerp = (a, b, t) => a + (b - a) * t;
 
 window.setup = async (s) => {
   scene = s;
+  if (s.base === 'satellite') s.look = null;  // look films use both: flat atlas maps and the old 3D satellite maps (user 2026-11-14, reference 0:39)
   if (s.look && s.look !== 'none') {
     const all = await (await fetch('/assets/looks.json')).json(); LK = all[s.look] ? Object.assign({ name: s.look }, all[s.look]) : null;
   }

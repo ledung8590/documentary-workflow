@@ -131,17 +131,17 @@ Renders `render/picture.mp4` from the timeline on the GPU (`scripts/render_gl.py
 
 ## 13. Deliver
 `output/<id>/video.mp4` (or the approved `video-studio-<time>.mp4`), `LICENSES.md`, `credits.txt` (description-ready attribution), `qa.json`. Never upload.
-- **Thumbnail.** Make a 1280×720 JPG. **Military films use the user's high-view layout** (reference `G:\YOUTUBE\LSTG-US-APP\HOT\USA Unleashes Second Atomic Weapon Against Japan The Fatal Calculation Nagasaki Paid For.jpg`, user 2026-11-03):
-  - black and white with red as the only accent;
-  - a real commander tied to the topic on the right, waist-up, facing the viewer (licensed portrait: PD or CC, credited in the description note);
-  - behind him, the film's weapon or vehicle **in a disaster** (explosion, fire, black smoke), never sitting calmly. Ground it in a real accident where one exists and call the composite illustrative in the note;
-  - red arrows converging on a crosshair with a small red label;
-  - a 2-line stencil hook (2–4 words) on black bars on the left.
-  - **Compose it with the image model, never with code** (user: code cut-outs look ragged). Call `mcp__auto-image__generate_image` with reference images: the portrait (to keep the real face) and the weapon or disaster picture. Describe the layout and the exact text in words. Do **not** pass the layout reference itself: the model copies its person and its plane. Make 2 variants, check the face, the spelling and the bottom-right corner, then only resize to 1280×720 (`thumbnail.py` holds the references and the resize).
-  Otherwise use the film's `thumbnail.py` (start from the newest `evidence/*/project/thumbnail.py`):
-  - **Hero:** a sharp, high-resolution picture that is already in the film, with one obvious subject. Prefer a colour painting or portrait with one large face, in its natural colours with only a light grade. A dark, crowded engraving under a heavy grade was rejected ("hình như ko vậy? y/c hình rõ", film 75, 2026-11-02).
-  - **Hook:** 2–4 big words **in the script's language**, in Black Ops One, off-white plus red with a thick dark stroke, on a dark area beside the subject. No kicker line, tags or stamp text: text-heavy thumbnails had a low CTR (2026-11-01).
-  - Keep the bottom-right corner clear for YouTube's timestamp. It must read at 320×180. Look at it full size before showing it.
+- **Thumbnail** (user 2026-11-14: build every archival thumbnail around the reference channel's best thumbnails, `C:/Users/<user>/Downloads/thum`, 164k–41k views; the high-view ones all carry a **year/date label**). Make a 1280×720 JPG with `PY scripts/thumb.py spec.json out.jpg` (the film's `thumbnail.py` keeps the spec):
+  - **A real archival photo** fills the frame (B/W print, light grade), the film's strongest picture of the subject: a ship, a tank column, a portrait. Use the same licensed photos as the film and name them in the description note.
+  - **A year/date label, always** (`tag`): a small navy or black box with white text, e.g. "Unternehmen Barbarossa · 22. Juni 1941", "Foto: Juni 1941".
+  - **A few big words plus ONE red emphasis** in the script's language: a number ("9–17 Wochen", "約2倍"), a question ("Warum scheiterte er 1941?") or the event's name in huge red letters with a white outline.
+  - **Four layouts** (pick by the hook): `panel` (dark panel bottom-left, serif title, red number, inset second photo), `portrait` (commander's portrait strip left, two white lines, huge red event name), `question` (serif title top-left, white question on a red box, label bottom-left), `band` (light top with kicker and black title, red bottom band with the date and the headline).
+  - A tiny photo credit sits bottom-right, like the reference. It must read at 320×180; look at it full size before showing it.
+  - The older image-model composite (portrait + disaster + stencil hook) is now only a fallback when no strong real photo exists.
+  - **Check it before showing it** (user 2026-11-14: the Barbarossa thumbnail showed the wrong tank type and was caught only when the user asked). Every thumbnail, every variant, every redo:
+    1. `PY scripts/thumbcheck.py JOB out.jpg`: numbers and years against the script/FACTS, each photo's Commons record (title, date, categories), type/model words and names against those records, a year/month label the record does not support. Fix every `!!`.
+    2. A **fresh reviewer** (Agent subagent that did not make it) reads the image and the check sheet, identifies independently what each photo shows (vehicle/ship/aircraft model by its visible features, the person, uniform, era; web search allowed) and checks every word, number, label and the spelling. Fix every error and run both again.
+    3. Show the user the thumbnail with one line on what was checked ("Panzer III confirmed: cupola, 6 road wheels; label 1941 matches the record"). Never present an unchecked thumbnail.
 - **Description.** Build `description_youtube.txt` with `PY scripts/description.py JOB --intro intro.txt [--note note.txt] --tags "t1, …, t7" --hashtags "#A #B #C #D #E #F #G"`. You write the intro and the note in the script's language; the script adds the rest:
   - chapters, starting at 0:00;
   - public-domain sources by archive;

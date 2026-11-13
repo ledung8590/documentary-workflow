@@ -7,7 +7,7 @@ python write_maps.py [durations.json]  (durations: {name: seconds}; default = th
 import json, sys, pathlib
 here = pathlib.Path(__file__).parent
 base = {'exaggeration': 1.1, 'saturation': -0.35, 'brightness': 0.74}
-KEEP = ('shade', 'exaggeration', 'brightness', 'saturation')
+KEEP = ('shade', 'exaggeration', 'brightness', 'saturation', 'base')  # base 'satellite': the old 3D satellite map inside a look film
 
 
 def write(dur=None):

@@ -220,8 +220,12 @@ def apply(sound_only=False):
                 c['hide_subtitles'] = True
         elif k == 'map':
             c.update(src=f'media/map-{rest}.mp4', kind='video', grade='none', credit=MAPCREDIT, caption=s['caption'], mute=True, **{'in': 0.0})
-            if LOOK not in ('paper', 'dark'):
+            spec = D / 'maps' / 'src' / f'{rest}.json'
+            sat = spec.exists() and json.loads(spec.read_text(encoding='utf-8')).get('base') == 'satellite'
+            if LOOK not in ('paper', 'dark') or sat:
                 c['bloom'] = True  # glow belongs to the old satellite maps only
+            if sat:
+                c['credit'] = CREDITS.get(LANG, CREDITS['en'])[0]  # the satellite/terrain credit
         elif k == 'card':
             c.update(src=None, kind='card')
         elif k in ('pick', 'vid'):

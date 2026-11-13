@@ -4,7 +4,9 @@
 `maps/engine.html` draws a flat sketch map instead of satellite terrain: Natural Earth land/lakes/rivers (`assets/geo`,
 public domain; 1:50m below zoom 4, 1:10m above) in the look's land colour on its sea with a faint wave pattern, top-down
 (pitch and bearing forced to 0), printed flat arrows, no glow or bloom, serif labels on navy (paper) boxes. Colours in a
-spec are pulled into the look by hue (reds → accent2, blues → accent, ambers → highlight, greys → fg). Credit:
+spec are pulled into the look by hue (reds → accent2, blues → accent, ambers → highlight, greys → fg). A spec with
+`"base": "satellite"` keeps the old 3D satellite map unchanged (look films use both, like the reference: atlas maps for
+history, satellite for real distances and terrain; plan.py gives it the satellite credit). Credit of flat maps:
 "Karte: Natural Earth (gemeinfrei) · Positionen, Pfeile: schematisch" (plan.py sets it per language). The satellite
 section below applies only to films without a look.
 
