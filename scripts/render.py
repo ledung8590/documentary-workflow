@@ -23,6 +23,40 @@ LOC = {'chapter': {'vi': 'CHƯƠNG', 'en': 'CHAPTER', 'es': 'CAPÍTULO', 'fr': '
 OFFWHITE, RED, AMBER = (237, 231, 220), (200, 55, 45), (224, 160, 48)
 PARCH, BROWN, INK = (217, 204, 170), (43, 33, 25), (38, 32, 28)
 _fc = {}
+# ---- film look (assets/looks.json; timeline "look", written by plan.py from brief.json): one colour family and a
+# vintage serif for the whole film (user 2026-11-14, after the 通史3 reference). None = the old dark house style.
+LOOK = None
+OV_BOX, OV_TEXT = (16, 14, 12), OFFWHITE  # box and text of tags/plates drawn over footage
+_DEFAULTS = dict(OFFWHITE=OFFWHITE, RED=RED, AMBER=AMBER, PARCH=PARCH, BROWN=BROWN, INK=INK, OV_BOX=OV_BOX, OV_TEXT=OV_TEXT)
+
+
+def _hex(h):
+    h = h.lstrip('#'); return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def set_look(name):
+    """Switch the overlay/card/subtitle palette and fonts to a look ('paper' | 'dark'), or back to the house style (None)."""
+    global LOOK, OFFWHITE, RED, AMBER, PARCH, BROWN, INK, OV_BOX, OV_TEXT, _vig
+    looks = json.loads((ROOT / 'assets' / 'looks.json').read_text(encoding='utf-8'))
+    new = dict(looks[name], name=name) if name in looks else None
+    if (new or {}).get('name') == (LOOK or {}).get('name'):
+        return
+    LOOK = new; _tex.clear(); _vig = None
+    if not LOOK:
+        globals().update(_DEFAULTS); return
+    OFFWHITE, INK = _hex(LOOK['fg']), _hex(LOOK['fg']); RED, AMBER = _hex(LOOK['accent2']), _hex(LOOK['highlight'])
+    PARCH, BROWN = _hex(LOOK['panel']), _hex(LOOK['bg'])
+    OV_BOX, OV_TEXT = (18, 17, 16), (237, 231, 220)  # reference labels: near-black at ~80 %, cream text, cream left bar
+
+
+def use(tl):
+    """Language and look of the timeline being drawn (call before rendering any frame of it)."""
+    global LANG
+    LANG = tl.get('language') or 'en'; set_look(tl.get('look'))
+
+
+def UP(s):
+    return s if LOOK else s.upper()  # looks set titles in book case, not caps
 ENC_THREADS = []  # e.g. ['-threads', '2'] when several picture() renders run side by side (studio parallel ranges)
 X264 = ['-c:v', 'libx264', '-preset', 'medium', '-crf', '17']  # the house picture encode (render/picture.mp4)
 NVENC = ['-c:v', 'h264_nvenc', '-preset', 'p5', '-tune', 'hq', '-rc', 'vbr', '-cq', '18', '-b:v', '0', '-profile:v', 'high']
@@ -33,9 +67,20 @@ VIDEO_ENC = X264  # the studio switches to NVENC for previews and whole-picture 
 def font(kind, size):
     """kind: head (Oswald Bold), mono, monomed, body (Be Vietnam Pro SemiBold), bodyreg,
     military (Saira Condensed Bold), stencil (Saira Stencil One), blackops (Black Ops One); all OFL, assets/fonts."""
-    key = (kind, size, LANG == 'ja')
+    serif = bool(LOOK) and kind in ('head', 'body', 'bodyreg', 'monomed')  # 'military'/'sub' stay sans: subtitles are a bold gothic in the reference
+    key = (kind, size, LANG == 'ja', serif)
     if key not in _fc:
-        if LANG == 'ja':  # the house fonts have no kana/kanji: M PLUS 1p Bold (OFL, user's font 2026-11-04) draws everything
+        if serif:  # Source Serif 4 (OFL) / Shippori Mincho for Japanese (OFL), both in assets/fonts
+            wt = {'head': 700, 'military': 600, 'monomed': 600, 'body': 500, 'bodyreg': 400}[kind]
+            if LANG == 'ja':
+                f = ImageFont.truetype(str(FONTS / ('ShipporiMincho-Bold.ttf' if wt >= 600 else 'ShipporiMincho-Medium.ttf')), size)
+            else:
+                f = ImageFont.truetype(str(FONTS / 'SourceSerif4.ttf'), size)
+                try:
+                    f.set_variation_by_axes([wt, min(60, max(8, size * 0.75))])
+                except (OSError, ValueError):
+                    pass
+        elif LANG == 'ja':  # the house fonts have no kana/kanji: M PLUS 1p Bold (OFL, user's font 2026-11-04) draws everything
             f = ImageFont.truetype(str(FONTS / 'MPLUS1p-Bold.ttf'), size)
         elif kind == 'head':
             f = ImageFont.truetype(str(FONTS / 'Oswald.ttf'), size)
@@ -46,7 +91,7 @@ def font(kind, size):
         else:
             name = {'mono': 'IBMPlexMono-Regular.ttf', 'monomed': 'IBMPlexMono-Medium.ttf',
                     'body': 'BeVietnamPro-SemiBold.ttf', 'bodyreg': 'BeVietnamPro-Regular.ttf',
-                    'military': 'SairaCondensed-Bold.ttf', 'stencil': 'SairaStencilOne-Regular.ttf',
+                    'military': 'SairaCondensed-Bold.ttf', 'subsans': 'BeVietnamPro-SemiBold.ttf', 'stencil': 'SairaStencilOne-Regular.ttf',
                     'blackops': 'BlackOpsOne-Regular.ttf'}[kind]
             f = ImageFont.truetype(str(FONTS / name), size)
         _fc[key] = f
@@ -125,7 +170,7 @@ def finish(a, i):
     if _vig is None:
         y, x = np.mgrid[0:H, 0:W].astype(np.float32)
         r = np.sqrt(((x - W / 2) / (W * 0.62)) ** 2 + ((y - H / 2) / (H * 0.62)) ** 2)
-        g = np.round((1 - 0.38 * np.clip(r - 0.45, 0, 1) ** 1.6) * 255).astype(np.uint8)
+        g = np.round((1 - (min(0.38, LOOK['vignette']) if LOOK else 0.38) * np.clip(r - 0.45, 0, 1) ** 1.6) * 255).astype(np.uint8)
         _vig = Image.merge('RGB', [Image.fromarray(g, 'L')] * 3)  # multiplied in one C pass (ImageChops)
     return np.asarray(_finish_img(Image.fromarray(a)))
 
@@ -151,11 +196,37 @@ def framed_print(im):
     return bg
 
 
+def is_exhibit(clip):
+    """A look shows a photo as a mounted print on the paper only when the shot asks for it (pick:TAG#K+exhibit, e.g. a
+    document or a small portrait); photos fill the frame by default, as in the reference (user 2026-11-14)."""
+    return bool(LOOK) and clip.get('kind', 'photo') == 'photo' and bool(clip.get('exhibit')) and not clip.get('motion')
+
+
+def exhibit_frame(im, caption=''):
+    """Mounted print on the look's ground: thin light mat, soft contact shadow, caption in the look's serif below."""
+    bg = texture('look').convert('RGB').copy()
+    fg = ImageOps.contain(im, (int(min(W * 0.62, im.width * 1.8)), int(min(H * 0.6, im.height * 1.8))), Image.LANCZOS)
+    m = 10 if LOOK['name'] == 'paper' else 6
+    mat = Image.new('RGB', (fg.width + 2 * m, fg.height + 2 * m), (244, 240, 230) if LOOK['name'] == 'paper' else _hex(LOOK['panel']))
+    mat.paste(fg, (m, m))
+    x, y = (W - mat.width) // 2, int(H * 0.41 - mat.height / 2)
+    sh = Image.new('L', (mat.width + 40, mat.height + 40), 0)
+    ImageDraw.Draw(sh).rectangle((20, 20, mat.width + 20, mat.height + 20), fill=90 if LOOK['name'] == 'paper' else 160)
+    bg.paste((40, 30, 20) if LOOK['name'] == 'paper' else (0, 0, 0), (x - 14, y - 10), sh.filter(ImageFilter.GaussianBlur(12)))
+    bg.paste(mat, (x, y))
+    if caption:
+        d = ImageDraw.Draw(bg); f = font('body', 30); c = caption[:90]
+        d.text((x, y + mat.height + 16), c, font=f, fill=_hex(LOOK['fg']))
+    return bg
+
+
 class Photo:
     def __init__(self, path, clip, idx):
         im = ImageOps.exif_transpose(Image.open(path)).convert('RGB')
         g = clip.get('grade', 'archival')
-        if is_print(im.width, im.height, photo=True):
+        if is_exhibit(clip):
+            self.base = exhibit_frame(Image.fromarray(grade(np.asarray(im), g)), clip.get('caption', '')); self.push = 0.025
+        elif is_print(im.width, im.height, photo=True):
             self.base = Image.fromarray(grade(np.asarray(framed_print(im)), g)); self.push = 0.03
         else:
             self.base = Image.fromarray(grade(np.asarray(ImageOps.fit(im, (int(W * 1.1), int(H * 1.1)), Image.LANCZOS)), g))
@@ -251,12 +322,12 @@ def texture(kind):
         rng = np.random.default_rng(3)
         low = np.asarray(Image.fromarray((rng.random((27, 48)) * 255).astype(np.uint8)).resize((W, H), Image.BICUBIC), np.float32) / 255
         fine = rng.normal(0, 1, (H, W)).astype(np.float32)
-        col = np.array(PARCH if kind == 'parchment' else BROWN if kind == 'brown' else (14, 13, 12), np.float32)
-        amp = {'parchment': (26, 5), 'brown': (14, 3), 'black': (6, 2)}[kind]
+        col = np.array(_hex(LOOK['bg']) if kind == 'look' else PARCH if kind == 'parchment' else BROWN if kind == 'brown' else (14, 13, 12), np.float32)
+        amp = {'parchment': (26, 5), 'brown': (14, 3), 'black': (6, 2), 'look': (7, 3) if (LOOK or {}).get('name') == 'paper' else (8, 2)}[kind]
         a = col + (low[..., None] - 0.5) * amp[0] + fine[..., None] * amp[1]
         y, x = np.mgrid[0:H, 0:W].astype(np.float32)
         r = np.sqrt(((x - W / 2) / W) ** 2 + ((y - H / 2) / H) ** 2)
-        a *= (1 - 0.5 * np.clip(r - 0.25, 0, 1))[..., None]
+        a *= (1 - (0.18 if kind == 'look' else 0.5) * np.clip(r - 0.25, 0, 1))[..., None]
         _tex[kind] = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8)).convert('RGBA')
     return _tex[kind]
 
@@ -292,33 +363,33 @@ def draw_overlay(lay, o, lt):
         a = ease((lt - 0.3) / 0.4) * out
         if a <= 0: return False
         f = font('head', 44); s = pr['text']; w = text_w(d, s, f); x = 60 - (1 - a) * 30
-        d.rectangle((x, 50, x + w + 46, 116), fill=(16, 14, 12, int(185 * a)))
-        d.rectangle((x, 50, x + 7, 116), fill=RED + (int(255 * a),))
-        d.text((x + 24, 52), s, font=f, fill=OFFWHITE + (int(255 * a),))
+        d.rectangle((x, 50, x + w + 46, 116), fill=OV_BOX + (int((205 if LOOK else 185) * a),))
+        d.rectangle((x, 50, x + (4 if LOOK else 7), 116), fill=(OV_TEXT if LOOK else RED) + (int(255 * a),))
+        d.text((x + 24, 52 + (6 if LOOK else 0)), s, font=f if not LOOK else font('head', 40), fill=OV_TEXT + (int(255 * a),))
     elif t == 'lower_third':
         x, y = 90, H - 330
         g = ease((lt - 0.2) / 0.5) * out
         if g <= 0: return False
-        lay.alpha_composite(_shade(min(1.0, g * 1.4)))  # keeps small text readable over bright footage
+        if not LOOK: lay.alpha_composite(_shade(min(1.0, g * 1.4)))  # keeps small text readable over bright footage
         d = ImageDraw.Draw(lay)
-        if pr.get('plate'):  # dark plate behind the text over bright pictures (reviewcheck --cards flags them)
-            pw = max(text_w(d, pr.get('name', '').upper(), font('head', 84)), text_w(d, pr.get('sub', ''), font('body', 30)),
-                     text_w(d, (pr.get('kicker') or '').upper(), font('monomed', 30)) - 26)  # long kickers ran off the plate over the photo (Barbarossa, 2026-11-13)
-            d.rectangle((x, y - 8, x + pw + 56, y + 190), fill=(16, 14, 12, int(170 * g)))
-        d.rectangle((x, y + 172 * (1 - g), x + 7, y + 172), fill=RED + (int(255 * out),))
-        k = pr.get('kicker', '').upper(); n = int(len(k) * min(1, max(0, (lt - 0.3) / 0.6)))
-        d.text((x + 30, y + 2), k[:n], font=font('monomed', 30), fill=(225, 220, 210, int(235 * out)))
+        if pr.get('plate') or LOOK:  # looks: always on a plate in the look's box colour  # dark plate behind the text over bright pictures (reviewcheck --cards flags them)
+            pw = max(text_w(d, UP(pr.get('name', '')), font('head', 84)), text_w(d, pr.get('sub', ''), font('body', 30)),
+                     text_w(d, UP((pr.get('kicker') or '')), font('monomed', 30)) - 26)  # long kickers ran off the plate over the photo (Barbarossa, 2026-11-13)
+            d.rectangle((x, y - 8, x + pw + 56, y + 190), fill=OV_BOX + (int((205 if LOOK else 170) * g),))
+        d.rectangle((x, y + 172 * (1 - g), x + (4 if LOOK else 7), y + 172), fill=(OV_TEXT if LOOK else RED) + (int(255 * out),))
+        k = UP(pr.get('kicker', '')); n = int(len(k) * min(1, max(0, (lt - 0.3) / 0.6)))
+        d.text((x + 30, y + 2), k[:n], font=font('monomed', 30), fill=(OV_TEXT if LOOK else (225, 220, 210)) + (int(235 * out),))
         a2 = ease((lt - 0.5) / 0.5) * out
-        shadow_text(d, (x + 28, y + 40 + 18 * (1 - a2)), pr.get('name', '').upper(), font('head', 84), OFFWHITE + (int(255 * a2),), int(140 * a2))
+        shadow_text(d, (x + 28, y + 40 + 18 * (1 - a2)), UP(pr.get('name', '')), font('head', 84), OV_TEXT + (int(255 * a2),), 0 if LOOK else int(140 * a2))
         a3 = ease((lt - 0.8) / 0.5) * out
-        shadow_text(d, (x + 30, y + 146), pr.get('sub', ''), font('body', 30), (225, 220, 210, int(240 * a3)), int(120 * a3))
+        shadow_text(d, (x + 30, y + 146), pr.get('sub', ''), font('body', 30), (OV_TEXT if LOOK else (225, 220, 210)) + (int(240 * a3),), 0 if LOOK else int(120 * a3))
     elif t == 'callout':
         a = ease((lt - 0.25) / 0.5) * out
         if a <= 0: return False
-        f = font('head', 78); s = pr['text'].upper(); w = text_w(d, s, f); x = (W - w) / 2; y = H - 300 + 14 * (1 - a)
-        if pr.get('plate'):
-            d.rectangle((x - 30, y + 2, x + w + 30, y + 130), fill=(16, 14, 12, int(170 * a)))
-        shadow_text(d, (x, y), s, f, OFFWHITE + (int(255 * a),), int(160 * a))
+        f = font('head', 78); s = UP(pr['text']); w = text_w(d, s, f); x = (W - w) / 2; y = H - 300 + 14 * (1 - a)
+        if pr.get('plate') or LOOK:
+            d.rectangle((x - 30, y + 2, x + w + 30, y + 130), fill=OV_BOX + (int((205 if LOOK else 170) * a),))
+        shadow_text(d, (x, y), s, f, OV_TEXT + (int(255 * a),), 0 if LOOK else int(160 * a))
         r = ease((lt - 0.55) / 0.6) * out
         d.rectangle((x, y + 112, x + w * r, y + 118), fill=RED + (int(255 * out),))
     elif t == 'text':
@@ -327,6 +398,7 @@ def draw_overlay(lay, o, lt):
         fade_in = ease(lt / 0.25)
         bg = {'stat': 'parchment', 'quote': 'brown', 'chapter': 'brown'}.get(t, 'black')
         if pr.get('background'): bg = pr['background']
+        if LOOK and bg != 'scrim': bg = 'look'
         if bg == 'scrim':  # card over the picture below it (e.g. a title over a hero shot): darken only, keep the image
             lay.alpha_composite(Image.new('RGBA', (W, H), (0, 0, 0, int(255 * float(pr.get('scrim', 0.35)) * min(fade_in, out)))))
         else:
@@ -361,12 +433,12 @@ def card_title(d, pr, lt, out):
     for i, ln in enumerate(lines):
         d.text(((W - text_w(d, ln, f)) / 2, y0 + i * lh + 16 * (1 - a)), ln, font=f, fill=OFFWHITE + (int(255 * a),))
     if pr.get('sub'):
-        b = ease((lt - 0.8) / 0.6) * out; fs = font('head', 40); s2 = '  '.join(pr['sub'].upper()); w2 = text_w(d, s2, fs)
+        b = ease((lt - 0.8) / 0.6) * out; fs = font('head', 40); s2 = pr['sub'] if LOOK else '  '.join(pr['sub'].upper()); w2 = text_w(d, s2, fs)
         d.text(((W - w2) / 2, y0 + (len(lines) - 1) * lh + size * 1.36), s2, font=fs, fill=RED + (int(255 * b),))
 
 
 def card_question(d, pr, lt, out):
-    a = ease((lt - 0.15) / 0.4) * out; s = pr['text'].upper(); size = 170
+    a = ease((lt - 0.15) / 0.4) * out; s = UP(pr['text']); size = 170
     lines = [s]
     if text_w(d, s, font('head', size)) > W - 240:  # long question: two balanced lines, then shrink to fit
         lines = halves(s)
@@ -380,9 +452,9 @@ def card_question(d, pr, lt, out):
 
 def card_chapter(d, pr, lt, out):
     a = ease((lt - 0.1) / 0.5) * out
-    k = f"第{pr.get('n', '')}章" if LANG == 'ja' else f"{LOC['chapter'].get(LANG, 'CHAPTER')} {pr.get('n', '')}"; fk = font('monomed', 28); d.text(((W - text_w(d, k, fk)) / 2, 300), k, font=fk, fill=(220, 210, 195, int(230 * a)))
+    k = f"第{pr.get('n', '')}章" if LANG == 'ja' else f"{LOC['chapter'].get(LANG, 'CHAPTER')} {pr.get('n', '')}"; fk = font('monomed', 28); d.text(((W - text_w(d, k, fk)) / 2, 300), k, font=fk, fill=(_hex(LOOK['fg2']) if LOOK else (220, 210, 195)) + (int(230 * a),))
     fn = font('head', 230); n = str(pr.get('n', '')); d.text(((W - text_w(d, n, fn)) / 2, 330 + 20 * (1 - a)), n, font=fn, fill=RED + (int(255 * a),))
-    b = ease((lt - 0.5) / 0.5) * out; ft = font('head', 76); s = pr['title'].upper(); w = text_w(d, s, ft)
+    b = ease((lt - 0.5) / 0.5) * out; ft = font('head', 76); s = UP(pr['title']); w = text_w(d, s, ft)
     if w > W - 240:  # long titles touched the frame edge (Königsberg ch. 3/4, 2026-11-10): keep >= 120 px margins
         ft = font('head', int(76 * (W - 240) / w)); w = text_w(d, s, ft)
     d.text(((W - w) / 2, 640), s, font=ft, fill=OFFWHITE + (int(255 * b),))
@@ -392,7 +464,7 @@ def card_chapter(d, pr, lt, out):
 def card_stat(d, pr, lt, out):
     a = ease((lt - 0.15) / 0.4) * out
     if pr.get('title'):
-        d.text((150, 150), pr['title'].upper(), font=font('head', 56), fill=INK + (int(255 * a),))
+        d.text((150, 150), UP(pr['title']), font=font('head', 56), fill=INK + (int(255 * a),))
         r = ease((lt - 0.3) / 0.7) * out; d.rectangle((150, 236, 150 + (W - 300) * r, 239), fill=INK + (int(200 * out),))
     items = pr['items']; colw = (W - 300) / len(items)
     size = 170 if len(items) < 3 else 140  # one size for every value on the card, shrunk until the widest fits its column
@@ -409,8 +481,8 @@ def card_stat(d, pr, lt, out):
         v = it['value']; w = text_w(d, v, f); y = 440 + 24 * (1 - b)
         d.text((cx - w / 2, y), v, font=f, fill=INK + (int(255 * b),))
         u = ease((lt - at - 0.3) / 0.5) * out; d.rectangle((cx - w / 2, y + 232, cx - w / 2 + w * u, y + 238), fill=RED + (int(255 * out),))
-        fl = font('head', 40); lw = text_w(d, it['label'].upper(), fl)
-        d.text((cx - lw / 2, y + 256), it['label'].upper(), font=fl, fill=RED + (int(255 * b),))
+        fl = font('head', 40); lw = text_w(d, UP(it['label']), fl)
+        d.text((cx - lw / 2, y + 256), UP(it['label']), font=fl, fill=RED + (int(255 * b),))
         if it.get('sub'):
             fs = font('bodyreg', 30); sw = text_w(d, it['sub'], fs); d.text((cx - sw / 2, y + 310), it['sub'], font=fs, fill=INK + (int(220 * b),))
 
@@ -418,13 +490,13 @@ def card_stat(d, pr, lt, out):
 def card_quote(d, pr, lt, out):
     a = ease((lt - 0.1) / 0.4) * out
     if pr.get('y'):  # block placed by the caller (story notice: centred on black, kicker above it with a red rule)
-        y0 = pr['y']; d.text((150, y0 - 110), pr.get('kicker', '').upper(), font=font('monomed', 32), fill=(205, 190, 170, int(230 * a)))
+        y0 = pr['y']; d.text((150, y0 - 110), UP(pr.get('kicker', '')), font=font('monomed', 32), fill=(_hex(LOOK['fg2']) if LOOK else (205, 190, 170)) + (int(230 * a),))
         d.rectangle((150, y0 - 58, 150 + 90 * ease((lt - 0.3) / 0.4), y0 - 53), fill=RED + (int(255 * out),))
         pr = {**pr, 'kicker': None}
     if pr.get('kicker'):
-        d.text((150, 170), pr['kicker'].upper(), font=font('mono', 24), fill=(205, 190, 170, int(220 * a)))
+        d.text((150, 170), UP(pr['kicker']), font=font('mono', 24), fill=(_hex(LOOK['fg2']) if LOOK else (205, 190, 170)) + (int(220 * a),))
     if pr.get('title'):
-        d.text((150, 204), pr['title'].upper(), font=font('head', 50), fill=OFFWHITE + (int(255 * a),))
+        d.text((150, 204), UP(pr['title']), font=font('head', 50), fill=OFFWHITE + (int(255 * a),))
         d.rectangle((150, 280, 150 + 70 * ease((lt - 0.3) / 0.4), 285), fill=RED + (int(255 * out),))
     f = font('monomed', 62); cps = pr.get('cps', 16); start = 0.7
     lines = pr['lines']; y = pr.get('y', 380); shown = max(0, (lt - start) * cps)
@@ -441,7 +513,7 @@ def card_quote(d, pr, lt, out):
             break
         y += 96
     if pr.get('source') and lt > start + sum(len(l) for l in lines) / cps:
-        d.text((150, y + 120), pr['source'], font=font('body', 26), fill=(205, 190, 170, int(220 * out)))
+        d.text((150, y + 120), pr['source'], font=font('body', 26), fill=(_hex(LOOK['fg2']) if LOOK else (205, 190, 170)) + (int(220 * out),))
 
 
 def read_srt(path):
@@ -527,12 +599,22 @@ def subtitle_layout(text, style=None):
     return s, f, lines, box
 
 
-def subtitle_layer(text, style=None):
+def subtitle_layer(text, style=None, paper=False):
     """Burned-in subtitle: Be Vietnam Pro SemiBold, off-white with a dark outline, bottom centre. style: timeline
     "subtitle_style" from the studio (size, y, color, stroke, stroke_color, shadow, upper, box, box_color, box_pad,
     box_radius, font); the defaults draw exactly the house style."""
     s, f, lines, box = subtitle_layout(text, style)
     lay = Image.new('RGBA', (W, H)); d = ImageDraw.Draw(lay)
+    if LOOK and not (style or {}).get('color') and paper:
+        d.rectangle((0, box[1] - 10, W, box[3] + 12), fill=_hex(LOOK['panel']) + (232 if LOOK['name'] == 'paper' else 215,))
+        for x, y, ln, _ in lines:
+            d.text((x, y), ln, font=f, fill=_hex(LOOK['fg']) + (255,))
+        return lay
+    if LOOK and not (style or {}).get('color'):  # over pictures: white bold sans, dark outline and soft shadow
+        for x, y, ln, _ in lines:
+            d.text((x + 3, y + 3), ln, font=f, fill=(0, 0, 0, 140))
+            d.text((x, y), ln, font=f, fill=(250, 248, 242, 255), stroke_width=3, stroke_fill=(20, 18, 16, 230))
+        return lay
     if s['box'] > 0:
         fill = FX.hex_rgb(s.get('box_color', '#0A0908'), (10, 9, 8)) + (int(255 * s['box']),)
         r = int(s.get('box_radius', 0))
@@ -549,6 +631,9 @@ def subtitle_layer(text, style=None):
 def credit_layer(text):
     lay = Image.new('RGBA', (W, H)); d = ImageDraw.Draw(lay); f = font('body', 22)
     text = text[:180]; w = d.textlength(text, font=f)
+    if LOOK:  # source label top-right on the look's box (the 通史3 reference keeps the bottom free for the subtitle band)
+        d.rectangle((W - 64 - w - 16, 26, W - 52, 60), fill=OV_BOX + (205,)); d.rectangle((W - 64 - w - 16, 26, W - 64 - w - 13, 60), fill=OV_TEXT + (255,))
+        d.text((W - 64 - w, 28), text, font=f, fill=OV_TEXT + (235,)); return lay
     d.text((W - 64 - w + 2, H - 62 + 2), text, font=f, fill=(0, 0, 0, 170))
     d.text((W - 64 - w, H - 62), text, font=f, fill=OFFWHITE + (220,))
     return lay
@@ -579,15 +664,16 @@ def frame_layers(c, t, overlays, sub, cache, sub_style=None):
                 lay = Image.new('RGBA', (W, H))
             covered |= draw_overlay(lay, o, t - o['start'])
     if not covered and c.get('kind') != 'card':
-        line = ' · '.join(x for x in (c.get('caption'), c.get('credit')) if x)
+        line = ' · '.join(x for x in ((None if is_exhibit(c) else c.get('caption')), c.get('credit')) if x)
         if line:
             cache.setdefault(line, credit_layer(line)); out.append((('credit', line), cache[line]))
     if lay is not None:
         out.append((None, lay))
     if not covered and sub:
-        key = (sub, json.dumps(sub_style, sort_keys=True))
+        paper = bool(LOOK) and (is_exhibit(c) or '/scene-' in str(c.get('src', '')).replace('\\', '/'))
+        key = (sub, json.dumps(sub_style, sort_keys=True), paper)
         if cache.get('\0sub', (None,))[0] != key:
-            cache['\0sub'] = (key, subtitle_layer(sub, sub_style))  # one cue at a time: keep only the current layer
+            cache['\0sub'] = (key, subtitle_layer(sub, sub_style, paper))  # one cue at a time: keep only the current layer
         out.append((('sub',) + key, cache['\0sub'][1]))
     return out
 
@@ -669,8 +755,7 @@ def render_frame(t, vids, k, src, overlays, sub, fx, cache, effects=(), media=No
 
 
 def picture(d, tl, out):
-    global LANG
-    LANG = tl.get('language') or 'en'
+    use(tl)
     fps = tl['fps']; n = int(math.ceil(tl['duration'] * fps))
     vids = sorted([c for tr in tl['tracks'] if tr['id'] == 'video' for c in tr['clips']], key=lambda c: c['start'])
     overlays = sorted([c for tr in tl['tracks'] if tr['id'] == 'overlay' for c in tr['clips'] if 'start' in c],
@@ -792,8 +877,11 @@ def mix_graph(d, tl, t0=0.0, t1=None, only=None):
     mixin = '[v]'
     if beds:
         fc.append(''.join(f'[b{j}]' for j, _ in beds) + f'amix=inputs={len(beds)}:normalize=0:duration=longest,apad,atrim=duration={total:.3f}[bed]')
-        # gentle ducking (about -6 dB under speech) so the score stays audible and swells back in the pauses
-        fc.append('[bed][vsc]sidechaincompress=threshold=0.06:ratio=3:attack=30:release=600:knee=4:makeup=1[duck]')
+        # gentle ducking (about -6 dB under speech) so the score stays audible and swells back in the pauses.
+        # timeline "duck" {release ms, ratio} (archival films since 2026-11-14: release 2000, ratio 4): the bed stays down through
+        # the short gaps between sentences and only comes up in real pauses, like the reference (bed ~28 dB under speech peaks)
+        dk = tl.get('duck') or {}
+        fc.append(f"[bed][vsc]sidechaincompress=threshold=0.06:ratio={dk.get('ratio', 3)}:attack=30:release={dk.get('release', 600)}:knee=4:makeup=1[duck]")
         mixin += '[duck]'
     else:
         fc.append('[vsc]anullsink')

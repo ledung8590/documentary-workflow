@@ -1,0 +1,41 @@
+{
+  "_doc": "One look per archival film (brief.json \"look\", default paper). Read by scenes/lib.js, maps/engine.html and scripts/render.py. User 2026-11-14 after the 通史3 reference: one colour family for the whole film, vintage book graphics, real photos as framed exhibits. Colours as hex; every scene, map, card and overlay draws only from its look. Roles: fg text/lines, fg2 secondary text, panel tag boxes, accent the calm second colour (paper navy), accent2 the one mark colour (muted red: arrows, rules, dots), highlight a rare gold.",
+  "paper": {
+    "bg": "#E6DFCC",
+    "bg2": "#D8CFB6",
+    "panel": "#EFEADC",
+    "fg": "#1E222B",
+    "fg2": "#5B5A55",
+    "rule": "#8C8676",
+    "accent": "#233A5E",
+    "accent2": "#9A3328",
+    "highlight": "#B8862B",
+    "land": "#E9E2CF",
+    "sea": "#22375A",
+    "shadow": "rgba(60,48,30,0.28)",
+    "font_title": "serif",
+    "font_body": "serif",
+    "font_label": "serif",
+    "vignette": 0.18,
+    "grain": true
+  },
+  "dark": {
+    "bg": "#16130F",
+    "bg2": "#221D17",
+    "panel": "#2A241C",
+    "fg": "#E6DFCF",
+    "fg2": "#A79F90",
+    "rule": "#6C6456",
+    "accent": "#8FA3BA",
+    "accent2": "#B8432F",
+    "highlight": "#C99A3A",
+    "land": "#2B2620",
+    "sea": "#0F141B",
+    "shadow": "rgba(0,0,0,0.5)",
+    "font_title": "serif",
+    "font_body": "serif",
+    "font_label": "serif",
+    "vignette": 0.45,
+    "grain": true
+  }
+}

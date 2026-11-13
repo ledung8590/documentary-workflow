@@ -204,7 +204,7 @@ const K = {
       c.fillStyle = '#d8b450'; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(-48, -180 + i * 26, 5, 0, 7); c.arc(48, -180 + i * 26, 5, 0, 7); c.fill(); }
     } else if (o.side === 'dnam' || o.side === 'dan') {  // áo nẹp / áo dài closing on the right shoulder, sash
       c.strokeStyle = C[1]; c.lineWidth = 10; c.beginPath(); c.moveTo(-20, -200); c.quadraticCurveTo(60, -170, 70, -80); c.stroke();
-      if (o.side === 'dnam') { c.fillStyle = '#c9a24a'; c.beginPath(); c.arc(0, -140, 26, 0, 7); c.fill(); c.fillStyle = '#7a1f1a'; c.font = 'bold 30px serif'; c.textAlign = 'center'; c.fillText('兵', 0, -129); }
+      if (o.side === 'dnam') { c.fillStyle = '#c9a24a'; c.beginPath(); c.arc(0, -140, 26, 0, 7); c.fill(); c.fillStyle = '#7a1f1a'; c.font = 'bold 30px serif'; c.textAlign = 'center'; c.fillText(String.fromCharCode(0x5175), 0, -129); }
       c.fillStyle = C[2]; c.fillRect(-160, -64, 320, 14);
     } else if (o.side === 'quan') {  // áo thụng with a square rank badge (bổ tử)
       c.strokeStyle = C[1]; c.lineWidth = 8; c.beginPath(); c.moveTo(-20, -200); c.quadraticCurveTo(60, -170, 70, -80); c.stroke();
@@ -436,6 +436,89 @@ const K = {
     c.restore();
     if (g.tag) L.tag(c, g.tag[0], 120, 150, t, g.tag[2] ?? 0.5, { size: 34, accent: g.tag[3] || C.red, sub: g.tag[1] });
     if (g.title) L.text(c, g.title[0], 960, g.title[3] || 260, { size: 54, align: 'center', color: g.title[2] || C.redhot, alpha: seg(t, g.title[1], g.title[1] + 0.5), shadow: true });
+  },
+  // ---- analysis board (2026-11-14, the 通史3 reference: one frame = one argument). Real photos hang as small exhibits
+  // beside diagrams, links and a conclusion, each element on its word (T in REAL seconds; build.py turns @{S146 "vier Jahre"}
+  // into scene seconds). One board spans several sentences of the same idea and keeps its elements: later items move,
+  // shrink or dim the earlier ones instead of cutting to a new picture. SCENE.images = {key: '/projects/<id>/media/x.jpg'}.
+  // items: {k, at, until, id, move:[t0, t1, {x, y, w, h, s}], dim:[t, alpha]} plus per kind:
+  //   photo {key, x, y, w, h, cap, sub, fx, fy}       mounted print, caption under it
+  //   title {s, x, y, size, align}                      serif heading with a thin rule under it
+  //   text  {s, x, y, size, font, color, align}         plain line (font 'body' for small text)
+  //   tag   {s, sub, x, y}                              navy label box (the look's tag)
+  //   box   {s, sub, x, y, w, h}                        thin-ruled box with centred text (org charts, ideas)
+  //   link  {from:[x, y], to:[x, y], arrow, dash, dur, color}   thin line drawn on, optional arrow head
+  //   bar   {x, y, w, h, frac, label, value, dur, color}         flat bar that grows (comparisons in time/size)
+  //   strike{x0, x1, y, dur}                            red strike-through over a claim that is refuted
+  //   ring  {x, y, rx, ry, dur}                         hand-drawn red ellipse around a detail
+  //   conclude {s, x, y, size}                          the takeaway: serif line with a red bar on its left
+  //   doll  {x, y, h, o:{side, hat, face, ...}}         drawn character (K.doll)
+  //   ship / tank / plane {x, y, w, color}              flat silhouettes (K.sil)
+  board(c, L, T, items) {
+    const { C, seg, lerp } = L;
+    const geo = it => { let { x, y, w, h } = it, s = 1;
+      if (it.move) { const [a, b, to] = it.move, p = seg(T, a, b); x = lerp(x, to.x ?? x, p); y = lerp(y, to.y ?? y, p); w = lerp(w ?? 0, to.w ?? w ?? 0, p); h = lerp(h ?? 0, to.h ?? h ?? 0, p); s = lerp(1, to.s ?? 1, p); }
+      return { x, y, w, h, s }; };
+    for (const it of items) {
+      const at = it.at ?? 0, a0 = seg(T, at, at + 0.45); if (a0 <= 0) continue;
+      const out = it.until != null ? 1 - seg(T, it.until, it.until + 0.4) : 1; if (out <= 0) continue;
+      let a = a0 * out; if (it.dim && T > it.dim[0]) a *= lerp(1, it.dim[1] ?? 0.35, seg(T, it.dim[0], it.dim[0] + 0.5));
+      const g = geo(it), rise = (1 - a0) * 14;
+      c.save(); c.globalAlpha *= a;
+      if (it.k === 'photo') {
+        const m = 9, { x, y, w, h } = g;
+        c.fillStyle = 'rgba(60,45,25,0.22)'; c.fillRect(x - m + 8, y - m + 10 + rise, w + 2 * m, h + 2 * m);
+        c.fillStyle = L.LOOK && L.LOOK.name === 'dark' ? C.panel : '#F4F1E8'; c.fillRect(x - m, y - m + rise, w + 2 * m, h + 2 * m);
+        K.photo(c, L, it.key, x, y + rise, w, h, { fx: it.fx, fy: it.fy, zoom: 1 + 0.03 * L.lin(T, at, at + 12), filter: 'sepia(0.35) contrast(1.05)' });
+        if (it.cap) L.text(c, it.cap, x - m, y + h + m + 34 + rise, { size: 28, font: 'head' });
+        if (it.sub) L.text(c, it.sub, x - m, y + h + m + 64 + rise, { size: 21, font: 'body', color: C.fg2 });
+      } else if (it.k === 'title') {
+        const w = L.text(c, it.s, g.x, g.y + rise, { size: it.size || 46, align: it.align || 'left' });
+        const x0 = it.align === 'center' ? g.x - w / 2 : g.x;
+        L.line(c, [[x0, g.y + 18], [x0 + w, g.y + 18]], seg(T, at + 0.2, at + 0.9), { color: C.rule, width: 2 });
+      } else if (it.k === 'text') {
+        L.text(c, it.s, g.x, g.y + rise, { size: it.size || 30, font: it.font || 'body', color: it.color || C.fg, align: it.align || 'left' });
+      } else if (it.k === 'tag') {
+        L.tag(c, it.s, g.x, g.y, T, at, { size: it.size || 30, sub: it.sub, accent: C.accent2, align: it.align });
+      } else if (it.k === 'box') {
+        const { x, y, w, h } = g; c.fillStyle = C.panel; c.fillRect(x, y + rise, w, h); c.strokeStyle = C.fg; c.lineWidth = 1.6; c.strokeRect(x, y + rise, w, h);
+        L.text(c, it.s, x + w / 2, y + h / 2 + (it.sub ? 0 : 11) + rise, { size: it.size || 32, align: 'center' });
+        if (it.sub) L.text(c, it.sub, x + w / 2, y + h / 2 + 32 + rise, { size: 20, font: 'body', align: 'center', color: C.fg2 });
+      } else if (it.k === 'link') {
+        const p = seg(T, at, at + (it.dur ?? 0.8)), pts = [it.from, it.to];
+        c.globalAlpha = out * (it.dim && T > it.dim[0] ? it.dim[1] ?? 0.35 : 1);
+        L.line(c, pts, p, { color: it.color || C.fg, width: it.width || 2, dash: it.dash ? [8, 7] : undefined });
+        if (it.arrow && p > 0.95) { const [x0, y0] = it.from, [x1, y1] = it.to, an = Math.atan2(y1 - y0, x1 - x0);
+          c.fillStyle = it.color || C.fg; c.beginPath(); c.moveTo(x1, y1); c.lineTo(x1 - 18 * Math.cos(an - 0.4), y1 - 18 * Math.sin(an - 0.4)); c.lineTo(x1 - 18 * Math.cos(an + 0.4), y1 - 18 * Math.sin(an + 0.4)); c.fill(); }
+      } else if (it.k === 'bar') {
+        const p = seg(T, at, at + (it.dur ?? 1.2)), { x, y, w, h } = g;
+        c.fillStyle = L.FG(0.08); c.fillRect(x, y, w, h); c.fillStyle = it.color || C.fg; c.fillRect(x, y, w * (it.frac ?? 1) * p, h);
+        if (it.label) L.text(c, it.label, x, y - 14, { size: 26, font: 'body', color: C.fg2 });
+        if (it.value) L.text(c, it.value, x + w * (it.frac ?? 1) * p + 16, y + h * 0.75, { size: it.vsize || 36, alpha: seg(T, at + 0.6, at + 1) });
+      } else if (it.k === 'strike') {
+        L.line(c, [[it.x0, it.y], [it.x1, it.y]], seg(T, at, at + (it.dur ?? 0.5)), { color: C.accent2, width: 5 });
+      } else if (it.k === 'ring') {
+        const p = seg(T, at, at + (it.dur ?? 0.7)); c.strokeStyle = C.accent2; c.lineWidth = 4; c.beginPath();
+        for (let i = 0; i <= 60 * p; i++) { const u = i / 60 * Math.PI * 2.15 - 0.3, wob = 1 + 0.03 * Math.sin(i * 0.9); c.lineTo(it.x + Math.cos(u) * it.rx * wob, it.y + Math.sin(u) * it.ry * wob); } c.stroke();
+      } else if (it.k === 'conclude') {
+        const s = it.size || 40; c.fillStyle = C.accent2; c.fillRect(g.x - 22, g.y - s * 0.95 + rise, 5, s * 1.25);
+        L.text(c, it.s, g.x, g.y + rise, { size: s });
+      } else if (it.k === 'doll') {
+        K.doll(c, L, g.x, g.y, it.h || 220, T, it.o || {});
+      } else if (['ship', 'tank', 'plane'].includes(it.k) && K.sil) {
+        K.sil(c, it.k, g.x, g.y + rise, it.w || 220, it.color || C.fg);
+      }
+      c.restore();
+    }
+  },
+  // flat silhouettes for boards (side view, facing right; (x, y) = waterline/ground centre, w = length)
+  sil(c, kind, x, y, w, col) {
+    c.save(); c.translate(x, y); const s = w / 200; c.scale(s, s); c.fillStyle = col; c.beginPath();
+    if (kind === 'ship') { c.moveTo(-100, -14); c.lineTo(96, -14); c.lineTo(104, -26); c.lineTo(90, 6); c.lineTo(-92, 6); c.closePath(); c.fill();
+      c.fillRect(-40, -34, 60, 20); c.fillRect(-14, -58, 14, 26); c.fillRect(30, -40, 6, 26); c.fillRect(-70, -44, 4, 30); c.fillRect(56, -24, 34, 6); }
+    else if (kind === 'tank') { c.fillRect(-90, -30, 180, 34); c.beginPath(); c.ellipse(0, 6, 92, 16, 0, 0, 7); c.fill(); c.fillRect(-40, -58, 80, 30); c.fillRect(40, -48, 80, 8); }
+    else { c.beginPath(); c.ellipse(0, 0, 100, 12, 0, 0, 7); c.fill(); c.beginPath(); c.moveTo(-10, 0); c.lineTo(20, -6); c.lineTo(-30, -70); c.lineTo(-50, -70); c.closePath(); c.fill(); c.beginPath(); c.moveTo(-90, 0); c.lineTo(-100, -30); c.lineTo(-84, -30); c.lineTo(-70, 0); c.fill(); }
+    c.restore();
   },
   // ---- real photos inside motion graphics (film 6): SCENE.images = {key: url}; engine.html preloads them into IMG
   photo(c, L, key, x, y, w, h, o = {}) {  // cover-crop into a rect; o.zoom (Ken Burns scale), o.fx/o.fy focus 0..1, o.grade (false = natural), o.frame, o.alpha, o.rot

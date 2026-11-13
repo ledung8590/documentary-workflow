@@ -7,6 +7,19 @@
     offwhite: '#EDE7DC', red: '#C8372D', redhot: '#e0402f', amber: '#E0A030', parch: '#D9CCAA', brown: '#2B2119',
     ink: '#1a1512', blue: '#6f94d8', bluedeep: '#20324a', grey: '#8f877b', steel: '#b9b3a8', green: '#7fae7a',
   };
+  // ---------- look (assets/looks.json via engine.html, brief.json "look"): one colour family for the whole film
+  let LOOK = null;
+  const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+  const FG = a => LOOK ? hexA(LOOK.fg, a) : `rgba(237,231,220,${a})`;      // main text / line colour at alpha a
+  const FG2 = a => LOOK ? hexA(LOOK.fg2, a) : `rgba(220,210,195,${a})`;    // secondary text
+  const BOX = a => LOOK ? hexA(LOOK.panel, a) : `rgba(10,9,8,${a})`;       // tag / label box
+  function setLook(name, lk) {  // remap the semantic palette so existing helpers and C.* scenes follow the look
+    LOOK = Object.assign({ name }, lk);
+    Object.assign(C, { offwhite: lk.fg, ink: lk.fg, parch: lk.panel, brown: lk.bg, red: lk.accent2, redhot: lk.accent2, amber: lk.highlight,
+      blue: lk.accent, bluedeep: lk.sea, grey: lk.fg2, steel: lk.rule, green: name === 'paper' ? '#5E7A4E' : '#7f9a70', bg: lk.bg, bg2: lk.bg2,
+      panel: lk.panel, fg: lk.fg, fg2: lk.fg2, accent: lk.accent, accent2: lk.accent2, highlight: lk.highlight, land: lk.land, sea: lk.sea, rule: lk.rule });
+    FONTS.head = '700 {s}px Serif'; FONTS.headlight = '500 {s}px Serif'; FONTS.body = '500 {s}px Serif';
+  }
   const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
   const ease = x => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
   const easeOut = x => 1 - Math.pow(1 - clamp(x), 3);
@@ -21,10 +34,10 @@
   function texture(kind) {  // static mottled texture, cached per kind
     if (texCache[kind]) return texCache[kind];
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const g = cv.getContext('2d');
-    const base = { brown: [43, 33, 25], parchment: [217, 204, 170], black: [14, 13, 12], ocean: [14, 24, 34], slate: [30, 32, 34] }[kind] || [14, 13, 12];
+    const base = kind === 'look' ? [1, 3, 5].map(i => parseInt(LOOK.bg.slice(i, i + 2), 16)) : { brown: [43, 33, 25], parchment: [217, 204, 170], black: [14, 13, 12], ocean: [14, 24, 34], slate: [30, 32, 34] }[kind] || [14, 13, 12];
     g.fillStyle = `rgb(${base})`; g.fillRect(0, 0, W, H);
     for (let i = 0; i < 900; i++) {  // soft blotches
-      const x = rnd(i, 1) * W, y = rnd(i, 2) * H, r = 30 + rnd(i, 3) * 160, d = (rnd(i, 4) - 0.5) * (kind === 'parchment' ? 26 : 14);
+      const x = rnd(i, 1) * W, y = rnd(i, 2) * H, r = 30 + rnd(i, 3) * 160, d = (rnd(i, 4) - 0.5) * (kind === 'parchment' || (kind === 'look' && LOOK.name === 'paper') ? 5 : 8);
       const gr = g.createRadialGradient(x, y, 0, x, y, r);
       gr.addColorStop(0, `rgba(${d > 0 ? '255,255,255' : '0,0,0'},${Math.abs(d) / 255})`); gr.addColorStop(1, 'rgba(0,0,0,0)');
       g.fillStyle = gr; g.fillRect(x - r, y - r, 2 * r, 2 * r);
@@ -33,6 +46,7 @@
   }
   function background(c, kind, t) {
     if (kind === 'none') { c.clearRect(0, 0, W, H); return; }
+    if (LOOK && kind !== 'photo') kind = 'look';
     c.drawImage(texture(kind), 0, 0);
     if (kind === 'ocean') {  // faint depth gradient
       const g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, 'rgba(60,90,110,0.25)'); g.addColorStop(1, 'rgba(0,0,0,0.35)');
@@ -44,7 +58,7 @@
     const g = c.createRadialGradient(W / 2, H / 2, H * 0.35, W / 2, H / 2, H * 1.0);
     g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, `rgba(0,0,0,${s})`); c.fillStyle = g; c.fillRect(0, 0, W, H);
   }
-  function grid(c, a, step = 80, color = 'rgba(237,231,220,0.06)') {  // blueprint/plotting grid
+  function grid(c, a, step = 80, color = null) { color = color || FG(0.06);  // blueprint/plotting grid
     c.save(); c.globalAlpha = a; c.strokeStyle = color; c.lineWidth = 1; c.beginPath();
     for (let x = 0; x <= W; x += step) { c.moveTo(x, 0); c.lineTo(x, H); }
     for (let y = 0; y <= H; y += step) { c.moveTo(0, y); c.lineTo(W, y); }
@@ -59,8 +73,8 @@
     c.save(); c.globalAlpha *= o.alpha ?? 1; c.fillStyle = o.color || C.offwhite; c.textAlign = o.align || 'left';
     c.textBaseline = o.base || 'alphabetic';
     if (o.spacing) c.letterSpacing = o.spacing + 'px';
-    if (o.shadow) { c.shadowColor = 'rgba(0,0,0,0.7)'; c.shadowBlur = 12; }
-    const v = o.upper === false ? str : (o.font === 'body' || o.font === 'mono' ? str : str.toUpperCase());
+    if (o.shadow && !LOOK) { c.shadowColor = 'rgba(0,0,0,0.7)'; c.shadowBlur = 12; }
+    const v = o.upper === false || (LOOK && o.upper !== true) ? str : (o.font === 'body' || o.font === 'mono' ? str : str.toUpperCase());  // looks: book case, no caps
     c.fillText(v, x, y); c.restore();
     font(c, o.font || 'head', s); return c.measureText(v).width;
   }
@@ -78,13 +92,13 @@
   // card heading: small mono kicker, Oswald title, red rule that grows (stat/quote cards use this)
   function heading(c, kicker, title, t, o = {}) {
     const x = o.x ?? 150, y = o.y ?? 150, a = seg(t, o.t0 ?? 0, (o.t0 ?? 0) + 0.5);
-    const dark = o.dark ?? true, col = dark ? C.offwhite : C.ink, sub = dark ? 'rgba(220,210,195,0.85)' : 'rgba(43,33,25,0.75)';
+    const dark = o.dark ?? true, col = dark ? C.offwhite : C.ink, sub = dark ? FG2(0.85) : 'rgba(43,33,25,0.75)';
     if (kicker) text(c, kicker, x, y, { font: 'mono', size: 24, color: sub, alpha: a, upper: true });
     text(c, title, x, y + 58, { size: o.size || 52, color: col, alpha: a });
     c.fillStyle = C.red; c.fillRect(x, y + 80, (o.rule || 90) * seg(t, (o.t0 ?? 0) + 0.2, (o.t0 ?? 0) + 0.8), 5);
   }
   // credit line, bottom right (the renderer also draws clip credits; use this only for scene-internal sources)
-  function source(c, str, a = 1) { text(c, str, W - 60, H - 40, { font: 'body', size: 22, align: 'right', color: 'rgba(237,231,220,0.8)', alpha: a, shadow: true }); }
+  function source(c, str, a = 1) { text(c, str, W - 60, H - 40, { font: 'body', size: 22, align: 'right', color: FG(0.8), alpha: a, shadow: true }); }
 
   // ---------- strokes
   function path(c, pts) { c.beginPath(); pts.forEach((q, i) => i ? c.lineTo(q[0], q[1]) : c.moveTo(q[0], q[1])); }
@@ -152,13 +166,13 @@
   // black map-style tag with a red accent bar; pops in at t0
   function tag(c, str, x, y, t, t0, o = {}) {
     const a = seg(t, t0, t0 + 0.35); if (a <= 0) return;
-    const s = o.size || 34, sub = o.sub; font(c, 'head', s); const tw = c.measureText(str.toUpperCase()).width;
+    const s = o.size || 34, sub = o.sub; font(c, 'head', s); const tw = c.measureText(LOOK ? str : str.toUpperCase()).width;
     const sw = sub ? textW(c, sub, 'body', s * 0.6) : 0, bw = Math.max(tw, sw) + 36, bh = sub ? s * 2.05 : s * 1.45;
     const bx = o.align === 'right' ? x - bw : o.align === 'center' ? x - bw / 2 : x, by = y - bh / 2 + (1 - a) * 12;
-    c.save(); c.globalAlpha *= a; c.fillStyle = 'rgba(10,9,8,0.86)'; c.fillRect(bx, by, bw, bh);
-    c.fillStyle = o.accent || C.red; c.fillRect(bx, by, 6, bh); c.restore();
-    text(c, str, bx + 20, by + s * 1.08, { size: s, alpha: a });
-    if (sub) text(c, sub, bx + 20, by + s * 1.75, { font: 'body', size: s * 0.6, color: '#d8d2c6', alpha: a });
+    c.save(); c.globalAlpha *= a; c.fillStyle = LOOK ? 'rgba(18,17,16,0.8)' : BOX(0.9); c.fillRect(bx, by, bw, bh);
+    c.fillStyle = LOOK ? '#EDE7DC' : (o.accent || C.red); c.fillRect(bx, by, LOOK ? 4 : 6, bh); c.restore();  // looks: reference label (dark, cream bar)
+    text(c, str, bx + 20, by + s * 1.08, { size: s, alpha: a, color: LOOK ? '#EDE7DC' : undefined });
+    if (sub) text(c, sub, bx + 20, by + s * 1.75, { font: 'body', size: s * 0.6, color: LOOK ? 'rgba(237,231,220,0.85)' : FG2(0.95), alpha: a });
   }
 
   // ---------- vessels (side view silhouettes, facing right; flip with dir -1)
@@ -204,7 +218,7 @@
     const top = o.top ?? 200, g = c.createLinearGradient(0, top, 0, H);
     g.addColorStop(0, o.c0 || 'rgba(70,100,120,0.35)'); g.addColorStop(1, o.c1 || 'rgba(5,10,16,0.75)');
     c.fillStyle = g; c.fillRect(0, top, W, H - top);
-    if (o.surface !== false) line(c, wavePts(0, W, top, 6, o.t || 0, 140), 1, { color: 'rgba(237,231,220,0.55)', width: 2 });
+    if (o.surface !== false) line(c, wavePts(0, W, top, 6, o.t || 0, 140), 1, { color: FG(0.55), width: 2 });
     return top;
   }
   function wavePts(x0, x1, y, amp, t, len = 120, n = 160) {
@@ -220,18 +234,18 @@
     items.forEach((it, i) => {
       const a = t0 + i * (o.stagger ?? 0.6), p = seg(t, a, a + (o.grow ?? 1.2)), y = box.y + i * gap, bh = Math.min(70, gap * 0.55);
       text(c, it.label, box.x, y + bh * 0.2, { size: 34, alpha: seg(t, a - 0.2, a + 0.2), color: o.dark === false ? C.ink : C.offwhite });
-      c.fillStyle = 'rgba(237,231,220,0.08)'; c.fillRect(box.x, y + bh * 0.45, box.w, bh);
-      c.save(); c.fillStyle = it.color || C.red; c.shadowColor = it.color || C.red; c.shadowBlur = 12;
+      c.fillStyle = FG(0.08); c.fillRect(box.x, y + bh * 0.45, box.w, bh);
+      const bc = it.color || (LOOK ? C.fg : C.red); c.save(); c.fillStyle = bc; c.shadowColor = bc; c.shadowBlur = 12;
       c.fillRect(box.x, y + bh * 0.45, box.w * (it.value / max) * p, bh); c.restore();
       const lbl = (o.fmt ? o.fmt(it.value * p, it) : counter(it.value, p)) + (it.unit || '');
       text(c, lbl, box.x + box.w * (it.value / max) * p + 18, y + bh * 1.25, { size: 44, alpha: seg(t, a, a + 0.3), color: o.dark === false ? C.ink : C.offwhite });
-      if (it.note) text(c, it.note, box.x, y + bh * 2.15, { font: 'body', size: 22, color: o.dark === false ? 'rgba(43,33,25,0.75)' : 'rgba(220,210,195,0.8)', alpha: seg(t, a + 0.5, a + 0.9) });
+      if (it.note) text(c, it.note, box.x, y + bh * 2.15, { font: 'body', size: 22, color: o.dark === false ? 'rgba(43,33,25,0.75)' : FG2(0.8), alpha: seg(t, a + 0.5, a + 0.9) });
     });
   }
   // timeline axis with events [{t:year, label, sub, at:sceneSec, color}]
   function timeline(c, y0, y1, years, events, t, o = {}) {
     const x0 = o.x0 ?? 160, x1 = o.x1 ?? W - 160, X = yr => lerp(x0, x1, (yr - years[0]) / (years[1] - years[0]));
-    line(c, [[x0, y0], [x1, y0]], seg(t, o.t0 ?? 0, (o.t0 ?? 0) + 1.2), { color: 'rgba(237,231,220,0.7)', width: 3 });
+    line(c, [[x0, y0], [x1, y0]], seg(t, o.t0 ?? 0, (o.t0 ?? 0) + 1.2), { color: FG(0.7), width: 3 });
     for (let yr = Math.ceil(years[0] / (o.tick || 10)) * (o.tick || 10); yr <= years[1]; yr += o.tick || 10)
       text(c, String(yr), X(yr), y0 + 50, { size: 26, align: 'center', color: C.grey, alpha: seg(t, (o.t0 ?? 0) + 0.6, (o.t0 ?? 0) + 1.2) });
     events.forEach((e, i) => {
@@ -239,20 +253,20 @@
       if (a <= 0) return; dot(c, x, y0, 10 * a, e.color || C.red);
       line(c, [[x, y0], [x, y0 + h * 0.35]], a, { color: e.color || C.red, width: 2 });
       text(c, e.label, x, y0 + h * 0.35 + (up ? -16 : 40), { size: 34, align: 'center', alpha: a });
-      if (e.sub) text(c, e.sub, x, y0 + h * 0.35 + (up ? -60 : 74), { font: 'body', size: 22, align: 'center', color: 'rgba(220,210,195,0.85)', alpha: a });
+      if (e.sub) text(c, e.sub, x, y0 + h * 0.35 + (up ? -60 : 74), { font: 'body', size: 22, align: 'center', color: FG2(0.85), alpha: a });
     });
   }
   // node graph: nodes {id:[x,y,label,sub,at]}, edges [[a,b,at,{color,dash}]]
   function network(c, nodes, edges, t, o = {}) {
-    edges.forEach(([a, b, at, eo = {}]) => { const A = nodes[a], B = nodes[b]; line(c, [[A[0], A[1]], [B[0], B[1]]], seg(t, at, at + 0.7), Object.assign({ color: 'rgba(200,55,45,0.85)', width: 3, dash: [10, 8], march: t * 30 }, eo)); });
+    edges.forEach(([a, b, at, eo = {}]) => { const A = nodes[a], B = nodes[b]; line(c, [[A[0], A[1]], [B[0], B[1]]], seg(t, at, at + 0.7), Object.assign(LOOK ? { color: FG(0.75), width: 2 } : { color: 'rgba(200,55,45,0.85)', width: 3, dash: [10, 8], march: t * 30 }, eo)); });
     Object.values(nodes).forEach(([x, y, label, sub, at, col]) => {
       const a = seg(t, at, at + 0.4); if (a <= 0) return;
-      circle(c, x, y, 34 * easeOut(a), { fill: '#120f0d', stroke: col || C.red, width: 4, glow: 14 });
+      circle(c, x, y, 34 * easeOut(a), { fill: LOOK ? LOOK.panel : '#120f0d', stroke: col || (LOOK ? C.fg : C.red), width: LOOK ? 2.5 : 4, glow: LOOK ? 0 : 14 });
       text(c, label, x, y + 82, { size: 32, align: 'center', alpha: a });
-      if (sub) text(c, sub, x, y + 114, { font: 'body', size: 21, align: 'center', color: 'rgba(220,210,195,0.85)', alpha: a });
+      if (sub) text(c, sub, x, y + 114, { font: 'body', size: 21, align: 'center', color: FG2(0.85), alpha: a });
     });
   }
 
-  window.L = { W, H, C, clamp, ease, easeOut, lerp, seg, lin, rnd, background, vignette, grid, text, textW, typed, heading, source,
+  window.L = { W, H, C, FG, FG2, BOX, setLook, get LOOK() { return LOOK; }, clamp, ease, easeOut, lerp, seg, lin, rnd, background, vignette, grid, text, textW, typed, heading, source,
                path, partial, curve, line, arrow, circle, rings, dot, tag, sub, noise, sea, wavePts, counter, hbars, timeline, network };
 })();

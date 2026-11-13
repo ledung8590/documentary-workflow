@@ -100,8 +100,11 @@ def _clean(rel):
 VOICE_LUFS = _lufs(str(D / 'voice' / 'voice.wav'))
 
 
+QUIETER = 12.0  # user 2026-11-14 (twice): viewers said music and effects were too loud; every SFX sits 12 dB further under the voice than before
+
+
 def gain_for(rel, under, dur=None, force=False):  # force: this line's own offset beats the UNDER table
-    return round(max(-40.0, min(12.0, VOICE_LUFS - _lufs(_file(rel), dur) - (under if force else UNDER.get(rel.split('/')[0], under)))), 1)
+    return round(max(-40.0, min(12.0, VOICE_LUFS - _lufs(_file(rel), dur) - (under if force else UNDER.get(rel.split('/')[0], under)) - QUIETER)), 1)
 
 
 def add(t, rel, under, dur, force=False):

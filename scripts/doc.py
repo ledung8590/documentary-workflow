@@ -911,7 +911,7 @@ def qa(job, video, stt=False, do_run=False):
             rms = re.findall(r'RMS level dB: (-?[\d.]+|-inf)', a)
             rms = float(rms[-1]) if rms and rms[-1] != '-inf' else -99.0
             cue = any(c['start'] - 0.8 <= s <= c['start'] + 1.5 for s in sfx)
-            ok = cue and (c['type'] == 'quote' or rms >= -20.0)
+            ok = cue and (c['type'] == 'quote' or rms >= -32.0)  # SFX 12 dB quieter since 2026-11-14 (viewers): -20 would flag every card
             report['cards'].append({'type': c['type'], 'start': round(c['start'], 2), 'rms_db': round(rms, 1), 'sfx_cue': cue, 'ok': ok})
     if stt:
         from elevenlabs import stt as transcribe
@@ -1095,6 +1095,8 @@ def plan_init(job, force=False):
     d = job_dir(job); brief = read(d / 'brief.json')
     if brief.get('genre') == 'story':
         sys.exit(f'{job} is a story job: use `doc.py story {job}` (docs/STORY_MODE.md), not the archival plan toolkit')
+    if 'look' not in brief:  # one look per film (assets/looks.json, docs/STYLE.md "Film look"): paper unless the plan picks dark
+        brief['look'] = 'paper'; write(d / 'brief.json', brief); print(f'{job}: look paper (set "look": "dark" in brief.json to change)')
     src = ROOT / 'templates' / 'archival'
     done, kept = [], []
     for f in sorted(p for p in src.rglob('*') if p.is_file() and '__pycache__' not in p.parts):

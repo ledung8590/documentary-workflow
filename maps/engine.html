@@ -6,6 +6,8 @@
 @font-face { font-family: BeVN; src: url(/assets/fonts/BeVietnamPro-SemiBold.ttf); }
 @font-face { font-family: Oswald; src: url(/assets/fonts/MPLUS1p-Bold.ttf); font-weight: 200 700; unicode-range: U+3000-30FF, U+31F0-31FF, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF; }  /* Japanese films: kana/kanji */
 @font-face { font-family: BeVN; src: url(/assets/fonts/MPLUS1p-Bold.ttf); unicode-range: U+3000-30FF, U+31F0-31FF, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF; }  /* Japanese films: kana/kanji */
+@font-face { font-family: Serif; src: url(/assets/fonts/SourceSerif4.ttf); font-weight: 200 900; }
+@font-face { font-family: Serif; src: url(/assets/fonts/ShipporiMincho-Bold.ttf); unicode-range: U+3000-30FF, U+31F0-31FF, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF; }
 html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: #0c0b0a; }
 #map, #fx { position: absolute; inset: 0; width: 1920px; height: 1080px; }
 #fx { pointer-events: none; }
@@ -18,7 +20,19 @@ html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; backgro
 // Base: Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) draped on AWS Terrain Tiles (terrarium), darkened and desaturated.
 // Effects on a 2D canvas projected from lng/lat every frame: zone (dashed outline drawn on, then fill), arrow (grows,
 // glows, pulses), route (drawn on with moving unit markers), label (pops in with a leader line), pulse rings, marker.
-const RED = '#e0402f', AMBER = '#f0b040', BLUE = 'rgba(120,150,215,0.42)', WHITE = '#f3efe6';
+let RED = '#e0402f', AMBER = '#f0b040', BLUE = 'rgba(120,150,215,0.42)', WHITE = '#f3efe6';
+// Film look (assets/looks.json, scene.look from brief.json via mapscene.mjs): a flat sketch map like an old atlas —
+// Natural Earth land (public domain) in the look's land colour on a patterned sea, no satellite, no terrain, no glow,
+// top-down camera. LK = null keeps the old satellite/terrain maps.
+let LK = null, OVB = 'rgba(14,13,12,0.88)', OVT = '#f3efe6';
+const hexA = (h, a) => { const n = parseInt(h.slice(1), 16); return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`; };
+function wavePattern(sea, ink) {  // seigaiha-like arcs, faint, for the sea
+  const cv = document.createElement('canvas'); cv.width = 64; cv.height = 32; const g = cv.getContext('2d');
+  g.fillStyle = sea; g.fillRect(0, 0, 64, 32); g.strokeStyle = ink; g.lineWidth = 1.2;
+  for (const [cx, cy] of [[0, 32], [32, 32], [64, 32], [16, 16], [48, 16], [0, 0], [32, 0], [64, 0]])
+    for (const rr of [14, 9, 4]) { g.beginPath(); g.arc(cx, cy, rr, Math.PI, 2 * Math.PI); g.stroke(); }
+  return g.getImageData(0, 0, 64, 32);
+}
 let map, scene, fx = document.getElementById('fx').getContext('2d');
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const ease = x => { x = clamp(x); return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
@@ -26,11 +40,45 @@ const lerp = (a, b, t) => a + (b - a) * t;
 
 window.setup = async (s) => {
   scene = s;
+  if (s.look && s.look !== 'none') {
+    const all = await (await fetch('/assets/looks.json')).json(); LK = all[s.look] ? Object.assign({ name: s.look }, all[s.look]) : null;
+  }
+  if (LK) {
+    RED = LK.accent2; AMBER = LK.name === 'paper' ? LK.accent : LK.highlight; BLUE = hexA(LK.accent, 0.22); WHITE = LK.fg;
+    OVB = 'rgba(18,17,16,0.8)'; OVT = '#EDE7DC';  // reference labels: dark translucent, cream bar and text
+    s.camera.forEach(k => { k.pitch = 0; k.bearing = 0; });  // flat sketch map, seen from above
+    Object.defineProperty(fx, 'shadowBlur', { get: () => 0, set: () => {}, configurable: true });  // no glow
+    // colours written in a map spec (bright house red/blue/amber) are pulled into the look by hue
+    const toLook = c => { if (typeof c !== 'string') return c; let r, g, b, al = 1, m;
+      if ((m = c.match(/^#([0-9a-f]{6})$/i))) { const n = parseInt(m[1], 16); r = n >> 16; g = (n >> 8) & 255; b = n & 255; }
+      else if ((m = c.match(/rgba?\(([^)]+)\)/))) { [r, g, b, al = 1] = m[1].split(',').map(Number); } else return c;
+      const mx = Math.max(r, g, b), mn = Math.min(r, g, b), sat = mx ? (mx - mn) / mx : 0;
+      let h = 0; if (mx !== mn) { h = mx === r ? ((g - b) / (mx - mn)) % 6 : mx === g ? (b - r) / (mx - mn) + 2 : (r - g) / (mx - mn) + 4; h = (h * 60 + 360) % 360; }
+      const to = sat < 0.18 ? LK.fg : (h < 35 || h >= 330) ? LK.accent2 : h < 75 ? LK.highlight : h < 170 ? '#5E7A4E' : LK.accent;
+      return al < 1 ? hexA(to, al) : to; };
+    s.layers.forEach(e => ['color', 'fill', 'wall', 'accent'].forEach(k => { if (e[k]) e[k] = toLook(e[k]); }));
+  }
   const c0 = s.camera[0];
+  const z = Math.min(...s.camera.map(k => k.zoom)), res = z >= 4 ? '10m' : '50m';
+  const flat = LK && {
+    version: 8,
+    sources: {
+      land: { type: 'geojson', data: `/assets/geo/ne_${res}_land.geojson` },
+      lakes: { type: 'geojson', data: `/assets/geo/ne_${res}_lakes.geojson` },
+      rivers: { type: 'geojson', data: `/assets/geo/ne_${res}_rivers_lake_centerlines.geojson` },
+    },
+    layers: [
+      { id: 'sea', type: 'background', paint: { 'background-color': LK.sea } },
+      { id: 'land', type: 'fill', source: 'land', paint: { 'fill-color': LK.land, 'fill-antialias': true } },
+      { id: 'lakes', type: 'fill', source: 'lakes', paint: { 'fill-color': LK.sea } },
+      { id: 'rivers', type: 'line', source: 'rivers', paint: { 'line-color': LK.sea, 'line-width': ['interpolate', ['linear'], ['zoom'], 3, 0.6, 7, 2.2, 10, 4] } },
+      { id: 'coast', type: 'line', source: 'land', paint: { 'line-color': LK.fg, 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 0.8, 8, 2.2], 'line-opacity': 0.85 } },
+    ],
+  };
   map = new maplibregl.Map({
     container: 'map', interactive: false, attributionControl: false, fadeDuration: 0, preserveDrawingBuffer: true,
     center: c0.center, zoom: c0.zoom, pitch: c0.pitch || 0, bearing: c0.bearing || 0, maxPitch: 70,
-    style: {
+    style: flat || {
       version: 8,
       sources: {
         s2: { type: 'raster', tileSize: 256, maxzoom: 15,
@@ -51,6 +99,7 @@ window.setup = async (s) => {
     },
   });
   await new Promise(r => map.once('load', r));
+  if (LK) { map.addImage('waves', wavePattern(LK.sea, hexA(LK.name === 'paper' ? LK.land : LK.fg, 0.2))); map.setPaintProperty('sea', 'background-pattern', 'waves'); }
   // 3D layers draped on / standing on the terrain: they get real perspective, unlike the 2D canvas overlay
   const empty = { type: 'FeatureCollection', features: [] };
   for (const id of ['zfill', 'zline', 'zext', 'aglow', 'abody', 'route']) map.addSource(id, { type: 'geojson', data: empty });
@@ -66,8 +115,11 @@ window.setup = async (s) => {
   map.addLayer({ id: 'abody', type: 'fill-extrusion', source: 'abody',
     paint: { 'fill-extrusion-color': ['get', 'color'], 'fill-extrusion-height': ['get', 'h'], 'fill-extrusion-base': ['get', 'b'],
              'fill-extrusion-opacity': 0.93, 'fill-extrusion-vertical-gradient': true } });
-  try { map.setSky({ 'sky-color': '#1d2329', 'horizon-color': '#6b747b', 'fog-color': '#4a535a', 'sky-horizon-blend': 0.7,
+  if (LK) { map.addLayer({ id: 'aflat', type: 'fill', source: 'abody', paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.95 } }); map.setPaintProperty('abody', 'fill-extrusion-opacity', 0); }  // flat printed arrows, no lit 3D faces
+  if (LK) { map.setPaintProperty('aglow', 'line-opacity', 0); map.setPaintProperty('zext', 'fill-extrusion-opacity', 0); map.setPaintProperty('abody', 'fill-extrusion-vertical-gradient', false); }
+  if (!LK) try { map.setSky({ 'sky-color': '#1d2329', 'horizon-color': '#6b747b', 'fog-color': '#4a535a', 'sky-horizon-blend': 0.7,
                      'horizon-fog-blend': 0.55, 'fog-ground-blend': 0.75, 'atmosphere-blend': 0.6 }); } catch (e) {}
+  await document.fonts.load('700 44px Serif', 'Aあ漢'); await document.fonts.load('500 26px Serif', 'Aあ漢');
   await document.fonts.load('700 44px Oswald', 'Aあ漢'); await document.fonts.load('26px BeVN', 'Aあ漢'); await document.fonts.ready;
   return true;
 };
@@ -198,14 +250,16 @@ function label(e, t) {
   fx.save(); fx.globalAlpha = a * out;
   fx.strokeStyle = WHITE; fx.lineWidth = 2; fx.beginPath(); fx.moveTo(x, y); fx.lineTo(x, y + dy + 26); fx.stroke();
   fx.fillStyle = WHITE; fx.fillRect(x - 6, y - 6, 12, 12);
-  fx.font = `700 ${Math.round(44 * s)}px Oswald`; const tw = fx.measureText(e.text.toUpperCase()).width;
-  fx.font = `${Math.round(26 * s)}px BeVN`; const sw = e.sub ? fx.measureText(e.sub).width : 0;
+  const HF = LK ? `700 ${Math.round(40 * s)}px Serif` : `700 ${Math.round(44 * s)}px Oswald`, SF = LK ? `500 ${Math.round(25 * s)}px Serif` : `${Math.round(26 * s)}px BeVN`;
+  const TXT = LK ? e.text : e.text.toUpperCase();
+  fx.font = HF; const tw = fx.measureText(TXT).width;
+  fx.font = SF; const sw = e.sub ? fx.measureText(e.sub).width : 0;
   const bw = Math.max(tw, sw) + 36, bh = e.sub ? 100 : 66, bx = x - bw / 2, by = y + dy - bh + 26;
-  fx.fillStyle = 'rgba(14,13,12,0.88)'; fx.fillRect(bx, by, bw, bh);
-  if (e.accent) { fx.fillStyle = e.accent; fx.fillRect(bx, by, 6, bh); }
-  fx.fillStyle = WHITE; fx.textAlign = 'center'; fx.textBaseline = 'top';
-  fx.font = `700 ${Math.round(44 * s)}px Oswald`; fx.fillText(e.text.toUpperCase(), x, by + 6);
-  if (e.sub) { fx.font = `${Math.round(26 * s)}px BeVN`; fx.fillStyle = '#d8d2c6'; fx.fillText(e.sub, x, by + 62); }
+  fx.fillStyle = OVB; fx.fillRect(bx, by, bw, bh);
+  if (LK) { fx.fillStyle = OVT; fx.fillRect(bx, by, 4, bh); } else if (e.accent) { fx.fillStyle = e.accent; fx.fillRect(bx, by, 6, bh); }
+  fx.fillStyle = OVT; fx.textAlign = 'center'; fx.textBaseline = 'top';
+  fx.font = HF; fx.fillText(TXT, x, by + (LK ? 10 : 6));
+  if (e.sub) { fx.font = SF; fx.fillStyle = LK ? 'rgba(237,231,220,0.85)' : '#d8d2c6'; fx.fillText(e.sub, x, by + 62); }
   fx.restore();
 }
 
@@ -296,8 +350,8 @@ function column(e, t) {
   units.sort((a, b) => a.y - b.y);                                  // far (higher on screen) first
   fx.save(); fx.globalAlpha = out;
   for (const u of units) {
-    if (e.unit === 'tank') tank(u.x, u.y, (e.size || 34) * u.k, u.ang, e.color || '#b8433a');
-    else soldier(u.x, u.y, (e.size || 34) * u.k, t * 9 + u.i * 1.7, e.color || '#b8433a', Math.cos(u.ang) >= 0 ? 1 : -1);
+    if (e.unit === 'tank') tank(u.x, u.y, (e.size || 34) * u.k, u.ang, e.color || (LK ? LK.accent2 : '#b8433a'));
+    else soldier(u.x, u.y, (e.size || 34) * u.k, t * 9 + u.i * 1.7, e.color || (LK ? LK.accent2 : '#b8433a'), Math.cos(u.ang) >= 0 ? 1 : -1);
   }
   fx.restore();
 }
@@ -323,7 +377,7 @@ function battery(e, t) {
           fx.beginPath(); fx.arc(x, y, 8 - j, 0, 7); fx.fill(); }
       } else explosion(ix, iy, age - fly, (e.boom || 26) * kt);
     }
-    fx.globalAlpha = out * pop; gun(gx, gy, (e.size || 40) * kb * (0.8 + 0.2 * pop), dir, e.color || '#9a463b', flash); fx.globalAlpha = out;
+    fx.globalAlpha = out * pop; gun(gx, gy, (e.size || 40) * kb * (0.8 + 0.2 * pop), dir, e.color || (LK ? LK.accent2 : '#9a463b'), flash); fx.globalAlpha = out;
   }
   fx.restore();
 }

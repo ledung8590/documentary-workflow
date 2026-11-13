@@ -1,4 +1,13 @@
-# Animated 3D map scenes
+# Animated map scenes
+
+**Film looks (2026-11-14):** with `brief.json` `"look"` (`paper`/`dark`, default `paper`), `mapscene.mjs` passes the look and
+`maps/engine.html` draws a flat sketch map instead of satellite terrain: Natural Earth land/lakes/rivers (`assets/geo`,
+public domain; 1:50m below zoom 4, 1:10m above) in the look's land colour on its sea with a faint wave pattern, top-down
+(pitch and bearing forced to 0), printed flat arrows, no glow or bloom, serif labels on navy (paper) boxes. Colours in a
+spec are pulled into the look by hue (reds → accent2, blues → accent, ambers → highlight, greys → fg). Credit:
+"Karte: Natural Earth (gemeinfrei) · Positionen, Pfeile: schematisch" (plan.py sets it per language). The satellite
+section below applies only to films without a look.
+
 
 `node scripts/mapscene.mjs projects/<id>/maps/<scene>.json projects/<id>/media/map-<scene>.mp4 [--fps 24]`
 

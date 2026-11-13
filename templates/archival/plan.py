@@ -8,6 +8,7 @@ Build this film's picture, overlay, sfx and music tracks from the plan files (sh
 
 Anchor syntax: `S012` sentence start · `S012 "word phrase"` first word of that phrase · `S012+1.5` / `S012 "x"-0.3` offset
 · `S012$` sentence end. shots.txt:  ANCHOR | SRC | caption      SRC = scene:NAME · map:NAME · pick:TAG#K · vid:TAG#K@IN · card
+  (looks: photos fill the frame; `pick:TAG#K+exhibit` hangs one as a mounted print on the paper, e.g. a document or small portrait)
 overlays.txt: ANCHOR .. ANCHOR | type | {json props}      sound.txt: ANCHOR | sfx/type/el_01 | gain [| dur]   or   ANCHOR .. ANCHOR | music/mood/el_01 | gain   or   ANCHOR .. ANCHOR | dip | dB (music dips under a key line)
 """
 import json, re, sys, unicodedata
@@ -24,6 +25,7 @@ S = timing['sentences']
 DUR = timing['duration']
 FPS = 24
 LANG = (read(D / 'brief.json') or {}).get('language', 'en')
+LOOK = (read(D / 'brief.json') or {}).get('look', 'paper')  # assets/looks.json: paper | dark (one colour family per film, 2026-11-14)
 CREDITS = {  # on-screen credit lines follow the script language
     'en': ('Terrain: AWS Terrain Tiles · Satellite: Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) · Positions, arrows: schematic', 'Animated graphic (illustrative)', 'Effects'),
     'de': ('Gelände: AWS Terrain Tiles · Satellitenbild: Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) · Positionen, Pfeile: schematisch', 'Animierte Grafik (schematisch)', 'Effekte'),
@@ -33,6 +35,11 @@ CREDITS = {  # on-screen credit lines follow the script language
     'ja': ('地形: AWS Terrain Tiles · 衛星画像: Sentinel-2 cloudless 2016 (EOX, CC BY 4.0) · 位置・矢印は模式図', 'アニメーション図解(イメージ)', '効果'),
 }
 MAPCREDIT, SCENECREDIT, FXNAME = CREDITS.get(LANG, CREDITS['en'])
+FLATMAP = {'en': 'Map: Natural Earth (public domain) · Positions, arrows: schematic', 'de': 'Karte: Natural Earth (gemeinfrei) · Positionen, Pfeile: schematisch',
+           'es': 'Mapa: Natural Earth (dominio público) · Posiciones, flechas: esquemáticas', 'vi': 'Bản đồ: Natural Earth (phạm vi công cộng) · Vị trí, mũi tên: minh hoạ',
+           'fr': 'Carte : Natural Earth (domaine public) · Positions, flèches : schématiques', 'ja': '地図: Natural Earth（パブリックドメイン）· 位置・矢印は模式図'}
+if LOOK in ('paper', 'dark'):  # looks draw flat Natural Earth maps (maps/engine.html), not satellite imagery
+    MAPCREDIT = FLATMAP.get(LANG, FLATMAP['en'])
 SUBS_OVER = set()  # scenes with no text of their own: subtitles stay on. Every other scene hides them (films 74-88; user review)
 SCENE_MEDIA = {}  # JS scenes that draw real photos (film 6): {'scene-name': ('credit line', ['media/x.jpg', ...])}; listed as `uses` so LICENSES/credits keep them
 ORIGINAL = {}  # film clips whose own field sound plays: {'v-tag#K': gain dB}; only after Scribe tags it as no music/speech (docs/SOUND.md)
@@ -159,6 +166,17 @@ def check():
         k = s['src'].split(':')[0]; kinds[k] = kinds.get(k, 0) + s['t1'] - s['t0']
     import dollcheck  # drawn-character budget (scripts/dollcheck.py): archival first
     warn += dollcheck.check(D, sh)
+    if LOOK in ('paper', 'dark'):  # 2026-11-14: one picture per sentence reads as a slideshow; arguments go on analysis boards
+        run, worst = 0, (0, None)
+        for s in sh:
+            run = run + 1 if s['src'].startswith('pick:') else 0
+            if run > worst[0]: worst = (run, s['anchor'])
+        bd = sum(s['t1'] - s['t0'] for s in sh if s['src'].startswith('scene:bd-')); tot = sum(s['t1'] - s['t0'] for s in sh) or 1
+        print(f'analysis boards (scene:bd-*): {bd:.0f}s of {tot:.0f}s ({bd / tot:.0%}); target 30-50 %; longest run of standalone photos {worst[0]}')
+        if worst[0] >= 4:
+            print(f'!! {worst[0]} standalone photos in a row (ending {worst[1]}): put some on an analysis board with what they prove (K.board, docs/SCENES.md)'); warn += 1
+        if bd / tot < 0.25:
+            print('!! analysis boards under 25 % of the film: analysis, comparison and cause/effect sentences go on K.board boards'); warn += 1
     import reviewcheck  # overlay text inside the frame, typing sound, firing sound (scripts/reviewcheck.py, film 76)
     warn += reviewcheck.check(D, sh)
     import filmrepeat  # footage an earlier film already showed (scripts/filmrepeat.py, film 88)
@@ -168,15 +186,16 @@ def check():
 
 def durations():
     import importlib.util
-    dur, maps = {}, set()
+    dur, maps, starts = {}, set(), {}
     for s in shots():
         k, _, name = s['src'].partition(':')
         if k in ('scene', 'map'):
-            dur[name] = round(s['t1'] - s['t0'] + 0.25, 3)
+            dur[name] = round(s['t1'] - s['t0'] + 0.25, 3); starts.setdefault(name, round(s['t0'], 3))
             if k == 'map':
                 maps.add(name)  # by shot kind, not name prefix (film 77 maps are m1-…, o-empire)
     sc = {k: v for k, v in dur.items() if k not in maps}
     write(D / 'scenes' / 'src' / 'durations.json', sc)
+    write(D / 'scenes' / 'src' / 'starts.json', {k: v for k, v in starts.items() if k not in maps})  # build.py: @{S146 "word"} -> scene seconds
     spec = importlib.util.spec_from_file_location('write_maps', D / 'maps' / 'write_maps.py'); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
     m.write({k: v for k, v in dur.items() if k in maps})
     print(f'{len(sc)} scene durations, {len(dur) - len(sc)} map durations')
@@ -197,13 +216,17 @@ def apply(sound_only=False):
             c.update(src=f'media/scene-{rest}.mp4', kind='video', grade='none', credit=SCENECREDIT, caption=s['caption'], mute=True, **{'in': 0.0})
             if rest in SCENE_MEDIA:
                 c.update(credit=f'{SCENECREDIT} · {SCENE_MEDIA[rest][0]}', uses=SCENE_MEDIA[rest][1])
-            if rest not in SUBS_OVER:  # graphics with their own text: subtitles step aside (render.hide_under_text)
+            if rest not in SUBS_OVER and not rest.startswith('bd-'):  # graphics with their own text: subtitles step aside (render.hide_under_text); analysis boards (bd-) keep them like the 通史3 reference
                 c['hide_subtitles'] = True
         elif k == 'map':
-            c.update(src=f'media/map-{rest}.mp4', kind='video', grade='none', credit=MAPCREDIT, caption=s['caption'], mute=True, bloom=True, **{'in': 0.0})
+            c.update(src=f'media/map-{rest}.mp4', kind='video', grade='none', credit=MAPCREDIT, caption=s['caption'], mute=True, **{'in': 0.0})
+            if LOOK not in ('paper', 'dark'):
+                c['bloom'] = True  # glow belongs to the old satellite maps only
         elif k == 'card':
             c.update(src=None, kind='card')
         elif k in ('pick', 'vid'):
+            if rest.endswith('+exhibit'):  # looks: a mounted print on the paper with its caption under it
+                rest = rest[:-8]; c['exhibit'] = True
             tag, _, kk = rest.partition('#'); kk, _, tin = kk.partition('@')
             picks.append((c['id'], tag, int(kk), s['caption'], tin or '0', k == 'vid'))  # '@IN!' = exact in-point, no clean_in
             c.update(src=None, caption=s['caption'])
@@ -272,6 +295,10 @@ def apply(sound_only=False):
             f['clips'] = fx
         tl['fx'] = {'subtitles': True, 'grain': True}
         tl['subtitle_style'] = {'font': 'military', 'size': 50, 'upper': True, 'stroke': 0, 'box': 0.62, 'box_pad': 16, 'box_color': '#0A0908', 'y': 0.868}
+        if LOOK in ('paper', 'dark'):  # book-case serif on a full-width band in the look's colours (render.subtitle_layer)
+            tl['subtitle_style'] = {'font': 'subsans', 'size': 46, 'upper': False, 'stroke': 0, 'box': 0, 'y': 0.875}  # bold gothic like the reference; cream band only over paper
+        tl['look'] = LOOK if LOOK in ('paper', 'dark') else None
+        tl['duck'] = {'release': 2000, 'ratio': 4}  # music stays down between sentences, rises only in real pauses (render.mix_graph, 2026-11-14)
         if not sound_only:
             tl['credits'] = [x for x in tl.get('credits', []) if x.get('file', '').startswith('media/') and 'scene-' not in x['file'] and 'map-' not in x['file']]
         return f'{len(vids)} shots, {len(ovs)} overlays, {len(sfx)} sfx, {len(mus)} music, {len(fx)} fx'

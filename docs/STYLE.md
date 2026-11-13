@@ -1,5 +1,29 @@
 # House style (from a frame-by-frame study of the reference, 2026-10-30)
 
+## Film look: one colour family per film (user 2026-11-14, overrides the colours and type below for archival films)
+Reference: `通史3` (艦は買えた、海軍は買えなかった), a 22-minute film that stays in one palette the whole way: cream paper, navy, ink.
+Our films mixed dark navy graphics, brown cards, satellite-green maps, sepia photos, bright reds and condensed caps, and
+read as modern and patchy. Every archival film now has exactly one **look** (`brief.json` `"look"`, set by `doc.py plan`,
+default `paper`; colours in `assets/looks.json`, read by `scenes/lib.js`, `maps/engine.html` and `scripts/render.py`):
+- **`paper`** (default): cream paper ground, ink text, navy as the calm second colour, one muted red for marks
+  (arrows, rules, dots), rare gold. **`dark`**: warm near-black ground, cream text, muted red, cool grey-blue. Pick
+  `dark` only when the subject is better served by it (night war, submarines); never mix looks in one film.
+- **Type:** one vintage serif for everything (Source Serif 4; Japanese Shippori Mincho, both OFL), book case, no caps,
+  no glow, no drop shadows. Write overlay and card text in book case ("Der Mythos „Blitzkrieg“", not caps).
+- **Real media:** standalone photos and film fill the frame (the reference does too), with a source label top-right.
+  On analysis boards a photo is a small exhibit inside the argument (`K.board`); `pick:TAG#K+exhibit` hangs a
+  standalone one as a mounted print on the paper (documents, small portraits). Use real media where it proves
+  something, not as wallpaper: boards, maps and drawn characters carry most of the film.
+- **Labels** (date tags, name plates, map labels, the source label top-right, scene tags): near-black box at ~80 %,
+  a thin cream bar on its left edge, cream serif text (user correction 2026-11-14: not navy or paper boxes).
+- **Maps:** flat Natural Earth sketch maps (land in the look's land colour, navy sea with a faint wave pattern, rivers,
+  top-down camera, printed flat arrows, serif labels on navy boxes). No satellite imagery, terrain or bloom.
+- **Graphics:** "poor on purpose", like a history book: thin rules, plain bars, small dots, boxes joined by thin lines,
+  silhouettes. No glowing rings, gradient icons, neon or infographic dashboards.
+- **Subtitles:** bold sans (`subsans`, Be Vietnam Pro SemiBold; Japanese M PLUS 1p). Over paper (JS scenes, boards, exhibits) they sit on a full-width cream band in dark text; over maps, photos and film they are plain white with a dark outline (user correction 2026-11-14: the band is not on every frame).
+- `scripts/lookcheck.py JOB` (after `render_all.sh`) flags scenes and maps whose ground or accent colours leave the look.
+- Films finished before 2026-11-14 have no `look` in their timeline and keep rendering in the old style below.
+
 Reference: `Chiến Dịch Điện Biên Phủ 1954.mp4` (154.5 s, 24 fps, −14.1 LUFS). It was sampled at 1 fps for the whole film, then densely at transitions, at card reveals, and at full resolution for typography.
 
 ## Rhythm and structure

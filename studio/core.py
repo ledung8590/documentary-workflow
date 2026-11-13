@@ -483,7 +483,7 @@ def picture_sig(proj, tl):
                       for tr in tl['tracks'] if is_pic(tr) and not tr.get('hidden')},
             'subtitle_style': json.dumps(_num(tl.get('subtitle_style') or {}), sort_keys=True),
             'subs': {k: v for k, v in sub_spans(proj, tl).items()},
-            'fx': json.dumps(_num(tl.get('fx') or {}), sort_keys=True), 'language': tl.get('language'),
+            'fx': json.dumps(_num(tl.get('fx') or {}), sort_keys=True), 'language': tl.get('language'), 'look': tl.get('look'),
             'srt': _file_sig(proj.d / 'voice' / 'voice.srt'), 'duration': tl['duration']}
 
 
@@ -610,7 +610,7 @@ def dirty_ranges(proj, tl, pad=0.0):
     if not st or st.get('picture') != _pic_id(proj.picture):
         return None
     cur = picture_sig(proj, tl)
-    if any(cur.get(k) != st.get(k, cur.get(k) if k == 'subtitle_style' else None) for k in ('fx', 'language', 'srt', 'duration', 'subtitle_style')):
+    if any(cur.get(k) != st.get(k, cur.get(k) if k == 'subtitle_style' else None) for k in ('fx', 'language', 'look', 'srt', 'duration', 'subtitle_style')):
         return [[0.0, tl['duration']]]
     spans = []
     for tid in set(st['clips']) | set(cur['clips']):
@@ -777,7 +777,7 @@ class Framer:
         import numpy as np
         R = self.R
         with self.lock:
-            R.LANG = tl.get('language') or 'en'
+            R.use(tl)  # language + film look
             vids = sorted([c for tr in tl['tracks'] if tr['id'] == 'video' for c in tr['clips']], key=lambda c: c['start'])
             overlays = sorted([c for tr in tl['tracks'] if tr['id'] == 'overlay' for c in tr['clips'] if 'start' in c],
                               key=lambda o: o.get('type') in ('date_tag', 'lower_third', 'callout'))

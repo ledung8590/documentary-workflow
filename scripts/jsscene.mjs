@@ -2,6 +2,7 @@
 //   node scripts/jsscene.mjs <scene.js> <out.mp4> [--fps 24] [--dur seconds] [--still t out.jpg]
 //   node scripts/jsscene.mjs <scene.js> <spans.json> --typing     typing spans, for typewriter SFX
 //   node scripts/jsscene.mjs <scene.js> <out.mov> --alpha           transparent overlay (bg 'none', vignette 0) for a media_overlay fx clip
+//   --look paper|dark|none   override the film look (default: brief.json "look", archival films paper)
 //   --lang vi|es|en                                                  language of fixed UI words in a scene (default en)
 // The scene file sets window.SCENE = {duration, bg, draw(c, t, L)}; see docs/SCENES.md.
 import fs from 'fs'; import http from 'http'; import path from 'path'; import { spawn } from 'child_process';
@@ -30,7 +31,12 @@ let err = null; page.on('pageerror', e => { err = e; console.error('page error:'
 await page.goto(`http://127.0.0.1:${port}/scenes/engine.html`);
 const rel = '/' + path.relative(ROOT, sceneFile).split(path.sep).join('/');
 await page.evaluate(l => { window.LANG = l; }, opt('--lang', 'en'));  // scenes that print fixed UI words (subscribe.js) read it
-const info = await page.evaluate(s => window.setup(s), rel);
+// film look from projects/<id>/brief.json ("look": paper | dark; archival default paper since 2026-11-14), or --look
+let LOOK = opt('--look', null);
+if (!LOOK) { const b = path.join(path.dirname(sceneFile), '..', 'brief.json');
+  if (fs.existsSync(b)) { const br = JSON.parse(fs.readFileSync(b, 'utf8')); LOOK = br.look || (br.genre === 'story' ? 'none' : 'paper'); } }
+if (args.includes('--alpha') && !opt('--look', null)) LOOK = null;  // transparent overlays (subscribe) keep their own colours
+const info = await page.evaluate(([s, l]) => window.setup(s, l), [rel, LOOK]);
 const DUR = +opt('--dur', info.duration || 6);
 
 if (args.includes('--typing')) {  // spans [[a, b], ...] (scene seconds) where L.typed() is still typing, for typewriter SFX

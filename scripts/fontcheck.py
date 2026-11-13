@@ -13,7 +13,7 @@ from fontTools.ttLib import TTFont
 ROOT = Path(__file__).resolve().parents[1]
 FONTS = ROOT / 'assets' / 'fonts'
 FILES = {'head': 'Oswald.ttf', 'mono': 'IBMPlexMono-Regular.ttf', 'monomed': 'IBMPlexMono-Medium.ttf',
-         'body': 'BeVietnamPro-SemiBold.ttf', 'bodyreg': 'BeVietnamPro-Regular.ttf', 'military': 'SairaCondensed-Bold.ttf',
+         'body': 'BeVietnamPro-SemiBold.ttf', 'bodyreg': 'BeVietnamPro-Regular.ttf', 'military': 'SairaCondensed-Bold.ttf', 'subsans': 'BeVietnamPro-SemiBold.ttf',
          'stencil': 'SairaStencilOne-Regular.ttf', 'blackops': 'BlackOpsOne-Regular.ttf'}
 CMAP = {k: TTFont(str(FONTS / f)).getBestCmap() for k, f in FILES.items()}
 CARD = ('head', 'mono', 'monomed', 'body', 'bodyreg')  # overlays and scenes mix these: a char must exist in all of them
@@ -48,6 +48,11 @@ def main(job):
         jp = TTFont(str(FONTS / 'MPLUS1p-Bold.ttf')).getBestCmap()
         for k in FILES:
             CMAP[k] = jp; FILES[k] = 'MPLUS1p-Bold.ttf'
+    if tl.get('look'):  # film looks draw head/body/sub text in the vintage serif (render.font, docs/STYLE.md "Film look")
+        ja = (tl.get('language') or '')[:2] == 'ja'
+        fn = 'ShipporiMincho-Bold.ttf' if ja else 'SourceSerif4.ttf'; cm = TTFont(str(FONTS / fn)).getBestCmap()
+        for k in ('head', 'body', 'bodyreg', 'military', 'monomed'):
+            CMAP[k] = cm; FILES[k] = fn
     found = {}
 
     def note(miss, where):

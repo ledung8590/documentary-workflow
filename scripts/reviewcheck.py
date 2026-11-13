@@ -35,7 +35,7 @@ def overlay_fit(d):
     import render as R
     from PIL import Image, ImageDraw
     tl = json.loads((Path(d) / 'timeline.json').read_text(encoding='utf-8'))
-    R.LANG = tl.get('language') or 'en'  # measure with the font the film is drawn in
+    R.use(tl)  # measure with the font and look the film is drawn in
     ovs = [c for t in tl['tracks'] if t.get('id') == 'overlay' or t.get('kind') == 'overlay' for c in t.get('clips', [])]
     boxes, orig = [], ImageDraw.ImageDraw.text
 

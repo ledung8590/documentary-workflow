@@ -10,8 +10,11 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2), opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const scene = JSON.parse(fs.readFileSync(args[0], 'utf8')), out = path.resolve(args[1]);
 const FPS = +opt('--fps', 24), DUR = +opt('--dur', scene.duration || 6);
+// film look (projects/<id>/brief.json "look"; archival default paper since 2026-11-14) -> flat Natural Earth map; --look overrides
+if (!scene.look) { const b = path.join(path.dirname(path.resolve(args[0])), '..', 'brief.json');
+  scene.look = opt('--look', null) || (fs.existsSync(b) ? (JSON.parse(fs.readFileSync(b, 'utf8')).look || 'paper') : null); }
 
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.json': 'application/json' };
+const TYPES = { '.geojson': 'application/json', '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.ttf': 'font/ttf', '.json': 'application/json' };
 const server = http.createServer((req, res) => {
   const p = path.join(ROOT, decodeURIComponent(req.url.split('?')[0]));
   if (!p.startsWith(ROOT) || !fs.existsSync(p) || fs.statSync(p).isDirectory()) { res.writeHead(404); return res.end(); }
