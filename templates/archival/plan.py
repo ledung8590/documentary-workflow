@@ -108,7 +108,7 @@ def shots():
     rows = lines('shots.txt')
     out = []
     for i, r in enumerate(rows):
-        t0 = 0.0 if i == 0 else resolve(r[0])
+        t0 = 0.0 if i == 0 and not __import__('os').environ.get('PLAN_PART') else resolve(r[0])  # a group part starts at its own anchor
         out.append({'t0': t0, 'src': r[1], 'caption': r[2] if len(r) > 2 else '', 'anchor': r[0]})
     for i, s in enumerate(out):
         s['t1'] = out[i + 1]['t0'] if i + 1 < len(out) else DUR
@@ -141,7 +141,7 @@ def check():
             flag = '! long still'
         elif kind == 'vid' and L > 6.5:
             flag = '! long clip'
-        key, _, tin = s['src'].partition('@')
+        key, _, tin = s['src'].replace('+exhibit', '').partition('@')  # a mounted exhibit is the same candidate
         if kind in ('pick', 'vid'):  # the same file can sit under several search tags: compare the source id
             tag, _, k = key.split(':', 1)[1].partition('#')
             try:
@@ -194,11 +194,43 @@ def durations():
             if k == 'map':
                 maps.add(name)  # by shot kind, not name prefix (film 77 maps are m1-…, o-empire)
     sc = {k: v for k, v in dur.items() if k not in maps}
+    st = {k: v for k, v in starts.items() if k not in maps}
+    if __import__('os').environ.get('PLAN_PART'):  # group editors in parallel: merge into the other groups' entries, never overwrite them
+        old = lambda n: read(D / 'scenes' / 'src' / n) if (D / 'scenes' / 'src' / n).exists() else {}
+        sc = {**old('durations.json'), **sc}; st = {**old('starts.json'), **st}
+        print(f'{len(sc)} scene durations (merged part)'); write(D / 'scenes' / 'src' / 'durations.json', sc); write(D / 'scenes' / 'src' / 'starts.json', st)
+        return  # maps are written by the lead editor's full `plan.py durations`
     write(D / 'scenes' / 'src' / 'durations.json', sc)
-    write(D / 'scenes' / 'src' / 'starts.json', {k: v for k, v in starts.items() if k not in maps})  # build.py: @{S146 "word"} -> scene seconds
+    write(D / 'scenes' / 'src' / 'starts.json', st)  # build.py: @{S146 "word"} -> scene seconds
     spec = importlib.util.spec_from_file_location('write_maps', D / 'maps' / 'write_maps.py'); m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
     m.write({k: v for k, v in dur.items() if k in maps})
     print(f'{len(sc)} scene durations, {len(dur) - len(sc)} map durations')
+
+
+LABELS = {'en': ('Photo', 'Film', 'Document', 'Map (schematic)', 'Map (satellite)', 'Diagram (shapes simplified)', 'Illustration', 'Reconstruction (generated)', 'Painting'),
+          'de': ('Foto', 'Film', 'Dokument', 'Karte (schematisch)', 'Karte (Satellit)', 'Grafik (Formen vereinfacht)', 'Illustration', 'Rekonstruktion (generiert)', 'Gemälde'),
+          'vi': ('Ảnh', 'Phim', 'Tư liệu', 'Bản đồ (minh hoạ)', 'Bản đồ (vệ tinh)', 'Đồ hoạ (hình giản lược)', 'Minh hoạ', 'Tái hiện (dựng lại)', 'Tranh'),
+          'es': ('Foto', 'Película', 'Documento', 'Mapa (esquemático)', 'Mapa (satélite)', 'Gráfico (formas simplificadas)', 'Ilustración', 'Reconstrucción (generada)', 'Pintura'),
+          'ja': ('写真', '映像', '史料', '地図（略図）', '地図（衛星）', '図解（形は略図）', '図解', '再現（生成）', '絵画')}
+
+
+def source_label(k, rest, caption):
+    """The 通史3 two-line source label's first line: what kind of picture this is, with its year when the caption has one."""
+    L = LABELS.get(LANG, LABELS['en'])
+    y = re.search(r'\b(1[5-9]\d\d|20[0-2]\d)\b', caption or ''); yr = f' ({y.group(1)})' if y else ''
+    if k == 'map':
+        spec = D / 'maps' / 'src' / f'{rest}.json'
+        return L[4] if spec.exists() and json.loads(spec.read_text(encoding='utf-8')).get('base') == 'satellite' else L[3]
+    if k == 'scene':
+        if rest.startswith('r-'): return L[7]
+        if rest.startswith('bd-'): return L[5]
+        return L[6]
+    if k == 'vid': return L[1] + yr
+    if k == 'pick':
+        if re.search(r'(?i)\b(memo|report|treaty|document|letter|page|newspaper|front page|order|telegram|record|minutes)\b', caption or ''): return L[2] + yr
+        if re.search(r'(?i)\b(painting|lithograph|engraving|drawing|print)\b', caption or ''): return L[8] + yr
+        return L[0] + yr
+    return None
 
 
 def apply(sound_only=False):
@@ -214,9 +246,13 @@ def apply(sound_only=False):
         c['end_anchor'] = anchors.anchor(s['t1'])
         if k == 'scene':
             c.update(src=f'media/scene-{rest}.mp4', kind='video', grade='none', credit=SCENECREDIT, caption=s['caption'], mute=True, **{'in': 0.0})
+            if LOOK in ('paper', 'dark'):  # the two-line label already says Diagram/Illustration: keep only the exhibits' sources (通史3)
+                c['credit'] = ''
             if rest in SCENE_MEDIA:
-                c.update(credit=f'{SCENECREDIT} · {SCENE_MEDIA[rest][0]}', uses=SCENE_MEDIA[rest][1])
-            if rest not in SUBS_OVER and not rest.startswith('bd-'):  # graphics with their own text: subtitles step aside (render.hide_under_text); analysis boards (bd-) keep them like the 通史3 reference
+                c.update(credit=(SCENE_MEDIA[rest][0] if LOOK in ('paper', 'dark') else f'{SCENECREDIT} · {SCENE_MEDIA[rest][0]}'), uses=SCENE_MEDIA[rest][1])
+            if rest.startswith('r-'):  # reconstruction prints (generated, 通史3 再現): the label says what they are; subtitles run over them like the reference
+                c['credit'] = ''
+            if rest not in SUBS_OVER and not rest.startswith('r-'):  # graphics with their own text, boards included: subtitles step aside (render.hide_under_text); user 2026-11-14: labels + subtitles = the same words twice
                 c['hide_subtitles'] = True
         elif k == 'map':
             c.update(src=f'media/map-{rest}.mp4', kind='video', grade='none', credit=MAPCREDIT, caption=s['caption'], mute=True, **{'in': 0.0})
@@ -224,6 +260,7 @@ def apply(sound_only=False):
             sat = spec.exists() and json.loads(spec.read_text(encoding='utf-8')).get('base') == 'satellite'
             if LOOK not in ('paper', 'dark') or sat:
                 c['bloom'] = True  # glow belongs to the old satellite maps only
+            c['hide_subtitles'] = True  # maps carry their own labels (user 2026-11-14)
             if sat:
                 c['credit'] = CREDITS.get(LANG, CREDITS['en'])[0]  # the satellite/terrain credit
         elif k == 'card':
@@ -240,6 +277,7 @@ def apply(sound_only=False):
                     c.update(mute=False, original_audio=True, gain_db=ORIGINAL[f'{tag}#{kk}'])
         else:
             raise SystemExit(f'unknown src {s["src"]}')
+        c['label'] = source_label(k, rest, s['caption'])
         vids.append(c)
     ovs = []
     for j, r in enumerate(lines('overlays.txt')):
@@ -265,8 +303,11 @@ def apply(sound_only=False):
                 return float(x[6:]) if x.startswith('START+') else resolve(x)
             t0, t1 = (0.0 if a == 'S001-start' else _pt(a)), (DUR if b == 'END' else _pt(b))
             mus.append({'id': f'M{len(mus) + 1:03d}', 'src': asset(r[1]), 'start': t0, 'end': t1, 'in': float(r[3]) if len(r) > 3 else 0, 'loop': False,
-                        'gain_db': float(r[2]), 'fade_in': 2, 'fade_out': 2.5, 'duck': True, 'mood': r[1].split('/')[1],
+                        'gain_db': float(r[2]), 'fade_in': 0.4 if t0 < 0.1 else 2, 'fade_out': 2.5,  # the opening bed comes in at once (通史3: music at 0.4 s) 'duck': True, 'mood': r[1].split('/')[1],
                         'anchor': anchors.anchor(t0), 'end_anchor': anchors.anchor(t1), 'frame': round(t0 * FPS)})
+            for kv in (r[4].split() if len(r) > 4 else []):  # e.g. `fade_out=5 noduck` (opening bed fading out smoothly under the first words)
+                if kv == 'noduck': mus[-1]['duck'] = False
+                elif '=' in kv: k_, v_ = kv.split('=', 1); mus[-1][k_] = float(v_)
         elif r[1].startswith('fx:'):  # fx:subscribe -> media overlay
             t0 = resolve(r[0])
             fx.append({'id': f'F{len(fx) + 1:03d}', 'type': 'media_overlay', 'start': t0, 'end': t0 + float(r[2]),
@@ -319,6 +360,31 @@ def apply(sound_only=False):
         except Exception as e:  # noqa: BLE001
             print(f'!! {slot} {tag}#{k}: {e}')
     fix_photos()
+    auto_exhibit()
+
+
+def auto_exhibit():
+    """Look films: a portrait photo would become a print on BLACK (render.is_print), which leaves the paper look; hang it as a
+    mounted exhibit on the paper instead. Landscape/square photos fill the frame even when small (user 2026-11-14: 'sao ảnh bị
+    thu nhỏ'). An exhibit under a callout or lower third drops its own caption (the two texts overlapped)."""
+    if LOOK not in ('paper', 'dark'):
+        return
+    import core as C
+    from PIL import Image
+    Image.MAX_IMAGE_PIXELS = None
+    def edit(tl):
+        n = 0
+        for c in next(t for t in tl['tracks'] if t['id'] == 'video')['clips']:
+            p = D / (c.get('src') or '')
+            if c.get('kind') == 'photo' and c.get('src') and p.exists() and not c.get('exhibit') and not str(c.get('id', '')).startswith('#'):
+                w, h = Image.open(p).size
+                if w / h < 0.95:
+                    c['exhibit'] = True; n += 1
+            if c.get('exhibit'):
+                c['exhibit_nocap'] = any(o['type'] in ('callout', 'lower_third') and o['start'] < c['end'] - 0.2 and c['start'] < o['end'] - 0.2
+                                         for o in next(t for t in tl['tracks'] if t['id'] == 'overlay')['clips'])
+        return f'{n} portrait photos hung as exhibits'
+    print(C.Project(JOB).transact(edit, who='agent', why='plan.py auto_exhibit')[0])
 
 
 def crop_box(im):

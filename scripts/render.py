@@ -205,11 +205,11 @@ def is_exhibit(clip):
 def exhibit_frame(im, caption=''):
     """Mounted print on the look's ground: thin light mat, soft contact shadow, caption in the look's serif below."""
     bg = texture('look').convert('RGB').copy()
-    fg = ImageOps.contain(im, (int(min(W * 0.62, im.width * 1.8)), int(min(H * 0.6, im.height * 1.8))), Image.LANCZOS)
+    fg = ImageOps.contain(im, (int(min(W * 0.8, im.width * 2.2)), int(min(H * 0.7, im.height * 2.2))), Image.LANCZOS)  # 2026-11-14: 0.6 H read as 'ảnh bị thu nhỏ'
     m = 10 if LOOK['name'] == 'paper' else 6
     mat = Image.new('RGB', (fg.width + 2 * m, fg.height + 2 * m), (244, 240, 230) if LOOK['name'] == 'paper' else _hex(LOOK['panel']))
     mat.paste(fg, (m, m))
-    x, y = (W - mat.width) // 2, int(H * 0.41 - mat.height / 2)
+    x, y = (W - mat.width) // 2, int(H * 0.42 - mat.height / 2)
     sh = Image.new('L', (mat.width + 40, mat.height + 40), 0)
     ImageDraw.Draw(sh).rectangle((20, 20, mat.width + 20, mat.height + 20), fill=90 if LOOK['name'] == 'paper' else 160)
     bg.paste((40, 30, 20) if LOOK['name'] == 'paper' else (0, 0, 0), (x - 14, y - 10), sh.filter(ImageFilter.GaussianBlur(12)))
@@ -225,8 +225,8 @@ class Photo:
         im = ImageOps.exif_transpose(Image.open(path)).convert('RGB')
         g = clip.get('grade', 'archival')
         if is_exhibit(clip):
-            self.base = exhibit_frame(Image.fromarray(grade(np.asarray(im), g)), clip.get('caption', '')); self.push = 0.025
-        elif is_print(im.width, im.height, photo=True):
+            self.base = exhibit_frame(Image.fromarray(grade(np.asarray(im), g)), '' if clip.get('exhibit_nocap') else clip.get('caption', '')); self.push = 0.025
+        elif is_print(im.width, im.height, photo=True) and not (LOOK and im.width / im.height >= 0.95):  # look films: landscape photos fill the frame even when small
             self.base = Image.fromarray(grade(np.asarray(framed_print(im)), g)); self.push = 0.03
         else:
             self.base = Image.fromarray(grade(np.asarray(ImageOps.fit(im, (int(W * 1.1), int(H * 1.1)), Image.LANCZOS)), g))
@@ -630,6 +630,11 @@ def subtitle_layer(text, style=None, paper=False):
 
 def credit_layer(text):
     lay = Image.new('RGBA', (W, H)); d = ImageDraw.Draw(lay); f = font('body', 22)
+    if LOOK and '\n' in text:  # 通史3 two-line source label: bold kind + date, then what it shows (user 2026-11-14)
+        head, body = text.split('\n', 1); fh, fb = font('head', 26), font('body', 20); body = body[:150]
+        w = max(d.textlength(head, font=fh), d.textlength(body, font=fb))
+        x0 = W - 64 - w - 18; d.rectangle((x0, 22, W - 48, 92), fill=OV_BOX + (215,)); d.rectangle((x0, 22, x0 + 4, 92), fill=OV_TEXT + (255,))
+        d.text((x0 + 16, 26), head, font=fh, fill=OV_TEXT + (245,)); d.text((x0 + 16, 62), body, font=fb, fill=OV_TEXT + (215,)); return lay
     text = text[:180]; w = d.textlength(text, font=f)
     if LOOK:  # source label top-right on the look's box (the 通史3 reference keeps the bottom free for the subtitle band)
         d.rectangle((W - 64 - w - 16, 26, W - 52, 60), fill=OV_BOX + (205,)); d.rectangle((W - 64 - w - 16, 26, W - 64 - w - 13, 60), fill=OV_TEXT + (255,))
@@ -665,6 +670,8 @@ def frame_layers(c, t, overlays, sub, cache, sub_style=None):
             covered |= draw_overlay(lay, o, t - o['start'])
     if not covered and c.get('kind') != 'card':
         line = ' · '.join(x for x in ((None if is_exhibit(c) else c.get('caption')), c.get('credit')) if x)
+        if LOOK and c.get('label') and line:
+            line = c['label'] + '\n' + line
         if line:
             cache.setdefault(line, credit_layer(line)); out.append((('credit', line), cache[line]))
     if lay is not None:
@@ -865,7 +872,7 @@ def mix_graph(d, tl, t0=0.0, t1=None, only=None):
                     r = 0.6
                     parts.append(f'(1-{1 - 10 ** (db / 20):.4f}*max(0,min(1,min((t+{off:.3f}-{a - r:.3f})/{r},({b + r:.3f}-t-{off:.3f})/{r}))))')
                 level += f"volume='{'*'.join(parts)}':eval=frame,"
-            (hits if tr['id'] == 'sfx' else beds).append(
+            (hits if tr['id'] == 'sfx' or c.get('duck') is False else beds).append(  # duck: false = not under the sidechain (an opening bed that fades by itself)
                 (k, f'[{k}:a]atrim=start={src_in}:duration={dur - skip:.3f},asetpts=PTS-STARTPTS,{level}'
                     f'{fade_in}afade=t=out:st={max(0, dur - fo - skip):.3f}:d={fo},volume={gain}dB,'
                     f'aresample=48000,aformat=channel_layouts=stereo,adelay={ms}|{ms}[b{k}]'))

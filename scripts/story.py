@@ -145,9 +145,10 @@ BED_MAX = 112.0      # one pass of a ~120 s file at most, then the bed changes (
 EMO_GAIN = {'urgent': 2.5, 'dramatic': 2.0, 'tense': 1.5, 'hook': 1.5, 'question': 0.5, 'neutral': 0.0, 'triumphant': 1.0,
             'hopeful': 0.0, 'somber': -0.5, 'sad': -0.5, 'calm': -1.0, 'reflective': -1.5, 'warm': -1.0}  # music follows the voice: up in tension, down in reflection
 MIN_RUN = 35.0       # an emotion run shorter than this joins its neighbour (no bed changes every few sentences)
-MUSIC_UNDER = 11.0   # neutral narration bed: dB under the voice (LUFS over speech); tense beds come up to BED_GAP_MIN
-SWELL_MIN, SWELL_CUT_MAX = 6.0, 5.0     # a bed's loudest 3 s over speech stays >= 6 dB under the voice (cut up to 5 dB more)
-BED_GAP_MIN, BED_GAP_MAX = 9.0, 13.5    # ducked music sits this many dB under the voice (measured; 13-15 dB sounded like a bare reading)
+MUSIC_UNDER = 31.0   # neutral narration bed: dB under the voice (LUFS over speech); tense beds come up to BED_GAP_MIN.
+# User 2026-11-14 (archival and story alike): the bed is only a faint trace ("nhạc nền chỉ tý xíu thui"); was 11 dB
+SWELL_MIN, SWELL_CUT_MAX = 26.0, 8.0    # a bed's loudest 3 s over speech stays >= 26 dB under the voice (cut up to 8 dB more)
+BED_GAP_MIN, BED_GAP_MAX = 29.0, 33.5   # ducked music sits this many dB under the voice (faint trace; emotion moves it within this band)
 
 
 def _speech_level(x, sr, floor=25.0):
@@ -185,7 +186,9 @@ def _level_music(d, tl, log, under=MUSIC_UNDER):
         V, M = _lufs_m(pv), _lufs_m(pm)
     k = min(len(V), len(M)); V, M = V[:k], M[:k]; sp = V > -40
     before, after, swells = [], [], []
-    shift = under - MUSIC_UNDER   # brief story.music_under moves the whole range (default 11)
+    if under < 20:  # briefs written before 2026-11-14 hold the old 11-13 dB scale: use the faint-trace default
+        under = MUSIC_UNDER
+    shift = under - MUSIC_UNDER   # brief story.music_under moves the whole range (default 31)
     for c in clips:
         a, b = int(c['start'] * 10) + 20, int(c['end'] * 10) - 20     # skip the crossfades
         w = slice(max(0, a), min(k, b)); s = sp[w]

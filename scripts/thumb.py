@@ -75,12 +75,16 @@ def label(d, x, y, s, lang, size=26, bg=NAVY, fg=(255, 255, 255), anchor='l'):
     d.rectangle((x0, y, x0 + w + 2 * pad, y + size + 16), fill=bg); d.text((x0 + pad, y + 5), s, font=f, fill=fg)
 
 
+CREDIT_LEFT = False
+
+
 def credit(d, s, lang, dark=True):
     if not s:
         return
     f = font('small', 14, lang); w = d.textlength(s, font=f)
-    d.rectangle((W - w - 22, H - 26, W - 4, H - 4), fill=(0, 0, 0, 150) if dark else (255, 255, 255, 170))
-    d.text((W - w - 13, H - 24), s, font=f, fill=(235, 235, 235) if dark else (40, 40, 40))
+    x0 = 4 if CREDIT_LEFT else W - w - 22  # "credit_left": YouTube's duration stamp covers the bottom-right corner (reviewer 2026-11-14)
+    d.rectangle((x0, H - 26, x0 + w + 18, H - 4), fill=(0, 0, 0, 150) if dark else (255, 255, 255, 170))
+    d.text((x0 + 9, H - 24), s, font=f, fill=(235, 235, 235) if dark else (40, 40, 40))
 
 
 def panel(s, lang):
@@ -156,6 +160,7 @@ def band(s, lang):
 
 def make(spec, out):
     s = json.loads(Path(spec).read_text(encoding='utf-8')) if not isinstance(spec, dict) else spec
+    global CREDIT_LEFT; CREDIT_LEFT = bool(s.get("credit_left"))
     lang = s.get('lang', 'en')
     img = {'panel': panel, 'portrait': portrait, 'question': question, 'band': band}[s.get('layout', 'panel')](s, lang)
     img.convert('RGB').save(out, quality=94)

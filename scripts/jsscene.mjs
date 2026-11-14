@@ -2,6 +2,7 @@
 //   node scripts/jsscene.mjs <scene.js> <out.mp4> [--fps 24] [--dur seconds] [--still t out.jpg]
 //   node scripts/jsscene.mjs <scene.js> <spans.json> --typing     typing spans, for typewriter SFX
 //   node scripts/jsscene.mjs <scene.js> <out.mov> --alpha           transparent overlay (bg 'none', vignette 0) for a media_overlay fx clip
+//   node scripts/jsscene.mjs <scene.js> <events.json> --events     K.stamp/flash/burst/flashAt times, for SFX
 //   --look paper|dark|none   override the film look (default: brief.json "look", archival films paper)
 //   --lang vi|es|en                                                  language of fixed UI words in a scene (default en)
 // The scene file sets window.SCENE = {duration, bg, draw(c, t, L)}; see docs/SCENES.md.
@@ -48,6 +49,14 @@ if (args.includes('--typing')) {  // spans [[a, b], ...] (scene seconds) where L
   }
   if (a !== null) spans.push([+a.toFixed(3), +DUR.toFixed(3)]);
   fs.writeFileSync(out, JSON.stringify(spans));
+} else if (args.includes('--events')) {  // [[kind, t0], ...] of every K.stamp / K.flash / K.burst / K.flashAt the scene calls (scene seconds), for SFX
+  const ev = await page.evaluate(([dur, fps]) => {
+    const seen = new Map(), idx = { stamp: 6, flash: 5, burst: 5, flashAt: 2 };
+    for (const k of Object.keys(idx)) { const f = K[k]; if (!f) continue; K[k] = function (...a) { const t0 = +a[idx[k]]; if (isFinite(t0)) seen.set(k + '|' + t0.toFixed(2), [k, +t0.toFixed(2), k === 'stamp' ? String(a[2]) : '']); return f.apply(this, a); }; }
+    for (let i = 0; i <= Math.ceil(dur * fps); i++) window.renderAt(i / fps);
+    return [...seen.values()].sort((x, y) => x[1] - y[1]);
+  }, [DUR, 4]);
+  fs.writeFileSync(out, JSON.stringify(ev));
 } else if (args.includes('--still')) {  // one frame as jpg, for checking
   const i = args.indexOf('--still'), t = +args[i + 1];
   await page.evaluate(t => window.renderAt(t), t); await page.screenshot({ path: out, type: 'jpeg', quality: 90 });

@@ -177,13 +177,22 @@ const K = {
   //   side 'wehr' (feldgrau), 'sov' (Red Army gymnastyorka), 'us' (olive drab), 'tommy' (British khaki), 'jap' (IJA khaki),
   //   'navy' (dark blue, brass buttons), 'suit' (politician/civilian: dark suit, shirt, tie), 'work' (worker's jacket)
   //   hats 'stahlhelm' | 'pilotka' | 'ushanka' | 'm1' | 'brodie' | 'jpcap' (o.flaps) | 'peaked' (officer, colour by side) | 'fedora' | 'flatcap'
+  //   since 2026-11-14 (space race film): 'usaf' (blue service dress, ribbons; hat 'peaked'), 'astro' (US white pressure suit, flag patch),
+  //   'cosmo' (Soviet white suit, red СССР), 'lab' (engineer's white coat, tie); hat 'space' (clear helmet bubble, neck ring)
+  //   since 2026-11-14 (combat scenes): 'union' (US Civil War Union: dark blue sack coat, sky-blue trousers, four brass buttons, black sling,
+  //   oval US belt plate; hat 'kepi' turns into the dark blue forage cap with a brass bugle), 'confed' (Confederate cadet-grey shell jacket,
+  //   o.butternut for the brown-yellow homespun, light-blue collar trim, seven brass buttons, white haversack strap, CS plate; hat 'slouch'
+  //   = wide soft felt hat, o.capCol), 'iraq' (Iraqi army 1991 olive field tunic; hat 'beret', black by default, o.capCol for the
+  //   Republican Guard red). Sheet: projects/<film-90+>/qa/w/doll-costumes.jpg
   //   o.rifle (bolt-action), o.binos (binoculars on the chest), o.helmCol (helmet paint). A film needing a costume not listed here
   //   adds it in THIS function (templates/archival kit), drawn the same way, so every later film has it.
   doll(c, L, x, y, h, t, o = {}) {
     const C = ({ pru: ['#141a2b', '#c0282d', '#ece6d8'], fra: ['#2f5fc4', '#f4f0e6', '#ece6d8'], brit: ['#b52a2c', '#ece6d8', '#22305a'], civ: ['#6a5238', '#d9cfb8', '#3a2e22'], rus: ['#34552f', '#c0282d', '#ece6d8'], dnam: ['#7a1f1a', '#1a1612', '#c9a24a'], quan: ['#1f2a5a', '#c9a24a', '#c9a24a'], dan: ['#3a3128', '#2a221a', '#5a4a38'], mar: ['#1c2440', '#c0282d', '#ece6d8'],
       wehr: ['#5b6150', '#3d4a3a', '#1e1c18'], sov: ['#7c7550', '#6e6844', '#4a3424'], us: ['#6b6440', '#5c5636', '#4a4630'], tommy: ['#7a6a48', '#6a5c3e', '#5a4a30'], jap: ['#8a7a4a', '#7a6a40', '#5a4228'],
-      navy: ['#1c2440', '#141a30', '#d8b450'], suit: ['#23262c', '#1a1c22', '#7a1f1a'], work: ['#4a4a52', '#3a3a40', '#2a2420'] }[o.side || 'pru']).slice();
-    const MOD = ['wehr', 'sov', 'us', 'tommy', 'jap'].includes(o.side), NEW = MOD || ['navy', 'suit', 'work'].includes(o.side);
+      navy: ['#1c2440', '#141a30', '#d8b450'], usaf: ['#3a4b6e', '#2c3a58', '#1a1c22'], astro: ['#e8e6e0', '#c9c6be', '#8a8a90'], cosmo: ['#e4e0d6', '#c0282d', '#8a8a90'], lab: ['#ecebe6', '#d8d6cf', '#3a3a40'], suit: ['#23262c', '#1a1c22', '#7a1f1a'], work: ['#4a4a52', '#3a3a40', '#2a2420'],
+      union: ['#232c4a', '#1c2440', '#d8b450'], confed: ['#7d796e', '#6a665c', '#d8b450'], iraq: ['#5a5c3c', '#4c4e32', '#3a3424'] }[o.side || 'pru']).slice();
+    const MOD = ['wehr', 'sov', 'us', 'tommy', 'jap', 'iraq'].includes(o.side), NEW = MOD || ['navy', 'suit', 'work', 'usaf', 'astro', 'cosmo', 'lab', 'union', 'confed'].includes(o.side);
+    if (o.side === 'confed' && o.butternut) C[0] = '#8c7148';
     const star = (sx, sy, r, col) => { c.fillStyle = col; c.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.42 : r; c.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr); } c.closePath(); c.fill(); };
     if (o.coat) C[0] = o.coat;  // e.g. the emperor's yellow robe
     const bob = Math.sin((t || 0) * 3 + (o.bob || 0)) * 3;
@@ -211,8 +220,17 @@ const K = {
       c.fillStyle = '#c9a24a'; c.fillRect(-46, -170, 92, 84); c.fillStyle = '#1f2a5a'; c.fillRect(-36, -160, 72, 64); c.strokeStyle = '#c9a24a'; c.lineWidth = 3; c.beginPath(); c.arc(0, -128, 18, 0, 7); c.stroke();
     } else if (o.side === 'mar') {  // infanterie de marine 1860s: dark blue tunic, one brass row, red piping
       c.fillStyle = '#d8b450'; for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(0, -184 + i * 28, 5, 0, 7); c.fill(); }
+    } else if (o.side === 'union' || o.side === 'confed') {  // Civil War: trousers below the coat, sling across the chest, brass buttons, belt plate
+      const U = o.side === 'union';
+      c.fillStyle = U ? '#7f97b8' : (o.butternut ? '#9a8458' : '#8a867a'); c.fillRect(-160, -50, 320, 72);  // trousers
+      c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 4; c.beginPath(); c.moveTo(0, -50); c.lineTo(0, 22); c.stroke();
+      if (!U) { c.fillStyle = '#8fa6c4'; c.fillRect(-160, -212, 320, 16); }  // light-blue infantry trim on the collar
+      c.strokeStyle = U ? '#141210' : '#e8e2d2'; c.lineWidth = 13; c.beginPath(); c.moveTo(-96, -196); c.lineTo(96, -64); c.stroke();  // cartridge-box sling / haversack strap
+      c.fillStyle = '#d8b450'; const nb = U ? 4 : 7; for (let i = 0; i < nb; i++) { c.beginPath(); c.arc(-8, -186 + i * (U ? 30 : 16), 6, 0, 7); c.fill(); }
+      c.fillStyle = '#141210'; c.fillRect(-160, -84, 320, 18); c.fillStyle = '#d8b450'; c.beginPath(); c.ellipse(0, -75, 26, 14, 0, 0, 7); c.fill();  // belt + plate
+      c.fillStyle = '#141210'; c.font = 'bold 15px serif'; c.textAlign = 'center'; c.fillText(U ? 'US' : 'CS', 0, -70);
     } else if (MOD) {  // field tunic: breast pockets with flaps, one button row (sov: short placket), waist belt
-      const btn = o.side === 'us' || o.side === 'tommy' ? '#8a7a4a' : o.side === 'jap' ? '#c9a24a' : '#9a9a8a';
+      const btn = o.side === 'us' || o.side === 'tommy' || o.side === 'iraq' ? '#8a7a4a' : o.side === 'jap' ? '#c9a24a' : '#9a9a8a';
       c.fillStyle = 'rgba(0,0,0,0.18)'; [-1, 1].forEach(sd => { c.fillRect(sd * 62 - 30, -170, 60, 54); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(sd * 62 - 32, -172, 64, 14); c.fillStyle = 'rgba(0,0,0,0.18)'; });
       c.fillStyle = btn; const nb = o.side === 'sov' ? 2 : 5; for (let i = 0; i < nb; i++) { c.beginPath(); c.arc(0, -186 + i * 26, 5, 0, 7); c.fill(); }
       if (o.side === 'wehr') { c.fillStyle = '#c9ccc0'; [-1, 1].forEach(sd => c.fillRect(sd * 40 - 14, -210, 28, 7)); c.fillStyle = '#b8b8a8'; c.beginPath(); c.moveTo(-40, -150); c.lineTo(-62, -160); c.lineTo(-40, -144); c.lineTo(-18, -160); c.closePath(); c.fill(); }  // collar Litzen, breast eagle
@@ -226,6 +244,23 @@ const K = {
       if (o.side === 'suit') { c.fillStyle = '#ece6d8'; c.beginPath(); c.moveTo(-44, -204); c.lineTo(0, -110); c.lineTo(44, -204); c.fill(); c.fillStyle = o.tie || C[2]; c.beginPath(); c.moveTo(-9, -198); c.lineTo(9, -198); c.lineTo(13, -128); c.lineTo(0, -112); c.lineTo(-13, -128); c.closePath(); c.fill(); }
       c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 6; c.beginPath(); c.moveTo(-50, -206); c.lineTo(-6, -100); c.lineTo(-6, 0); c.moveTo(50, -206); c.lineTo(6, -100); c.stroke();
       c.fillStyle = '#16120f'; for (let i = 0; i < 2; i++) { c.beginPath(); c.arc(-24, -84 + i * 34, 5, 0, 7); c.fill(); }
+    } else if (o.side === 'usaf') {  // USAF service dress 1960s: blue coat, light-blue shirt, dark tie, silver buttons, ribbon bar
+      c.fillStyle = '#b8c8dc'; c.beginPath(); c.moveTo(-44, -204); c.lineTo(0, -120); c.lineTo(44, -204); c.fill();
+      c.fillStyle = '#1a1c22'; c.beginPath(); c.moveTo(-8, -198); c.lineTo(8, -198); c.lineTo(11, -136); c.lineTo(0, -122); c.lineTo(-11, -136); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 6; c.beginPath(); c.moveTo(-50, -206); c.lineTo(-6, -110); c.lineTo(-6, 0); c.moveTo(50, -206); c.lineTo(6, -110); c.stroke();
+      c.fillStyle = '#c9ccd0'; for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(-22, -96 + i * 30, 5, 0, 7); c.fill(); }
+      [['#c0282d', -84], ['#d8b450', -60], ['#2a4c9a', -36]].forEach(([col, rx]) => { c.fillStyle = col; c.fillRect(rx, -170, 22, 10); });  // ribbon bar
+    } else if (o.side === 'astro' || o.side === 'cosmo') {  // white pressure suit: zip, chest box with hose connectors; astro: flag patch, cosmo: red "СССР"
+      c.strokeStyle = 'rgba(0,0,0,0.25)'; c.lineWidth = 4; c.beginPath(); c.moveTo(0, -200); c.lineTo(0, 0); c.stroke();
+      c.fillStyle = '#9a9aa0'; c.fillRect(-52, -150, 104, 54); c.strokeStyle = 'rgba(0,0,0,0.4)'; c.lineWidth = 2; c.strokeRect(-52, -150, 104, 54);
+      c.fillStyle = '#c0282d'; c.beginPath(); c.arc(-26, -123, 11, 0, 7); c.fill(); c.fillStyle = '#2a4c9a'; c.beginPath(); c.arc(26, -123, 11, 0, 7); c.fill();
+      if (o.side === 'astro') { c.fillStyle = '#ece6d8'; c.fillRect(-104, -186, 40, 26); c.fillStyle = '#c0282d'; for (let k = 0; k < 4; k++) c.fillRect(-104, -186 + k * 7, 40, 3); c.fillStyle = '#2a4c9a'; c.fillRect(-104, -186, 17, 13); }
+      else { c.fillStyle = '#c0282d'; c.fillRect(-160, -64, 320, 12); c.fillRect(-104, -186, 40, 26); }  // red band + arm patch (СССР is on the helmet)
+    } else if (o.side === 'lab') {  // engineer's white lab coat over shirt and dark tie, pens in the pocket
+      c.fillStyle = '#f4f2ec'; c.beginPath(); c.moveTo(-36, -204); c.lineTo(0, -140); c.lineTo(36, -204); c.fill();
+      c.fillStyle = o.tie || '#23262c'; c.beginPath(); c.moveTo(-7, -198); c.lineTo(7, -198); c.lineTo(10, -146); c.lineTo(0, -134); c.lineTo(-10, -146); c.closePath(); c.fill();
+      c.strokeStyle = 'rgba(0,0,0,0.3)'; c.lineWidth = 5; c.beginPath(); c.moveTo(-56, -206); c.lineTo(-4, -96); c.lineTo(-4, 0); c.moveTo(56, -206); c.lineTo(4, -96); c.stroke();
+      c.strokeStyle = 'rgba(0,0,0,0.3)'; c.lineWidth = 3; c.strokeRect(46, -150, 44, 40); c.fillStyle = '#2a4c9a'; c.fillRect(54, -168, 5, 24); c.fillStyle = '#c0282d'; c.fillRect(64, -164, 5, 20);
     } else if (o.side === 'pru') {
       c.fillStyle = '#e8e2d2'; for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(0, -184 + i * 28, 5, 0, 7); c.fill(); }
       c.fillStyle = C[1]; c.fillRect(-160, -60, 320, 0);
@@ -283,6 +318,21 @@ const K = {
       c.fillStyle = felt(0, -460, 0, -360); c.beginPath(); c.ellipse(0, -410, 92, 64, 0, 0, 7); c.fill(); rim();
       c.fillStyle = C[1]; c.beginPath(); c.moveTo(60, -440); c.quadraticCurveTo(130, -400, 100, -330); c.lineTo(78, -360); c.fill();
     }
+    else if (hat === 'kepi' && (o.side === 'union' || o.side === 'confed')) {  // Civil War forage cap ("bummer"): soft crown slumped forward-right, plain band, brass bugle (Union)
+      c.fillStyle = o.capCol || (o.side === 'union' ? '#1f2846' : '#7d796e'); c.beginPath(); c.moveTo(-86, -368); c.lineTo(-80, -432); c.quadraticCurveTo(-30, -478, 60, -474); c.quadraticCurveTo(104, -470, 98, -440); c.lineTo(86, -368); c.closePath(); c.fill(); rim();
+      c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(-86, -394, 172, 20);
+      c.fillStyle = '#141210'; c.beginPath(); c.ellipse(6, -366, 96, 15, 0, 0, Math.PI); c.fill();
+      if (o.side === 'union') { c.strokeStyle = '#d8b450'; c.lineWidth = 5; c.beginPath(); c.arc(0, -420, 15, 0.3, Math.PI * 1.7); c.stroke(); c.beginPath(); c.moveTo(12, -428); c.lineTo(32, -436); c.stroke(); }
+    }
+    else if (hat === 'slouch') {  // Civil War slouch hat: wide soft brim drooping at the sides, dented crown, dark band
+      c.fillStyle = o.capCol || '#4e4436'; c.beginPath(); c.moveTo(-178, -338); c.quadraticCurveTo(-160, -394, 0, -396); c.quadraticCurveTo(160, -394, 178, -338); c.quadraticCurveTo(110, -372, 0, -372); c.quadraticCurveTo(-110, -372, -178, -338); c.fill(); rim();
+      c.beginPath(); c.moveTo(-82, -388); c.lineTo(-76, -452); c.quadraticCurveTo(-40, -478, 0, -458); c.quadraticCurveTo(40, -478, 76, -452); c.lineTo(82, -388); c.closePath(); c.fill(); rim();
+      c.fillStyle = '#1a1612'; c.fillRect(-82, -406, 164, 16);
+    } else if (hat === 'beret') {  // beret pulled down to the right, leather band, brass badge over the left eye
+      c.fillStyle = o.capCol || '#26241f'; c.beginPath(); c.moveTo(-104, -372); c.quadraticCurveTo(-110, -430, -10, -442); c.quadraticCurveTo(120, -450, 150, -400); c.quadraticCurveTo(156, -360, 112, -352); c.quadraticCurveTo(100, -372, 0, -376); c.closePath(); c.fill(); rim();
+      c.strokeStyle = '#1a1612'; c.lineWidth = 9; c.beginPath(); c.moveTo(-102, -374); c.quadraticCurveTo(0, -386, 104, -366); c.stroke();
+      c.fillStyle = '#d8b450'; c.beginPath(); c.arc(-50, -394, 13, 0, 7); c.fill();
+    }
     else if (hat === 'kepi') {  // French 1860s kepi with a white sun cover (couvre-nuque) for Cochinchina
       c.fillStyle = o.cover ? '#e8e2d2' : '#1c2440'; c.beginPath(); c.moveTo(-80, -370); c.lineTo(-70, -455); c.lineTo(76, -445); c.lineTo(80, -370); c.closePath(); c.fill(); rim();
       c.fillStyle = '#c0282d'; c.fillRect(-82, -392, 164, 12); c.fillStyle = '#16120f'; c.beginPath(); c.ellipse(20, -366, 90, 14, 0, 0, Math.PI); c.fill();
@@ -320,12 +370,18 @@ const K = {
       c.fillStyle = '#8a7a4a'; c.beginPath(); c.ellipse(0, -398, 98, 52, 0, Math.PI, 0); c.lineTo(98, -372); c.lineTo(-98, -372); c.fill(); rim();
       c.fillStyle = '#4a3a24'; c.beginPath(); c.ellipse(0, -368, 94, 14, 0, 0, Math.PI); c.fill(); star(0, -404, 15, '#e0bd5a');
     } else if (hat === 'peaked') {  // officer's peaked cap: band colour + badge by side
-      const top = o.capCol || { wehr: '#5b6150', sov: '#6e6844', us: '#6b6440', navy: '#ece8e0', jap: '#8a7a4a', tommy: '#7a6a48' }[o.side] || '#2a2a2e';
-      const band = { wehr: '#3d4a3a', sov: '#c0282d', navy: '#16120f', jap: '#c0282d', tommy: '#5a4a30' }[o.side] || '#3a3a30';
+      const top = o.capCol || { usaf: '#3a4b6e', wehr: '#5b6150', sov: '#6e6844', us: '#6b6440', navy: '#ece8e0', jap: '#8a7a4a', tommy: '#7a6a48' }[o.side] || '#2a2a2e';
+      const band = { usaf: '#16120f', wehr: '#3d4a3a', sov: '#c0282d', navy: '#16120f', jap: '#c0282d', tommy: '#5a4a30' }[o.side] || '#3a3a30';
       c.fillStyle = band; c.fillRect(-88, -420, 176, 52); c.fillStyle = top; c.beginPath(); c.moveTo(-88, -418); c.quadraticCurveTo(-150, -470, -60, -476); c.quadraticCurveTo(0, -470, 60, -476); c.quadraticCurveTo(150, -470, 88, -418); c.closePath(); c.fill(); rim();
       c.fillStyle = '#16120f'; c.beginPath(); c.ellipse(0, -366, 100, 18, 0, 0, Math.PI); c.fill();
       if (o.side === 'sov') star(0, -398, 14, '#c0282d'); else if (o.side === 'wehr') { c.fillStyle = '#c9ccc0'; c.beginPath(); c.moveTo(-34, -440); c.lineTo(0, -428); c.lineTo(34, -440); c.lineTo(0, -420); c.closePath(); c.fill(); c.beginPath(); c.arc(0, -396, 9, 0, 7); c.fill(); }
       else { c.fillStyle = '#d8b450'; c.beginPath(); c.arc(0, -400, 12, 0, 7); c.fill(); }
+    } else if (hat === 'space') {  // pressure-suit helmet: clear bubble over the head, metal neck ring; cosmo: red "СССР" on the shell
+      c.fillStyle = 'rgba(200,220,240,0.16)'; c.beginPath(); c.ellipse(0, -292, 150, 140, 0, 0, 7); c.fill();
+      c.strokeStyle = 'rgba(70,70,76,0.85)'; c.lineWidth = 9; c.stroke();
+      c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = 6; c.beginPath(); c.arc(0, -292, 120, 3.6, 4.4); c.stroke();
+      c.fillStyle = '#8a8a90'; c.beginPath(); c.ellipse(0, -198, 128, 22, 0, 0, 7); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 3; c.stroke();
+      if (o.side === 'cosmo') { c.fillStyle = '#c0282d'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.fillText('СССР', 0, -404); }
     } else if (hat === 'fedora' || hat === 'flatcap') {  // civilian hats
       c.fillStyle = felt(0, -470, 0, -360);
       if (hat === 'fedora') { c.beginPath(); c.ellipse(0, -372, 140, 20, 0, 0, 7); c.fill(); rim(); c.beginPath(); c.moveTo(-78, -374); c.lineTo(-70, -452); c.quadraticCurveTo(0, -430, 70, -452); c.lineTo(78, -374); c.closePath(); c.fill(); rim(); c.fillStyle = '#16120f'; c.fillRect(-78, -396, 156, 16); }
@@ -453,6 +509,12 @@ const K = {
   //   ring  {x, y, rx, ry, dur}                         hand-drawn red ellipse around a detail
   //   conclude {s, x, y, size}                          the takeaway: serif line with a red bar on its left
   //   doll  {x, y, h, o:{side, hat, face, ...}}         drawn character (K.doll)
+  // 通史3 grammar (2026-11-14, user: "vẽ ghi chú như họ" – our boxes/scales/strike boxes read as PowerPoint):
+  //   exhibit {key, x, y, w | maxh, cap, sub, hl:[u0,v0,u1,v1], hlAt, align}  real print at its own aspect + bold caption + grey source; hl = blue box on a document line
+  //   note    {x, y, lines:[[text, size], ...]}           big serif year/number then 1-2 short lines, no box
+  //   craft   {kind: rocket|missile|sat|ship|tank|plane, x, y, size, side: 1 ink | 2 navy | 3 grey, name, sub: 'USA · 1967 · 2,900 t', mark, o:{stages, boosters}}
+  //   legend  {x, y, items:[[1,'American'],[2,'Soviet']], note}   frame {s, x, y, size}  outlined serif word   question {s, sub}  centred question line
+  //   Rules: every board has a real exhibit or a craft line-up; text is a few words; no 'box'/'tag'/'strike' chains, no scales, no icons.
   //   ship / tank / plane {x, y, w, color}              flat silhouettes (K.sil)
   board(c, L, T, items) {
     const { C, seg, lerp } = L;
@@ -503,6 +565,36 @@ const K = {
       } else if (it.k === 'conclude') {
         const s = it.size || 40; c.fillStyle = C.accent2; c.fillRect(g.x - 22, g.y - s * 0.95 + rise, 5, s * 1.25);
         L.text(c, it.s, g.x, g.y + rise, { size: s });
+      } else if (it.k === 'exhibit') {  // 通史3 grammar: a real print kept at its own aspect, thin light mat, bold caption + grey source line
+        const im = IMG[it.key]; if (im) {
+          let w = g.w || 520, h = it.h || w * im.height / im.width; if (it.maxh && h > it.maxh) { h = it.maxh; w = h * im.width / im.height; }
+          const x = it.align === 'right' ? g.x - w : g.x, y = g.y + rise, m = 7;
+          c.fillStyle = 'rgba(60,45,25,0.16)'; c.fillRect(x - m + 5, y - m + 7, w + 2 * m, h + 2 * m);
+          c.fillStyle = L.LOOK && L.LOOK.name === 'dark' ? C.panel : '#F5F2EA'; c.fillRect(x - m, y - m, w + 2 * m, h + 2 * m);
+          K.photo(c, L, it.key, x, y, w, h, { zoom: 1 + 0.02 * L.lin(T, at, at + 14), filter: it.filter || 'grayscale(0.85) sepia(0.25) contrast(1.05)', fx: it.fx, fy: it.fy });
+          if (it.hl) { const [u0, v0, u1, v1] = it.hl, p = seg(T, it.hlAt ?? at + 0.8, (it.hlAt ?? at + 0.8) + 0.5); c.strokeStyle = C.accent; c.lineWidth = 3; c.globalAlpha *= p;
+            c.strokeRect(x + u0 * w, y + v0 * h, (u1 - u0) * w, (v1 - v0) * h); }
+          if (it.cap) L.text(c, it.cap, x, y + h + m + 38, { size: it.capSize || 30 });
+          if (it.sub) L.text(c, it.sub, x, y + h + m + 68, { size: 20, font: 'body', color: C.fg2 });
+        }
+      } else if (it.k === 'note') {  // big serif year/number, then short lines (no boxes): {lines: [['1969', 56], ['N1 vs Saturn V', 34]], gap}
+        let y = g.y + rise; (it.lines || []).forEach(([s, size, col], i) => { const sz = size || (i ? 34 : 54); L.text(c, s, g.x, y, { size: sz, color: col || (i ? C.fg : C.fg), align: it.align || 'left', font: it.font }); y += sz * 1.35 + (it.gap || 4); });
+      } else if (it.k === 'craft') {  // flat silhouette of the real object + name + 'country · year · spec' (通史3 ship line-up)
+        const col = it.side === 2 ? C.accent : it.side === 3 ? L.FG(0.35) : C.fg;
+        K.craft(c, it.kind || 'rocket', g.x, g.y + rise, it.size || 200, col, it.o || {});
+        if (it.name) L.text(c, it.name, g.x, g.y + 46 + rise, { size: it.nsize || 30, align: 'center', color: it.side === 2 ? C.accent : C.fg });
+        if (it.sub) L.text(c, it.sub, g.x, g.y + 76 + rise, { size: 20, font: 'body', align: 'center', color: it.side === 2 ? C.accent : C.fg2 });
+        if (it.mark) { L.text(c, it.mark, g.x, g.y - (it.size || 200) - 34 + rise, { size: 36, align: 'center' }); }
+      } else if (it.k === 'legend') {  // small squares + words, bottom-left under a line-up
+        (it.items || []).forEach(([side, s], i) => { const x = g.x + i * (it.step || 170); c.fillStyle = side === 2 ? C.accent : side === 3 ? L.FG(0.35) : C.fg; c.fillRect(x, g.y - 16, 22, 16); L.text(c, s, x + 32, g.y, { size: 22, font: 'body' }); });
+        if (it.note) L.text(c, it.note, g.x, g.y + 30, { size: 19, font: 'body', color: C.fg2 });
+      } else if (it.k === 'frame') {  // outlined serif label (the reference's 「買」/「局外中立」 boxes): ink outline, no fill colour
+        c.font = `${it.size || 40}px ${L.FONT ? L.FONT.head : 'serif'}`; const tw = L.text(c, it.s, -9999, -9999, { size: it.size || 40 }), pad = 14;
+        c.strokeStyle = C.fg; c.lineWidth = 2; c.strokeRect(g.x - tw / 2 - pad, g.y - (it.size || 40) * 0.95 + rise, tw + 2 * pad, (it.size || 40) * 1.35);
+        L.text(c, it.s, g.x, g.y + rise, { size: it.size || 40, align: 'center' });
+      } else if (it.k === 'question') {  // the reference's question frame: one centred serif line, nothing else
+        L.text(c, it.s, g.x || 960, (g.y || 470) + rise, { size: it.size || 64, align: 'center' });
+        if (it.sub) L.text(c, it.sub, g.x || 960, (g.y || 470) + 56 + rise, { size: 24, font: 'body', align: 'center', color: C.fg2 });
       } else if (it.k === 'doll') {
         K.doll(c, L, g.x, g.y, it.h || 220, T, it.o || {});
       } else if (['ship', 'tank', 'plane'].includes(it.k) && K.sil) {
@@ -510,6 +602,19 @@ const K = {
       }
       c.restore();
     }
+  },
+  // flat silhouettes of real hardware for 通史3-style line-ups: (x, y) = base centre, size = height (rockets) or length (others)
+  craft(c, kind, x, y, size, col, o = {}) {
+    c.save(); c.translate(x, y); c.fillStyle = col;
+    if (kind === 'rocket' || kind === 'missile') {  // o.stages [[width frac, height frac], ...] bottom-up, o.fins, o.boosters (R-7), o.cone
+      const H = size, st = o.stages || (kind === 'missile' ? [[0.1, 0.62], [0.085, 0.24]] : [[0.13, 0.36], [0.13, 0.27], [0.1, 0.15], [0.07, 0.12]]); let yy = 0;
+      st.forEach(([wf, hf]) => { const w = wf * H, h = hf * H; c.fillRect(-w / 2, yy - h, w, h); yy -= h; });
+      const tw = st[st.length - 1][0] * H; c.beginPath(); c.moveTo(-tw / 2, yy); c.lineTo(0, yy - (o.cone ?? 0.1) * H); c.lineTo(tw / 2, yy); c.fill();
+      if (o.boosters) { const bw = st[0][0] * H * 0.55; [-1, 1].forEach(sd => { c.beginPath(); c.moveTo(sd * st[0][0] * H / 2, 0); c.lineTo(sd * (st[0][0] * H / 2 + bw), 0); c.lineTo(sd * st[0][0] * H / 2, -H * 0.42); c.fill(); }); }
+      if (o.fins !== false) { const w0 = st[0][0] * H; [-1, 1].forEach(sd => { c.beginPath(); c.moveTo(sd * w0 / 2, 0); c.lineTo(sd * (w0 / 2 + H * 0.035), 0); c.lineTo(sd * w0 / 2, -H * 0.07); c.fill(); }); }
+    } else if (kind === 'sat') { const s = size / 200; c.scale(s, s); c.fillRect(-30, -60, 60, 60); c.fillRect(-120, -42, 80, 24); c.fillRect(40, -42, 80, 24); c.fillRect(-4, -80, 8, 20); }
+    else { c.restore(); return K.sil(c, kind, x, y, size, col); }
+    c.restore();
   },
   // flat silhouettes for boards (side view, facing right; (x, y) = waterline/ground centre, w = length)
   sil(c, kind, x, y, w, col) {
