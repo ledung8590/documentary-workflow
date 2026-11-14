@@ -1,8 +1,8 @@
-# Z-Image local: backup image source for stories
+# Z-Image local: the default image source
 
-Use this when the user says **"gen qua z-image"** (or "z-image local"), or when TST/auto-image and Google Flow keep failing. It is free, offline and needs no reference images. Speed is about 7.7 s per image on the user's GPU, so 700 images take about 1.5 h.
+**Default for every generated image since 2026-11-14** (user: TST Auto Generate Image is broken and switched off; use it only if the user asks for it again): story scenes (`/gentruyen`), story title images and thumbnail bases, and on the archival path (`/genvideo`) the reconstruction prints and the image-model thumbnail fallback (`docs/WORKFLOW.md`). It is free, offline and needs no reference images. Speed is about 8–9 s per image on the user's GPU, so 700 images take about 1.5 h; that GPU time is the floor, so the rest of the run is planned around it.
 
-It was proven on the Army Group Centre story (2026-11-12): 794/794 images, no failures, characters consistent.
+It was proven on Army Group Centre (2026-11-12): 794/794 images, characters consistent. Vitebsk (2026-11-14, 612 images) showed where the time goes: prompts written for TST had to be remade (~210 images, 1 h 15 min), so write them for Z-Image from the start (section 3) and check them while the batch runs (section 5).
 
 ## 1. The server: started automatically, never ask the user
 
@@ -28,10 +28,11 @@ When a local model misbehaves, read a good image's PNG metadata first (`prompt` 
 
 ## 3. Prompts: Character Sheet + one Seed, no reference images
 
-- Write the scene prompts as usual: JSON lines `{"n", "refs", "prompt"}` with `@Name`, one per ~8 s beat. Follow `docs/STORY_MODE.md` (images and pacing) and the brief in `_gen/PROMPT_BRIEF.md`:
+- Write the scene prompts as JSON lines `{"n", "refs", "prompt"}` with `@Name` (e.g. "@Pohl sits beside …"), one per beat from `beats.json` (`scripts/story_beats.py`). Follow `docs/STORY_MODE.md` (images and pacing) and the brief in `_gen/PROMPT_BRIEF.md`:
   - the first sentence gives shot size, angle, camera move and light;
-  - every person without a reference gets a nationality and a place;
+  - every person without a sheet gets a nationality and a place;
   - prompts are policy-safe.
+  - **Z-Image-safe from the first draft:** every rule in "What Z-Image cannot draw" below goes into the brief given to prompt-writing agents. Never write "the man from reference image 1": that is the TST format.
 - Write `chars.json` with one fixed sheet per main character, in the format of `G:\YOUTUBE\US- Military Chronicle\GEM_PROMPT_MILITARY_CHRONICLE.txt`:
   - give the full name;
   - in brackets: nationality, age, face shape, glasses/moustache, hair, headgear, uniform with rank details, and one signature item;
@@ -63,9 +64,12 @@ PY scripts/zimage_batch.py "input/<story>" _gen/zimage_jobs.json --threads 8 > _
 - Run it in the background. A stall check means comparing the log time with the image count; the log prints every 10 images.
 - The title image (`story.title_image`) and the thumbnail base use the same script with a small jobs file of their own, written directly in Z-Image form (Character Sheet + Seed).
 
-## 5. Checks before `doc.py story`
+## 5. Checks: while the batch runs, then before `doc.py story`
 
 - **First, the defect check from `docs/STORY_MODE.md`.** It applies to every image source: numbered 9-per-sheet review by parallel agents, then a second strict pass.
+- **Start it during the batch, not after.** The batch fills numbers in order, so as soon as a block of ~100 images exists (count `NNN.png`), make its sheets (`story_sheet.py "input/<story>" JOB qa/sheets_NNN --qa 101-200`) and hand them to a review agent; queue the rewritten prompts as a second `zimage_batch.py … --force` run next to the main one (both share ComfyUI's queue). By the time the last image is made, only its block is left to check.
+- **Remakes go back through the same review**: a fresh agent checks every remade image against its old defect. Plan on two rounds; after that, accept a minor flaw rather than a fourth try (a rewrite that changes the composition works better than repeating the same subject).
+- **Then `doc.py story`, once**: it copies the images into `media/scenes/`. Any image changed after that needs `doc.py story` again before the draft render.
 - To remake an image, rewrite its scene in positive words and change the seed (`Seed: 52219` …). CFG 1.0 ignores "no …" phrases, so a fix like "no road markings" draws road markings.
 
 - Make contact sheets with the beat text using `PY scripts/story_sheet.py "input/<story>" JOB out.jpg 1-10` for the first 10, then spot-check about every 9th image across the film (`100-370:9`, `375-600:9`, …). Check that:
@@ -78,7 +82,7 @@ PY scripts/zimage_batch.py "input/<story>" _gen/zimage_jobs.json --threads 8 > _
 
 ## What Z-Image cannot draw: avoid it in prompts (Refugees Filled Every Road, 2026-11-12)
 
-About 25 % of 730 images failed the first defect check, and some subjects failed again after two rewrites. Leave these out of the prompts from the start:
+About 25 % of 730 images (Refugees) and 30 % of 612 (Vitebsk, prompts written for TST) failed the first defect check, and some subjects failed again after two rewrites. Leave these out of the prompts from the start:
 - **Helmets** always come out as US M1 helmets. Soldiers wear soft field caps or side caps.
 - **Headphones, throat microphones and radios** draw a microphone ball at the moustache and hands on the head. Never put them in a Character Sheet.
 - **Panzerfausts and launchers** come out as a trumpet or a pipe held to the ear. Show a rifle or an ammunition crate instead.
@@ -87,6 +91,14 @@ About 25 % of 730 images failed the first defect check, and some subjects failed
 - **Mailboxes and letter boxes** draw an American roadside mailbox. Write "a small square wooden crate of letters".
 - **Bicycles and horse herds** come out merged. Show one horse between the two shafts of one wagon.
 - **People lying down** (wounded, stretchers, the dead) are flagged every time. Show an object or an empty landscape instead.
+- **Soldiers in general get US M1 helmets** even when no helmet is named (Vitebsk: whole columns). Write the headgear for every soldier and crowd: "plain soft field-grey side caps", Soviets "pilotka side caps".
+- **Insignia:** caps grow eagle or swastika-like badges, collars Iron Crosses and SS-like runes. Write "a plain side cap", "plain collar"; keep medals and badges out of every prompt.
+- **Anything with writing** (crates, signs, maps, gauges, dials, cigarette packs, tins, wagon plates, tank hulls, notes) gets gibberish letters or numbers. Show papers closed or folded, crates plain and unmarked, maps as a folded paper in a hand; tanks "plain, from the side".
+- **Radios and batteries** come out as 1950s transistor radios, boomboxes or rows of AA cells; a hand near the ear becomes a phone or walkie-talkie. Write "a heavy square grey steel army field radio case, lid closed, seen from the side" with nobody holding anything to the ear, batteries "small square grey steel cases".
+- **Machine guns (MG42)** come out as rifles or with odd shields; accept a rifle, or show the gun small on a parapet.
+- **Accordions, pianos, harmoniums up close** get impossible keys, buttons and logos. Show them closed, at a distance, or hands with a small file over a plain wooden block.
+- **Hands at the head** (temple, ear, cap) read as salutes; write where the hands are: on a rifle sling, in pockets, around a mess tin, on the knees.
+- **Modern backgrounds:** cities draw high-rises, asphalt with lane lines and 1960s trucks; write "a wide cobbled boulevard with 1930s stone buildings", "a canvas-covered 1940s truck" far away, and keep cars out.
 
 ## Not to do
 
