@@ -114,14 +114,15 @@ def portrait(s, lang):
     img.paste(photo(s['photo'], W - pw, H, s.get('fx', 0.5), s.get('fy', 0.4)), (pw, 0))
     img.paste(photo(s['photo2'], pw, H, 0.5, 0.25), (0, 0))
     d = ImageDraw.Draw(img)
-    label(d, pw + 30, 18, s['tag'], lang, 30)
-    fs = font('sans', 64, lang)
+    label(d, pw + 30, 18, s['tag'], lang, s.get('tag_size', 30))
+    fs = font('sans', s.get('title_size', 64), lang)
     for i, ln in enumerate([x for x in (s.get('title'), s.get('title2')) if x]):
-        w = d.textlength(ln, font=fs); outlined(d, (W - w - 50, 210 + i * 86), ln, fs, (255, 255, 255), INK, 5)
+        w = d.textlength(ln, font=fs); outlined(d, (W - w - 50, s.get('title_y', 210) + i * int(fs.size * 1.34)), ln, fs, (255, 255, 255), INK, 5)
     if s.get('kicker'):
-        fk = fit(d, s['kicker'], 'sans', 74, lang, pw - 20); outlined(d, (16, H - 330), s['kicker'], fk, (255, 255, 255), INK, 6)
-    fr = fit(d, s['red'], 'sans', 190, lang, W - 300); w = d.textlength(s['red'], font=fr)
-    outlined(d, (W - w - 40, H - 250), s['red'], fr, RED, (255, 255, 255), 10)
+        fk = fit(d, s['kicker'], 'sans', 74, lang, pw - 20); outlined(d, (16, s.get('kicker_y', H - 330)), s['kicker'], fk, (255, 255, 255), INK, 6)
+    # YouTube draws the duration stamp over the bottom-right corner (about 120x50 px at 1280x720): the red hook stays above it
+    fr = fit(d, s['red'], 'sans', s.get('red_size', 190), lang, W - 300); w = d.textlength(s['red'], font=fr)
+    outlined(d, (W - w - s.get('red_right', 40), s.get('red_y', H - 250)), s['red'], fr, RED, (255, 255, 255), 10)
     credit(d, s.get('credit'), lang)
     return img
 
