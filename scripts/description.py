@@ -87,6 +87,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('job'); ap.add_argument('--intro', required=True); ap.add_argument('--note'); ap.add_argument('--tags', required=True)
     ap.add_argument('--hashtags', required=True); ap.add_argument('--no-links', action='store_true', help='new channel only: no URL anywhere')
+    ap.add_argument('--cc-links', action='store_true', help='通史3 style: a short file link for every CC file and one link per licence deed (user 2026-11-14)')
     a = ap.parse_args()
     d = ROOT / 'projects' / a.job
     tl = json.loads((d / 'timeline.json').read_text(encoding='utf-8'))
@@ -138,7 +139,20 @@ def main():
         out += ['', L['src'], L['own']]
         if pd:
             out.append(f'{L["pd"]}: ' + ', '.join(names) + (', …' if len(names) < len(pd) else '') + '.')
-        if cc and not compact:
+        if cc and a.cc_links:  # one line per author: each file as a short curid link, then one deed link per licence
+            curid = {}  # Commons page URL -> page id, from the search candidates (files named p-X-tag-K have no id in their name)
+            for cj in (d / 'media' / 'candidates').glob('*/candidates.json'):
+                for c_ in json.loads(cj.read_text(encoding='utf-8'))['candidates']:
+                    if c_.get('source') == 'commons' and str(c_.get('id', '')).isdigit(): curid[c_['page']] = c_['id']
+            ids_ = lambda v: sorted({('https://commons.wikimedia.org/?curid=' + (i[3:] if i.startswith('ID ') else curid[i])) if (i.startswith('ID ') or i in curid) else i for i in v})
+            short = lambda au: re.sub(r'\s+from\s+[^,]*', '', re.sub(r';.*$', '', au)).strip()[:48]
+            out += [L['cc']] + [f'- {short(au)}, {lic}: ' + ' '.join(ids_(ids))
+                                for (au, lic), ids in sorted(cc.items(), key=lambda x: x[0][0].lower())]
+            deed = {'CC BY 2.0': 'by/2.0', 'CC BY 2.5': 'by/2.5', 'CC BY 3.0': 'by/3.0', 'CC BY 4.0': 'by/4.0', 'CC BY-SA 2.0': 'by-sa/2.0',
+                    'CC BY-SA 2.5': 'by-sa/2.5', 'CC BY-SA 3.0': 'by-sa/3.0', 'CC BY-SA 4.0': 'by-sa/4.0', 'CC BY-SA 3.0 de': 'by-sa/3.0/de'}
+            lics = sorted({lic for _, lic in cc})
+            out += ['Licences: ' + ' · '.join(f'{l} https://creativecommons.org/licenses/{deed[l]}/' for l in lics if l in deed)]
+        elif cc and not compact:
             out += [L['cc']] + [f'- {au}, {lic}: ' + ', '.join(sorted(set(ids))) for (au, lic), ids in sorted(cc.items(), key=lambda x: x[0][0].lower())]
         elif cc:  # many CC authors (film 76: 124): one line per licence, authors only (author + licence is the attribution)
             by = {}
@@ -155,7 +169,7 @@ def main():
         if not a.no_links:
             if with_ids and pd_ids:
                 out += [L.get('pdids', 'Public-domain files, Commons ID:') + ' ' + ', '.join(sorted(set(pd_ids)))]
-            if not compact:  # the compact list names authors only, there are no IDs to look up
+            if not compact and not a.cc_links:  # the compact list names authors only, there are no IDs to look up
                 out += [L.get('idurl', 'File pages: https://commons.wikimedia.org/?curid= followed by the ID.')]
         out += [L['maps'], L['music'], '', ' '.join(hashtags), '', 'TAGS', ', '.join(tags)]
         txt = '\n'.join(out)
@@ -170,7 +184,7 @@ def main():
         while len(txt) > LIMIT and n > 3:
             n -= 3; txt = build(n, True)
     if len(txt) > LIMIT:
-        sys.exit(f'{len(txt)} characters even with a short author list: shorten the intro or note')
+        (d / "qa" / "description_too_long.txt").write_text(txt, encoding="utf-8"); sys.exit(f"{len(txt)} characters even with a short author list: shorten the intro or note")
     (d / 'description_youtube.txt').write_text(txt + '\n', encoding='utf-8')
     print(f'description_youtube.txt: {len(txt)} characters, {len(chapters) + 1} chapters, {len(cc)} CC credit lines ('
           f'{sum(len(v) for v in cc.values())} files) {len(pd)} public-domain authors ({n} named), {len(other)} other')
