@@ -4,7 +4,10 @@
   PY scripts/story_done.py JOB --run      do it (only after the user confirms the upload)
   PY scripts/story_done.py JOB --run --keep-output   keep output/<id>/ (video, thumbnail, description) this once
 
-Stories are fiction over AI images: no evidence pack (that is archival only, scripts/evidence.py). Kept: the final script
+Stories are fiction over AI images: no evidence pack, UNLESS real archival photos are on screen (rows in LICENSES.md, e.g.
+Bundesarchiv StuG photos in the Korsun story): then --run first builds evidence/stories/<name>/ with scripts/evidence.py
+--story (video, thumbnail, description, every picture, the licence records, INDEX.csv, README; user 2026-11-15: "y bên
+genvideo" so a false claim can be disputed). Kept: the final script
 in stories/published/<name>.txt (the corpus storycheck.py compares new stories against) and a row in
 stories/published/LOG.md (written by the agent first). Deleted: projects/<id>/ (renders, voice chunks, images copied, studio history) and the story's
 inputs in input/ (script, image folder, image SRT, prompts) and output/<id>/ (user, 2026-11-02: the video is on YouTube).
@@ -58,6 +61,12 @@ def main():
         s = size(p); total += s
         print(f'delete: {p.relative_to(ROOT)} ({s / 1e9:.2f} GB)')
     print(f'frees {total / 1e9:.2f} GB')
+    lic = proj / 'LICENSES.md'
+    archival = lic.exists() and any(l.startswith('| media/') for l in lic.read_text(encoding='utf-8').splitlines())
+    ev = [sys.executable, str(ROOT / 'scripts' / 'evidence.py'), a.job, '--story'] + (['--name', name])
+    if archival:
+        print(f'archival photos on screen: evidence pack first -> evidence/stories/{name}/ (video and thumbnail move there)')
+        import subprocess; subprocess.run(ev, check=False)
     log = ROOT / 'stories' / 'published' / 'LOG.md'
     logged = log.exists() and name.split('.')[0] in log.read_text(encoding='utf-8')
     if not logged:
@@ -74,6 +83,10 @@ def main():
     shutil.copy2(src_script, keep_script)
     if (proj / 'STORY.md').exists():  # chapters, characters, frame: what the next story must not repeat
         shutil.copy2(proj / 'STORY.md', keep_script.with_suffix('.story.md'))
+    if archival:  # after the script copy (evidence.py moves script.txt), before anything is deleted
+        r = __import__('subprocess').run(ev + ['--run'])
+        if r.returncode or not (ROOT / 'evidence' / 'stories' / name / 'INDEX.csv').exists():
+            sys.exit('refused: evidence pack failed, nothing deleted')
     for p in delete:
         shutil.rmtree(p, ignore_errors=True) if p.is_dir() else p.unlink(missing_ok=True)
     left = [p for p in delete if p.exists()]

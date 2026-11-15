@@ -2,6 +2,7 @@
 
   PY scripts/evidence.py JOB            dry run: what would move, copy and be fetched
   PY scripts/evidence.py JOB --run      build evidence/<film name>/
+  PY scripts/evidence.py JOB --story --run   a story with real archival photos: evidence/stories/<name>/ (story_done.py calls it)
 
 Moves (not copies) the deliverables, the media files on screen, the project's record and the input script into evidence/<film name>/,
 fetches each source's licence record (NARA catalog record, Commons file metadata + page, DVIDS asset + page),
@@ -25,7 +26,9 @@ RECORD = ['timeline.json', 'script.txt', 'STORY.md', 'FACTS.md', 'brief.json', '
           'description_youtube.txt', 'thumbnail.py', 'scenes', 'maps', 'voice/voice.wav', 'voice/voice.srt', 'voice/words.json',
           # the edit plan that built the timeline (film 74 left these behind in projects/)
           'plan.py', 'gen_sound.py', 'shots.txt', 'overlays.txt', 'sound.txt', 'sound_scenes.txt', 'PICKS.md',
-          'searches.txt', 'searches3.txt', 'build_timeline.py', 'intro.txt', 'note.txt', 'thumb']
+          'searches.txt', 'searches3.txt', 'build_timeline.py', 'intro.txt', 'note.txt', 'thumb',
+          # stories: how every generated picture was made (sheets, prompts, beats), proof they are own work
+          'beats.json', '_gen/chars.json', '_gen/zimage_jobs.json', '_gen/STUG_BRIEF.md', '_gen/PROMPT_BRIEF.md', 'media/orig']
 
 
 def hms(t):
@@ -90,11 +93,12 @@ def mv(src, dst):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('job'); ap.add_argument('--run', action='store_true')
     ap.add_argument('--name', help='folder name (default: the renamed video in output/<id>/, else the job id)')
+    ap.add_argument('--story', action='store_true', help='story with archival photos: pack under evidence/stories/ (outside the archival repeat checks)')
     a = ap.parse_args()
     proj = ROOT / 'projects' / a.job; outd = ROOT / 'output' / a.job
     vids = [p for p in outd.glob('*.mp4')] if outd.exists() else []
     name = a.name or next((p.stem for p in vids if not p.stem.startswith('video')), a.job)
-    dst = ROOT / 'evidence' / name
+    dst = ROOT / 'evidence' / ('stories' if a.story else '') / name
     base = proj if (proj / 'timeline.json').exists() else dst / 'project'  # a rerun after a partial move reads the moved record
     tl = json.loads((base / 'timeline.json').read_text(encoding='utf-8'))
 
@@ -112,11 +116,13 @@ def main():
             for u in c.get('uses', []):  # photos drawn inside a JS scene (film 6)
                 used.setdefault(u, []).append(c)
     for src, cs in used.items():
-        own = next((OWN[k] for k in OWN if Path(src).name.startswith(k)), None)
+        own = next((OWN[k] for k in OWN if Path(src).name.startswith(k)), None) or (
+            'Own work: image generated for this story (Z-Image Turbo, local ComfyUI); prompts and character sheets in project/'
+            if a.story and not src.startswith('media/commons-') and src not in lic else None)
         r = lic.get(src) or (own and {'page': '', 'author': 'this channel', 'licence': own, 'date': ''})
         for c in cs:
             index.append({'start': hms(c['start']), 'end': hms(c['end']), 'track': 'fx' if 'params' in c else 'video', 'clip': c['id'],
-                          'file': 'media/' + Path(src).name, 'caption': c.get('caption', ''), 'source_page': (r or {}).get('page', ''),
+                          'file': src if a.story else 'media/' + Path(src).name, 'caption': c.get('caption', ''), 'source_page': (r or {}).get('page', ''),
                           'licence': (r or {}).get('licence', 'UNKNOWN - check'), 'author': (r or {}).get('author', ''),
                           'downloaded': (r or {}).get('date', ''), 'source_record': ''})
     index.sort(key=lambda r: r['start'])
@@ -153,7 +159,8 @@ def main():
         shutil.rmtree(outd, ignore_errors=True)
     for src in used:
         if (proj / src).exists():
-            mv(proj / src, dst / 'media' / Path(src).name)
+            t = dst / src if a.story else dst / 'media' / Path(src).name  # stories keep media/scenes/NNN.png apart from media/<archival>
+            t.parent.mkdir(parents=True, exist_ok=True); mv(proj / src, t)
     for rel in RECORD:
         p = proj / rel
         if p.exists():
@@ -172,6 +179,11 @@ def main():
     # 4. index + readme
     with open(dst / 'INDEX.csv', 'w', newline='', encoding='utf-8-sig') as fh:
         w = csv.DictWriter(fh, fieldnames=list(index[0])); w.writeheader(); w.writerows(index)
+    STORY_NOTE = ('''- This is a fictional story. Most pictures are generated (`media/scenes/`, own work: the prompts and character sheets
+  that made them are in `project/_gen/` and `project/beats.json`). Real archival photos are listed in `INDEX.csv` with their
+  licence; the original downloads are in `project/media/orig/` (the on-screen copies were upscaled to 1920x1080 and graded).
+  Each one carries its credit on screen (e.g. "Bundesarchiv, Bild ... / photographer / CC BY-SA 3.0 de") and in the description.
+''' if a.story else '')
     (dst / 'README.md').write_text(f"""# Copyright evidence: {name}
 
 Built {__import__('datetime').date.today()} from `projects/{a.job}` after upload.
@@ -185,7 +197,7 @@ Built {__import__('datetime').date.today()} from `projects/{a.job}` after upload
 - `INDEX.csv`: one row per shot, giving film time, file, caption, source page, licence, author, download date and source record.
 - `audio/`: copies of the music and SFX used, with their licence lines. The narration is AI voice, kept in `project/voice/voice.wav`.
 - `project/`: the timeline, script, research notes, subtitles, the JS scene and map sources, and the thumbnail script.
-
+{STORY_NOTE}
 ## Answering a claim or a strike
 1. Find the claimed segment's time in `INDEX.csv`. It gives the file, its source page and its licence.
 2. For US federal government works (NARA, DVIDS, U.S. Navy/DoD photos, NHHC), cite **17 U.S.C. § 105**: such works are not subject to copyright. A third party's re-upload of the same footage gives that party no rights in it. Attach the record in `sources/` and the source page link.
