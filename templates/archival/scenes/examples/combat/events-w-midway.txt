@@ -1,0 +1,13 @@
+# REAL scene seconds
+0.20 | dive | first Dauntless dives
+0.90 | mg | anti-aircraft fire
+1.10 | dive | second Dauntless
+1.60 | blast | hit on the flight deck
+2.00 | dive | third Dauntless
+2.50 | blast | second hit
+3.00 | flyby | pull-out
+3.40 | blast | third hit
+4.00 | mg | anti-aircraft fire
+4.60 | blast | fuel and bombs on deck explode
+5.80 | burst | secondary explosion
+6.60 | thud | deck collapses

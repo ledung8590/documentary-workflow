@@ -1,0 +1,19 @@
+# REAL scene seconds
+0.90 | burst | mortar splash by the landing craft
+1.50 | dive | Sea Fury dives on the beach
+2.00 | mg | strafing run
+2.50 | mg | strafing run
+3.00 | gunshot | exiles fire inland
+3.40 | burst | mortar on the sand
+3.70 | gunshot | exiles fire
+4.30 | burst | mortar splash
+4.70 | gunshot | exiles fire
+5.00 | dive | second strafing pass
+5.50 | mg | strafing
+5.90 | blast | supply ship hit offshore
+6.10 | mg | strafing
+6.60 | gunshot | exiles fire
+7.10 | burst | mortar on the sand
+7.50 | gunshot | exiles fire
+8.40 | burst | mortar (if extended)
+9.20 | dive | third pass (if extended)

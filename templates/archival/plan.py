@@ -182,6 +182,7 @@ def check():
     has_intro = any(r[1].startswith('music/') and r[0].split('..')[0].strip().startswith('S001-') for r in lines('sound.txt'))
     if v0 > 1.0 and not has_intro and not lines('sound.txt'):
         print(f'!! the voice starts at {v0:.1f} s and sound.txt has no music: the opening is silent (plan.py apply adds the intro once a bed is placed)'); warn += 1
+    warn += combat_check(sh)
     import reviewcheck  # overlay text inside the frame, typing sound, firing sound (scripts/reviewcheck.py, film 76)
     warn += reviewcheck.check(D, sh)
     import filmrepeat  # footage an earlier film already showed (scripts/filmrepeat.py, film 88)
@@ -236,6 +237,46 @@ def source_label(k, rest, caption):
         if re.search(r'(?i)\b(painting|lithograph|engraving|drawing|print)\b', caption or ''): return L[8] + yr
         return L[0] + yr
     return None
+
+
+COMBAT = {  # words that narrate fighting (user 2026-11-14/15: "toàn ảnh tĩnh, ko hề có xung đột hay chiến đấu")
+    'en': r"\b(attack(?:ed|s|ing)?|invad(?:ed|es|e|ing)|invasion|battle|battles|charge|fought|fighting|firefight|bomb(?:ed|ing)|shell(?:ed|ing)|"
+          r"sank|sunk|torpedo(?:ed|es)?|strafing|ambush(?:ed)?|assault|offensive|shot down|opened fire|explod(?:ed|es)|"
+          r"raid(?:ed|s)?|siege|stormed|landed on the beach|counterattack|massacre|casualties)\b",  # not war/strike/landing/bombers (Cold War, first strike, Moon landing, a bomber force)
+    'de': r"\b(angriff|angriffe|angegriffen|schlacht|gefecht|kämpf\w*|bomb\w*|beschoss\w*|versenkt|sank|torpedier\w*|offensive|"
+          r"sturm|stürmt\w*|landung|explodier\w*|feuer\w*|gefallen|verluste|überfall\w*|krieg\b)",
+    'vi': r"(tấn công|đánh chiếm|trận|chiến đấu|giao tranh|ném bom|pháo kích|đánh chìm|ngư lôi|tập kích|đổ bộ|phản công|nổ súng|bắn hạ|thương vong|bao vây)",
+    'es': r"\b(ataca\w*|ataque|invadi\w*|invasión|batalla|combat\w*|bombarde\w*|hundi\w*|torpede\w*|ofensiva|asalto|desembarco|explot\w*|bajas)",
+    'ja': r"(攻撃|侵攻|会戦|海戦|戦闘|砲撃|爆撃|撃沈|雷撃|突撃|上陸|空襲|奇襲|反撃|戦死)",
+}
+
+
+def combat_check(sh):
+    """Every sentence that narrates fighting shows fighting: a real film cut, or a moving scene with its own shot/blast events
+    (scenes/events-NAME.txt, e.g. the w-* combat scenes in scenes/examples/combat). Stills, boards and maps alone are flagged
+    (space-race film 2026-11-14, and again on the next film 2026-11-15)."""
+    rx = re.compile(COMBAT.get(LANG, COMBAT['en']), re.I)
+    moving = lambda s: s['src'].startswith('vid:') or (s['src'].startswith('scene:') and (
+        (D / 'scenes' / f"events-{s['src'][6:]}.txt").exists() or s['src'][6:].startswith('w-')))
+    bad = []
+    ok = set((read(D / 'brief.json') or {}).get('combat_ok', []))  # sentences checked by hand: the word is not a fight ("pledged not to invade")
+    for sid, s in S.items():
+        if sid in ok:
+            continue
+        text = ' '.join(w.get('w') or w.get('word', '') for w in s['words'])
+        m = rx.search(text)
+        if not m:
+            continue
+        a, b = s['start'], s['end']
+        near = [x for x in sh if x['t1'] > a - 1.5 and x['t0'] < b + 1.5]  # the fight may be shown just around the sentence
+        if not any(moving(x) for x in near):
+            bad.append(f'{sid} "{m.group(0)}"')
+    for x in bad[:40]:
+        print(f'!! {x}: the sentence narrates fighting but the picture is stills/boards/maps only: add a real combat film cut '
+              f'(FIRE sound) or a moving combat scene with events (scenes/examples/combat); not a fight? add the id to brief "combat_ok"')
+    if len(bad) > 40:
+        print(f'!! ... and {len(bad) - 40} more combat sentences without a combat picture')
+    return len(bad)
 
 
 def pick_intro(first):

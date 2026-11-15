@@ -1,0 +1,14 @@
+# REAL scene seconds
+0.30 | dive | first dive bomber
+1.40 | flyby | torpedo plane low
+1.85 | blast | bomb hits the right battleship
+2.40 | dive | second dive bomber
+2.70 | mg | anti-aircraft fire
+3.30 | blast | torpedo hits the outboard battleship
+3.85 | burst | bomb hits the middle battleship
+4.25 | blast | magazine explodes
+4.80 | dive | third dive bomber
+5.30 | mg | anti-aircraft fire
+6.25 | blast | bomb hits the right battleship
+6.80 | flyby | plane pulls out
+7.30 | burst | anti-aircraft burst

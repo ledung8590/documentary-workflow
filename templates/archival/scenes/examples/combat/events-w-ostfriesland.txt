@@ -1,0 +1,9 @@
+# REAL scene seconds
+0.40 | flyby | MB-2 formation
+2.40 | blast | near miss, water column
+3.20 | blast | near miss
+4.00 | blast | hit on the deck
+5.00 | flyby | bombers come round
+5.60 | thud | hull plates give way
+6.60 | blast | last near miss
+7.40 | thud | she goes under

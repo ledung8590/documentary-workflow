@@ -1,0 +1,15 @@
+# REAL scene seconds
+0.40 | mg | enemy fire from the windows
+0.90 | gunshot | Marines fire
+1.60 | mg | enemy fire
+2.00 | blast | rocket hits the building
+2.60 | gunshot | Marines fire
+3.20 | mg | Marine machine gun
+3.80 | gunshot | Marines fire
+4.50 | burst | mortar in the street
+5.00 | mg | enemy fire
+5.60 | gunshot | Marines fire
+6.30 | burst | mortar on a roof
+6.80 | gunshot | Marines fire
+7.50 | mg | enemy fire (if extended)
+8.20 | blast | rocket (if extended)

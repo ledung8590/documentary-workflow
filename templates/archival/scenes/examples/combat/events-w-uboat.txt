@@ -1,0 +1,7 @@
+# REAL scene seconds
+0.60 | whoosh | torpedo fired
+2.60 | blast | torpedo hits the cargo ship
+3.30 | thud | secondary explosion in the hold
+5.20 | blast | second ship hit further off
+6.20 | thud | hull breaks
+8.00 | blast | third ship hit (if extended)

@@ -1,0 +1,16 @@
+# REAL scene seconds
+0.20 | flyby | Huey comes in
+2.40 | mg | enemy fire from the treeline
+3.00 | mg | door gunner
+3.50 | gunshot | riflemen fire
+4.10 | gunshot | riflemen fire
+4.60 | burst | mortar in the treeline
+5.00 | flyby | second Huey overhead
+5.30 | gunshot | riflemen fire
+5.80 | mg | enemy fire
+6.30 | burst | mortar in the treeline
+6.70 | gunshot | riflemen fire
+7.30 | mg | door gunner
+7.60 | gunshot | riflemen fire
+8.30 | burst | mortar (if extended)
+8.80 | gunshot | riflemen fire (if extended)

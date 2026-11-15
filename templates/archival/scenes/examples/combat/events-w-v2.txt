@@ -1,0 +1,6 @@
+# REAL scene seconds
+1.30 | blast | V-2 hits the street
+1.50 | burst | house front collapses
+2.10 | thud | falling masonry
+4.80 | blast | second V-2 further off
+8.30 | blast | third V-2 far off (only if extended)

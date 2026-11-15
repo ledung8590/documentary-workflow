@@ -1,0 +1,6 @@
+# REAL scene seconds
+0.20 | engine | tank column rumbles in
+2.90 | mg | burst over the crowd
+3.30 | mg | second burst
+5.60 | mg | burst from the second tank
+8.20 | mg | burst (if extended)

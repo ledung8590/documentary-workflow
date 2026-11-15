@@ -1,0 +1,16 @@
+# REAL scene seconds
+0.20 | engine | Abrams column
+1.00 | cannon | Abrams fires
+1.25 | blast | Iraqi tank hit
+2.20 | cannon | Abrams fires
+2.45 | blast | Iraqi tank hit
+3.40 | cannon | Abrams fires
+3.65 | blast | Iraqi tank hit
+4.60 | cannon | Abrams fires
+4.85 | blast | Iraqi tank hit
+5.80 | cannon | Abrams fires
+6.05 | blast | Iraqi tank hit
+7.00 | cannon | Abrams fires
+7.25 | blast | Iraqi tank hit
+8.20 | cannon | Abrams fires (if extended)
+8.45 | blast | hit (if extended)

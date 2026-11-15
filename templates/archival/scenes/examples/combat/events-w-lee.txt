@@ -1,0 +1,20 @@
+# REAL scene seconds
+0.40 | cannon | Confederate battery
+0.80 | gunshot | Union fire
+0.90 | burst | shell in the Union line
+1.30 | volley | Confederate volley
+1.90 | cannon | battery
+2.20 | gunshot | Union fire
+2.40 | burst | shell
+3.00 | volley | Confederate volley
+3.40 | cannon | battery
+3.60 | gunshot | ragged Union fire
+3.90 | burst | shell
+4.90 | cannon | battery
+5.00 | volley | Confederate volley
+5.40 | burst | shell among the fleeing
+6.40 | cannon | battery
+6.90 | burst | shell
+7.00 | volley | Confederate volley
+7.90 | cannon | battery (if extended)
+8.40 | burst | shell (if extended)
