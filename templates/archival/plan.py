@@ -238,6 +238,29 @@ def source_label(k, rest, caption):
     return None
 
 
+def pick_intro(first):
+    """The opening intro bed: a different file for every film (user 2026-11-15: "thay đổi xoay vòng đỡ nhàm, thay hợp video").
+    Mood = brief "intro_mood" or the mood of the film's first bed (music_plan picks it from the opening chapter's group);
+    among that mood's files, the one used least often as an intro by earlier films (evidence/*/project/timeline.json), and
+    never the same file as the first bed when another exists."""
+    from collections import Counter
+    mood = (read(D / 'brief.json') or {}).get('intro_mood') or first.get('mood') or 'milintro'
+    files = sorted(x for x in (ROOT / 'assets' / 'music' / mood).glob('el_*') if x.suffix in ('.mp3', '.wav'))
+    if not files:
+        return first['src']
+    used = Counter()
+    for tl in (ROOT / 'evidence').glob('*/project/timeline.json'):
+        try:
+            for c in next(t for t in json.loads(tl.read_text(encoding='utf-8'))['tracks'] if t['id'] == 'music')['clips']:
+                if str(c.get('mood', '')).endswith('-intro') or (c.get('duck') is False and c.get('start', 9) < 0.1):
+                    used[Path(c['src']).name if Path(c['src']).parent.name == mood else ''] += 1
+        except (OSError, ValueError, StopIteration, KeyError):
+            pass
+    others = [f for f in files if f.name != Path(first['src']).name] or files
+    best = min(others, key=lambda f: (used[f.name], f.name))
+    return f'../../assets/music/{mood}/{best.name}'
+
+
 def apply(sound_only=False):
     import core as C
     proj = C.Project(JOB)
@@ -334,10 +357,11 @@ def apply(sound_only=False):
     v0 = S['S001']['start']
     if mus and v0 > 0.8 and not any(m['start'] < 0.1 and m.get('duck') is False for m in mus):
         first = min(mus, key=lambda m: m['start'])
-        mus.append({'id': f'M{len(mus) + 1:03d}', 'src': first['src'], 'start': 0.0, 'end': round(v0 + 5.4, 3), 'in': first.get('in', 0), 'loop': False,
+        src = pick_intro(first)
+        mus.append({'id': f'M{len(mus) + 1:03d}', 'src': src, 'start': 0.0, 'end': round(v0 + 5.4, 3), 'in': 0, 'loop': False,
                     'gain_db': INTRO_GAIN, 'fade_in': 0.4, 'fade_out': 6.0, 'duck': False, 'mood': first.get('mood', 'intro') + '-intro',
                     'anchor': anchors.anchor(0.0), 'end_anchor': anchors.anchor(v0 + 5.4), 'frame': 0})
-        print(f'opening music intro: {first["src"].split("music/")[-1]} 0-{v0 + 5.4:.1f} s, fades under the first words')
+        print(f'opening music intro: {src.split("music/")[-1]} 0-{v0 + 5.4:.1f} s, fades under the first words')
     for m in mus:
         m['dips'] = [d for d in dips if d[0] < m['end'] and d[1] > m['start']]
 
