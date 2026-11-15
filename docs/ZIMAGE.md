@@ -37,7 +37,7 @@ When a local model misbehaves, read a good image's PNG metadata first (`prompt` 
   - give the full name;
   - in brackets: nationality, age, face shape, glasses/moustache, hair, headgear, uniform with rank details, and one signature item;
   - make the faces visibly different from earlier stories (`stories/published/refs/`);
-  - a recurring vehicle or object is `{"object": "…"}`.
+  - a recurring vehicle or object is `{"object": "…"}`. A vehicle sheet states its real size: "a large heavy 24-ton armored vehicle as long as a truck, its thick armored hull as tall as a grown man". Never "low", "small", "compact" or "box-shaped" (Korsun 2026-11-15: "low and wide" drew a toy-sized gun with the commander out to the waist in 14 images; "box-shaped" drew white vans).
 - Convert:
 
   ```
@@ -77,7 +77,11 @@ PY scripts/zimage_batch.py "input/<story>" _gen/zimage_jobs.json --threads 8 > _
   - nationality and era are right;
   - the picture matches the words.
 - Some images come out in colour. That is fine: the `archival` grade renders them monochrome.
-- Tanks may not look exactly like the named model. Accept that unless the beat is about the vehicle.
+- **The hero's vehicle must read as its named model.** Viewers know tanks: on Refugees a viewer commented at 1:26 "just what is this tank supposed to be? It sure ain't a Panther" (2026-11-15). So for every named vehicle that recurs (the crew's tank, gun or plane):
+  1. Write the sheet from the model's **visible features**, not its name. Example Panther: "sloped front armor plate, long gun with a double-baffle muzzle brake, large overlapping interleaved road wheels, armor skirt plates over the upper tracks, rounded gun mantlet"; StuG III: "turretless, low flat-roofed armored casemate, short thick gun set in the front plate, six small road wheels". Plus the real size (§3).
+  2. **Test the sheet before the batch**: 8 seeds on one plain side-view prompt, contact sheet, and check it against a real photo of the model. Keep the wording that reads right.
+  3. If no wording works (Z-Image cannot draw a turretless StuG; it adds a turret), do not show the vehicle whole and clear in many images. Show details (tracks, hatch rim, gun barrel, muzzle, mud on the road wheels), the crew beside it, the vehicle far off, at night, in snow or smoke. Tell the user at the review stop which model could not be drawn.
+  4. Other, unnamed vehicles may stay generic.
 - Do not mix sources without telling the user. Flow/TST images are sharper than Z-Image, so offer to remake them for a uniform look (about 10 min per 79 images).
 
 ## What Z-Image cannot draw: avoid it in prompts (Refugees Filled Every Road, 2026-11-12)
@@ -87,6 +91,7 @@ About 25 % of 730 images (Refugees) and 30 % of 612 (Vitebsk, prompts written fo
 - **Headphones, throat microphones and radios** draw a microphone ball at the moustache and hands on the head. Never put them in a Character Sheet.
 - **Panzerfausts and launchers** come out as a trumpet or a pipe held to the ear. Show a rifle or an ammunition crate instead.
 - **Tank interiors** draw car steering wheels and windows. Show crew faces outdoors, and tanks from the side, outdoors, alone in the frame.
+- **Crew in a hatch shrinks the vehicle**: "head and shoulders above the hatch" with a character sheet draws the man out to the waist on a go-kart-sized tank. Write the vehicle as "the big heavy …, filling the frame" and the man "small on the armored roof, only head and shoulders above the hatch rim", or show the crew beside or seated high on the hull ("boots dangling well above the snow"). When the character is not needed, leave him out of `refs` (with a ref the model puts him standing in front of the vehicle). Every vehicle-with-people image gets a scale check in the defect pass.
 - **Ships** come out white and modern, with names on the hull. Show them as small dark cutters far away in mist.
 - **Mailboxes and letter boxes** draw an American roadside mailbox. Write "a small square wooden crate of letters".
 - **Bicycles and horse herds** come out merged. Show one horse between the two shafts of one wagon.
