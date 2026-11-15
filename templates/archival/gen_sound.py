@@ -107,7 +107,7 @@ def gain_for(rel, under, dur=None, force=False):  # force: this line's own offse
     # measure at least 1.5 s of the file: a hit cut to 0.2-0.5 s at a shot end measured its silent attack and got +12 dB
     # (space-race film 2026-11-14, X264 machine gun "to thế"); and never boost more than +6 dB
     m = max(dur or 0, 1.5) if dur else None
-    return round(max(-40.0, min(6.0, VOICE_LUFS - _lufs(_file(rel), m) - (under if force else UNDER.get(rel.split('/')[0], under)) - QUIETER)), 1)
+    return round(max(-40.0, min(2.9, VOICE_LUFS - _lufs(_file(rel), m) - (under if force else UNDER.get(rel.split('/')[0], under)) - QUIETER)), 1)
 
 
 def add(t, rel, under, dur, force=False):

@@ -270,6 +270,8 @@ class Video:
                   f'pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color=0x0c0b0a')
         else:
             vf = f'scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}'
+        if clip.get('zoom'):  # plan.py VID_ZOOM: crop a logo or burned-in corner off; keeps the bottom-right part of the frame
+            z = float(clip['zoom']); vf = f'crop=iw/{z}:ih/{z}:iw-iw/{z}:ih-ih/{z},' + vf
         if clip.get('bloom'):  # glow on bright parts (map arrows, fire): threshold, blur, screen-blend back
             vf += (',split[a][b];[b]colorlevels=rimin=0.5:gimin=0.55:bimin=0.55,gblur=sigma=16[g];'
                    '[a][g]blend=all_mode=screen:all_opacity=0.8')
@@ -628,13 +630,38 @@ def subtitle_layer(text, style=None, paper=False):
     return lay
 
 
-def credit_layer(text):
+LABEL_NARROW = 1150  # widest source label while a date tag is on screen (the tag ends near x 600)
+
+
+def credit_layer(text, narrow=False):
+    """narrow: a date tag sits top-left (Minuteman film 2026-11-15: long labels ran under it and lost their first words),
+    so the label's body wraps onto a second line and the box stays right of x = W - 48 - LABEL_NARROW."""
     lay = Image.new('RGBA', (W, H)); d = ImageDraw.Draw(lay); f = font('body', 22)
     if LOOK and '\n' in text:  # 通史3 two-line source label: bold kind + date, then what it shows (user 2026-11-14)
-        head, body = text.split('\n', 1); fh, fb = font('head', 26), font('body', 20); body = body[:150]
-        w = max(d.textlength(head, font=fh), d.textlength(body, font=fb))
-        x0 = W - 64 - w - 18; d.rectangle((x0, 22, W - 48, 92), fill=OV_BOX + (215,)); d.rectangle((x0, 22, x0 + 4, 92), fill=OV_TEXT + (255,))
-        d.text((x0 + 16, 26), head, font=fh, fill=OV_TEXT + (245,)); d.text((x0 + 16, 62), body, font=fb, fill=OV_TEXT + (215,)); return lay
+        head, body = text.split('\n', 1); fh, fb = font('head', 26), font('body', 20)
+        if not narrow and len(body) > 150:  # cut on a word, never mid-word ("Directed by John For", 2026-11-15)
+            body = body[:150].rsplit(' ', 1)[0].rstrip(' ·,;/') + '…'
+        lines, room = [body], LABEL_NARROW - 34
+        if narrow and d.textlength(body, font=fb) > room:
+            lines, cur = [], ''
+            for wd in body.split(' '):
+                if cur and d.textlength(cur + ' ' + wd, font=fb) > room:
+                    lines.append(cur); cur = wd
+                else:
+                    cur = (cur + ' ' + wd).strip()
+            lines.append(cur)
+            if len(lines) > 2:
+                lines = [lines[0], ' '.join(lines[1:])]
+                while ' ' in lines[1] and d.textlength(lines[1] + '…', font=fb) > room:
+                    lines[1] = lines[1].rsplit(' ', 1)[0]
+                lines[1] = lines[1].rstrip(' ·,;/') + '…'
+        w = max([d.textlength(head, font=fh)] + [d.textlength(x, font=fb) for x in lines])
+        y1 = 92 + 26 * (len(lines) - 1)
+        x0 = W - 64 - w - 18; d.rectangle((x0, 22, W - 48, y1), fill=OV_BOX + (215,)); d.rectangle((x0, 22, x0 + 4, y1), fill=OV_TEXT + (255,))
+        d.text((x0 + 16, 26), head, font=fh, fill=OV_TEXT + (245,))
+        for i, x in enumerate(lines):
+            d.text((x0 + 16, 62 + 26 * i), x, font=fb, fill=OV_TEXT + (215,))
+        return lay
     text = text[:180]; w = d.textlength(text, font=f)
     if LOOK:  # source label top-right on the look's box (the 通史3 reference keeps the bottom free for the subtitle band)
         d.rectangle((W - 64 - w - 16, 26, W - 52, 60), fill=OV_BOX + (205,)); d.rectangle((W - 64 - w - 16, 26, W - 64 - w - 13, 60), fill=OV_TEXT + (255,))
@@ -673,7 +700,9 @@ def frame_layers(c, t, overlays, sub, cache, sub_style=None):
         if LOOK and c.get('label') and line:
             line = c['label'] + '\n' + line
         if line:
-            cache.setdefault(line, credit_layer(line)); out.append((('credit', line), cache[line]))
+            narrow = any(o['start'] <= t < o['end'] and o.get('type') == 'date_tag' for o in overlays)
+            key = line + ('\0narrow' if narrow else '')
+            cache.setdefault(key, credit_layer(line, narrow)); out.append((('credit', key), cache[key]))
     if lay is not None:
         out.append((None, lay))
     if not covered and sub:

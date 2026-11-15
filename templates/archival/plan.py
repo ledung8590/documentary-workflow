@@ -42,6 +42,7 @@ if LOOK in ('paper', 'dark'):  # looks draw flat Natural Earth maps (maps/engine
     MAPCREDIT = FLATMAP.get(LANG, FLATMAP['en'])
 INTRO_GAIN = -6.0  # opening music intro level (dB, after the bed levelling): about the voice's level before the first word
 SUBS_OVER = set()  # scenes with no text of their own: subtitles stay on. Every other scene hides them (films 74-88; user review)
+VID_ZOOM = {}  # {'v-tag#K': 1.2}: zoom a film in from the bottom-right to crop a logo off its top-left corner
 SCENE_MEDIA = {}  # JS scenes that draw real photos (film 6): {'scene-name': ('credit line', ['media/x.jpg', ...])}; listed as `uses` so LICENSES/credits keep them
 ORIGINAL = {}  # film clips whose own field sound plays: {'v-tag#K': gain dB}; only after Scribe tags it as no music/speech (docs/SOUND.md)
 
@@ -156,7 +157,7 @@ def check():
                         flag += ' !! OVERLAPS another cut of this film'
                 vid_ranges.append((key, t_in, t_in + L))
                 key = f'{key}@{t_in}'
-        if key != 'card' and key in seen:
+        if key != 'card' and key in seen and not key.startswith(('scene:', 'map:')):  # a scene/map listed again continues after an inserted cut
             flag += f' !! REPEAT of shot {seen[key]}'
         seen.setdefault(key, i)
         if flag:
@@ -196,7 +197,8 @@ def durations():
     for s in shots():
         k, _, name = s['src'].partition(':')
         if k in ('scene', 'map'):
-            dur[name] = round(s['t1'] - s['t0'] + 0.25, 3); starts.setdefault(name, round(s['t0'], 3))
+            starts.setdefault(name, round(s['t0'], 3))  # a name listed again after a film cut CONTINUES the scene (apply sets 'in'): one span from its first start
+            dur[name] = round(s['t1'] - starts[name] + 0.25, 3)
             if k == 'map':
                 maps.add(name)  # by shot kind, not name prefix (film 77 maps are m1-…, o-empire)
     sc = {k: v for k, v in dur.items() if k not in maps}
@@ -308,13 +310,17 @@ def apply(sound_only=False):
     anchors = proj.anchors()
     sh = shots()
     vids, picks = [], []
+    first = {}  # scene/map listed again after an inserted film cut: continue it where the timeline is ('in'), not from its start
+    for s in sh:
+        if s['src'].split(':')[0] in ('scene', 'map'):
+            first.setdefault(s['src'], s['t0'])
     for i, s in enumerate(sh):
         k, _, rest = s['src'].partition(':')
         c = {'id': f'V{i + 1:03d}', 'start': s['t0'], 'end': s['t1'], 'need': s['caption'], 'frame': round(s['t0'] * FPS)}
         c['anchor'] = anchors.anchor(s['t0']) if i else {'sentence': 'S001', 'edge': 'start', 'offset': -S['S001']['start']}
         c['end_anchor'] = anchors.anchor(s['t1'])
         if k == 'scene':
-            c.update(src=f'media/scene-{rest}.mp4', kind='video', grade='none', credit=SCENECREDIT, caption=s['caption'], mute=True, **{'in': 0.0})
+            c.update(src=f'media/scene-{rest}.mp4', kind='video', grade='none', credit=SCENECREDIT, caption=s['caption'], mute=True, **{'in': round(s['t0'] - first[s['src']], 3)})
             if LOOK in ('paper', 'dark'):  # the two-line label already says Diagram/Illustration: keep only the exhibits' sources (通史3)
                 c['credit'] = ''
             if rest in SCENE_MEDIA:
@@ -324,7 +330,7 @@ def apply(sound_only=False):
             if rest not in SUBS_OVER and not rest.startswith('r-'):  # graphics with their own text, boards included: subtitles step aside (render.hide_under_text); user 2026-11-14: labels + subtitles = the same words twice
                 c['hide_subtitles'] = True
         elif k == 'map':
-            c.update(src=f'media/map-{rest}.mp4', kind='video', grade='none', credit=MAPCREDIT, caption=s['caption'], mute=True, **{'in': 0.0})
+            c.update(src=f'media/map-{rest}.mp4', kind='video', grade='none', credit=MAPCREDIT, caption=s['caption'], mute=True, **{'in': round(s['t0'] - first[s['src']], 3)})
             spec = D / 'maps' / 'src' / f'{rest}.json'
             sat = spec.exists() and json.loads(spec.read_text(encoding='utf-8')).get('base') == 'satellite'
             if LOOK not in ('paper', 'dark') or sat:
@@ -342,6 +348,8 @@ def apply(sound_only=False):
             c.update(src=None, caption=s['caption'])
             if k == 'vid':
                 c['mute'] = True
+                if f'{tag}#{kk}' in VID_ZOOM:  # crop a broadcaster logo / burned-in corner off a film (render.Video 'zoom', anchored away from the top-left)
+                    c['zoom'] = VID_ZOOM[f'{tag}#{kk}']
                 if f'{tag}#{kk}' in ORIGINAL:  # real field sound (film 90: riveting under the factory line, instead of a generated SFX)
                     c.update(mute=False, original_audio=True, gain_db=ORIGINAL[f'{tag}#{kk}'])
         else:
