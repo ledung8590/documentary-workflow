@@ -1021,6 +1021,15 @@ def media_pick(job, slot, tag, k, caption, t_in=0.0, dur=None, exact=False):
     else:
         dst = M.download(c, d / 'media')  # full 1920 px only now, for the picked file
         clip['kind'] = 'photo'
+        if (read(d / 'brief.json').get('genre') == 'story'):  # story: every picture fills the frame like the generated ones
+            from PIL import Image, ImageOps, ImageFilter  # (Bundesarchiv on Commons is ~800 px -> print on black; Korsun 2026-11-15)
+            im = Image.open(dst).convert('RGB')
+            if im.width < 1900:
+                (d / 'media' / 'orig').mkdir(exist_ok=True); shutil.copy(dst, d / 'media' / 'orig' / dst.name)
+                w, h = im.size; im = im.crop((int(w * .015), int(h * .015), int(w * .985), int(h * .985)))
+                im = ImageOps.fit(im, (1920, 1080), Image.LANCZOS, centering=(0.5, 0.5)).filter(ImageFilter.UnsharpMask(radius=2, percent=60, threshold=3))
+                im.save(dst, quality=93)
+                print(f'{slot}: upscaled {w}x{h} to 1920x1080 (original in media/orig/); check the crop with render_frame')
     rel = f'media/{dst.name}'
     author = re.sub(r'\s+', ' ', c['author'] or 'unknown author')[:80]
     if c['source'] == 'nara':  # archive name + plain licence; the agency author is usually just "National Archives"
