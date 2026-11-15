@@ -2,7 +2,7 @@
 
 A **fiction story** narrated over the user's own images (for example AI images made one per ~8 s of an earlier narration). Separate from the archival workflow (`/gendoc`, `/genvideo`, `docs/WORKFLOW.md`).
 
-**Do not use from the archival workflow:** archival media search, fact-check (`FACTS.md`), "(illustrative)" labels, licence rows for the user's images, `doc.py plan` / `templates/archival/`, the drawn-character budget, `description.py` CC lists, `evidence.py`. **Shared with it:** voice (`split`, `tts`, `assemble`), card SFX and music levels (music only a faint trace, about 31 dB under the voice since 2026-11-14; SFX set from their own loudness under the voice), subscribe overlay, the studio review stop, export via `scripts/export.py`, QA.
+**Do not use from the archival workflow:** archival media search (one exception: real photos of the crew's named vehicle when Z-Image cannot draw it, `docs/ZIMAGE.md` §5), fact-check (`FACTS.md`), "(illustrative)" labels, licence rows for the user's images, `doc.py plan` / `templates/archival/`, the drawn-character budget, `description.py` CC lists, `evidence.py`. **Shared with it:** voice (`split`, `tts`, `assemble`), card SFX and music levels (music only a faint trace, about 31 dB under the voice since 2026-11-14; SFX set from their own loudness under the voice), subscribe overlay, the studio review stop, export via `scripts/export.py`, QA.
 
 The layout here, one picture per story beat anchored to its words, is right for a story and wrong for an archival film: never carry it over to `/genvideo`.
 
