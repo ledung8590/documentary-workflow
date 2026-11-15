@@ -50,3 +50,11 @@ Story mode only (`docs/STORY_MODE.md`). Archival films follow `docs/WORKFLOW.md`
 When the user writes with another model, give it this (Vietnamese) on top of their own prompt:
 
 > Viết truyện hoàn chỉnh, có cao trào và kết thúc rõ ràng, rồi mới tới lời chào cuối. Không mở đầu bằng "Tôi muốn bắt đầu câu chuyện hôm nay từ khoảnh khắc…". Vẫn có các đoạn kể bối cảnh lịch sử (1–3 phút mỗi đoạn, 2–4 đoạn), nhưng đặt ở chỗ khác nhau mỗi truyện, gắn với cảnh nó giải thích, không luôn nằm ngay sau phần mở đầu và mật danh. Nhân vật chính có nghề, quê, tính cách và điểm yếu khác hẳn các truyện trước; không giới thiệu bằng "sinh năm…, cha ông làm nghề…". Mỗi truyện một đồ vật đặc trưng riêng (không dùng lại mảnh giấy, dây đồng, bật lửa bạc). Câu văn đa dạng 8–20 chữ, câu cụt 1–4 chữ chỉ ở cao trào, không lặp cùng chữ đầu câu ba lần liền. Mỗi chương phải thay đổi tình thế; không lặp vòng "chờ – hoãn – chờ".
+
+
+## New names every story (viewer comment, Military Chronicle, 2026-11-15)
+"How come in all these videos there's a soldier named Beddo?" Benno (heard as "Beddo") was in four German-soldier stories in a row,
+as hero, comrade and even a battery's nickname; Hinnerk, Emil, Fritz and the hometown Kassel repeated too. Every named person,
+pet, nickname and hometown is new for each story. `storycheck.py` compares capitalised names with stories/published and prints
+`!!` (English/German/Spanish; `!` for Vietnamese, whose syllables double as places) for any name an earlier story already used;
+rename before tts. A real place or person shared on purpose (Königsberg, Bagration) goes in `stories/names_ok.txt`.

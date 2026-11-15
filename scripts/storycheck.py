@@ -25,6 +25,41 @@ OUTRO = re.compile(r'tạm biệt|hẹn gặp lại|cảm ơn quý vị|thanks f
 STOP = set('khác và của là có không một những các người ông bà anh chị đã đang sẽ được bị cho với trong ra vào lên xuống rồi thì mà này đó ấy '
            'nhưng nếu khi lại cũng còn chỉ như từ tại để vì nên hai ba bốn năm ngày tháng the a an of to and in on at is was he she it'.split())
 
+# 7. names: viewers notice a recurring character name across episodes (Military Chronicle, 2026-11-15: "How come in all these
+# videos there's a soldier named Beddo?" = Benno in 4 stories, plus Hinnerk, Emil and the hometown Kassel repeated).
+# Capitalised words used mid-sentence that are not common words, months, nations, ranks, armies or big places.
+COMMONCAPS = set("""I I'm I'd I'll I've Mr Mrs Herr Frau Fräulein Sir Madam God Lord Christ Jesus Mother Father Mama Papa Mutti Vati
+January February March April May June July August September October November December Monday Tuesday Wednesday Thursday Friday
+Saturday Sunday Christmas Easter German Germans Germany Russian Russians Russia Soviet Soviets Soviet Union Polish Poland Poles
+French France British Britain English England American Americans America Allied Allies Europe European Jewish Jews Italian Italy
+Japanese Japan Vietnamese Vietnam Chinese China Austrian Austria Prussian Prussia Ukrainian Ukraine Belarus Hungarian Romanian
+Army Armies Division Divisions Regiment Battalion Company Platoon Corps Group Centre Center North South East West Front River
+Sea Lake Forest Bridge Street Station Road Leutnant Oberleutnant Hauptmann Major Oberst General Feldwebel Unteroffizier Gefreiter
+Obergefreiter Grenadier Grenadiers Gefreite Sergeant Corporal Private Lieutenant Captain Colonel Doctor Doktor Pastor Father
+Wehrmacht Luftwaffe Kriegsmarine Waffen Volkssturm Führer Reich Nazi Nazis Party Red White Black Iron Cross Knight
+Berlin Moscow Paris London Vienna Warsaw Saigon Hanoi Huế Đà Nẵng Hà Nội Sài Gòn Hitler Stalin Churchill Roosevelt Truman
+Operation Panzerfaust Panzer Panzers Infantry Artillery Platz Strasse Straße Kessel Tiger Panther Stuka Katyusha Mass The Two Now
+Mỹ Việt Nam Pháp Nga Đức Trung Quốc Liên Xô Sư Đoàn Trung Đoàn Tiểu Đoàn Đại Đội Trung Đội Ông Bà Anh Chị Em Cô Chú Bác""".split())
+
+
+def names_of(t):
+    """Capitalised words used mid-sentence (so not just sentence starts), counted."""
+    c = collections.Counter()
+    for s in sentences(t):
+        for piece in re.split(r'[“”"«»„:;—–(]|\s-\s', s):  # the first word after a quote mark or dash starts a sentence too
+            for w in re.findall(r"[\w’']+", piece)[1:]:
+                if len(w) >= 3 and w[0].isupper() and w[1:].islower() and w.isalpha() and w not in COMMONCAPS:
+                    c[w] += 1
+    return c
+
+
+def names_ok():
+    """stories/names_ok.txt: real places or people a story may share on purpose (one per line)."""
+    real = set('Königsberg Vitebsk Minsk Bobruisk Orsha Mogilev Belorussia Bagration Danzig Pillau Stalingrad Kursk Leningrad Normandy '
+               'Oder Vistula Dnieper Prussia Pomerania Silesia Kurland Kharkov Kiev Smolensk Rzhev Seelow Spree Elbe'.split())
+    p = ROOT / 'stories' / 'names_ok.txt'
+    return real | (set(p.read_text(encoding='utf-8').split()) if p.exists() else set())
+
 
 def norm(t):
     return unicodedata.normalize('NFC', t)
@@ -149,6 +184,12 @@ def check(path, corpus):
         if re.search(bio, t[:len(t) // 3], re.I) and re.search(bio, ot[:len(ot) // 3], re.I) \
                 and re.search(par, t[:len(t) // 3], re.I) and re.search(par, ot[:len(ot) // 3], re.I):
             warn.append(f'same biography beat as {o.name[:40]} (birth year + father\'s trade in the first third): introduce the hero differently')
+        mine_n, ok_n = names_of(body(t)), names_ok()
+        same = sorted(k for k, c in mine_n.items() if c >= 1 and names_of(ob).get(k, 0) >= 2 and k not in ok_n)
+        if same:
+            # Vietnamese syllables double as places and words (Bình, Tây, Tết): warn there; elsewhere a shared name blocks the voice
+            (warn if lang == 'vi' else err).append(f'names already used in {o.name[:45]}: ' + ', '.join(same) + ' (viewers notice recurring names across episodes,'
+                       ' "a soldier named Beddo in all these videos": rename them; a real place/person shared on purpose goes in stories/names_ok.txt)')
         if ss and sentences(ob) and words(ss[0])[:2] == words(sentences(ob)[0])[:2]:
             warn.append(f'opens with the same two words as {o.name[:40]}')
 
