@@ -630,18 +630,24 @@ def subtitle_layer(text, style=None, paper=False):
     return lay
 
 
-LABEL_NARROW = 1150  # widest source label while a date tag is on screen (the tag ends near x 600)
+def date_tag_right(d, text):
+    """Right edge (px) of a fully shown date tag (draw_overlay 'date_tag')."""
+    return 60 + text_w(d, text, font('head', 44)) + 46
 
 
-def credit_layer(text, narrow=False):
-    """narrow: a date tag sits top-left (Minuteman film 2026-11-15: long labels ran under it and lost their first words),
-    so the label's body wraps onto a second line and the box stays right of x = W - 48 - LABEL_NARROW."""
-    lay = Image.new('RGBA', (W, H)); d = ImageDraw.Draw(lay); f = font('body', 22)
+def credit_layer(text, narrow=0):
+    """narrow: right edge of a date tag on screen top-left (Minuteman film 2026-11-15: long labels ran under the tag and
+    lost their first words). The label's body wraps onto a second line to stay right of the tag; when the tag leaves
+    too little room, the label moves below it."""
+    lay = Image.new('RGBA', (W, H)); d = ImageDraw.Draw(lay); f = font('body', 22); dy = 0
     if LOOK and '\n' in text:  # 通史3 two-line source label: bold kind + date, then what it shows (user 2026-11-14)
         head, body = text.split('\n', 1); fh, fb = font('head', 26), font('body', 20)
+        room = W - 48 - (narrow + 30) - 34 if narrow else 0
+        if narrow and room < 560:  # a long tag: the label goes under it, full width
+            dy, narrow = 104, 0
         if not narrow and len(body) > 150:  # cut on a word, never mid-word ("Directed by John For", 2026-11-15)
             body = body[:150].rsplit(' ', 1)[0].rstrip(' ·,;/') + '…'
-        lines, room = [body], LABEL_NARROW - 34
+        lines = [body]
         if narrow and d.textlength(body, font=fb) > room:
             lines, cur = [], ''
             for wd in body.split(' '):
@@ -656,11 +662,11 @@ def credit_layer(text, narrow=False):
                     lines[1] = lines[1].rsplit(' ', 1)[0]
                 lines[1] = lines[1].rstrip(' ·,;/') + '…'
         w = max([d.textlength(head, font=fh)] + [d.textlength(x, font=fb) for x in lines])
-        y1 = 92 + 26 * (len(lines) - 1)
-        x0 = W - 64 - w - 18; d.rectangle((x0, 22, W - 48, y1), fill=OV_BOX + (215,)); d.rectangle((x0, 22, x0 + 4, y1), fill=OV_TEXT + (255,))
-        d.text((x0 + 16, 26), head, font=fh, fill=OV_TEXT + (245,))
+        y1 = dy + 92 + 26 * (len(lines) - 1)
+        x0 = W - 64 - w - 18; d.rectangle((x0, dy + 22, W - 48, y1), fill=OV_BOX + (215,)); d.rectangle((x0, dy + 22, x0 + 4, y1), fill=OV_TEXT + (255,))
+        d.text((x0 + 16, dy + 26), head, font=fh, fill=OV_TEXT + (245,))
         for i, x in enumerate(lines):
-            d.text((x0 + 16, 62 + 26 * i), x, font=fb, fill=OV_TEXT + (215,))
+            d.text((x0 + 16, dy + 62 + 26 * i), x, font=fb, fill=OV_TEXT + (215,))
         return lay
     text = text[:180]; w = d.textlength(text, font=f)
     if LOOK:  # source label top-right on the look's box (the 通史3 reference keeps the bottom free for the subtitle band)
@@ -700,8 +706,9 @@ def frame_layers(c, t, overlays, sub, cache, sub_style=None):
         if LOOK and c.get('label') and line:
             line = c['label'] + '\n' + line
         if line:
-            narrow = any(o['start'] <= t < o['end'] and o.get('type') == 'date_tag' for o in overlays)
-            key = line + ('\0narrow' if narrow else '')
+            tags = [o for o in overlays if o['start'] <= t < o['end'] and o.get('type') == 'date_tag']
+            narrow = max((date_tag_right(ImageDraw.Draw(Image.new('L', (1, 1))), o['props']['text']) for o in tags), default=0)
+            key = line + (f'\0narrow{narrow}' if narrow else '')
             cache.setdefault(key, credit_layer(line, narrow)); out.append((('credit', key), cache[key]))
     if lay is not None:
         out.append((None, lay))
