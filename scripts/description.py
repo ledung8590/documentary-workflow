@@ -88,6 +88,7 @@ def main():
     ap.add_argument('job'); ap.add_argument('--intro', required=True); ap.add_argument('--note'); ap.add_argument('--tags', required=True)
     ap.add_argument('--hashtags', required=True); ap.add_argument('--no-links', action='store_true', help='new channel only: no URL anywhere')
     ap.add_argument('--cc-links', action='store_true', help='通史3 style: a short file link for every CC file and one link per licence deed (user 2026-11-14)')
+    ap.add_argument('--credits-only', action='store_true', help='story mode: print only the archival-photo credit lines (with --cc-links) for the story description; writes no file')
     a = ap.parse_args()
     d = ROOT / 'projects' / a.job
     tl = json.loads((d / 'timeline.json').read_text(encoding='utf-8'))
@@ -113,7 +114,7 @@ def main():
         m = re.search(r'commons-(\d+)\.', r['file'])
         if re.search(r'\bCC BY', lic):
             if au.startswith('Bundesarchiv, Bild '):  # all Bundesarchiv files on one line: "Bundesarchiv, Bild A, Bild B …"
-                cc.setdefault(('Bundesarchiv', lic), []).append(au.split(', ', 1)[1])
+                cc.setdefault(('Bundesarchiv', lic), []).append(au.split(', ', 1)[1] + (f' (ID {m.group(1)})' if m else ''))
             else:
                 cc.setdefault((au, lic), []).append('ID ' + m.group(1) if m else r['page'])  # one line per author + licence
         elif re.search(r'public domain|CC0|PDM|no restrictions|no known', lic, re.I):
@@ -144,7 +145,8 @@ def main():
             for cj in (d / 'media' / 'candidates').glob('*/candidates.json'):
                 for c_ in json.loads(cj.read_text(encoding='utf-8'))['candidates']:
                     if c_.get('source') == 'commons' and str(c_.get('id', '')).isdigit(): curid[c_['page']] = c_['id']
-            ids_ = lambda v: sorted({('https://commons.wikimedia.org/?curid=' + (i[3:] if i.startswith('ID ') else curid[i])) if (i.startswith('ID ') or i in curid) else i for i in v})
+            ba_ = lambda i: re.sub(r'^(Bild .+?) \(ID (\d+)\)$', r'\1 https://commons.wikimedia.org/?curid=\2', i)  # Bundesarchiv: signature + its file link
+            ids_ = lambda v: sorted({ba_(i) if re.match(r'Bild .+ \(ID \d+\)$', i) else('https://commons.wikimedia.org/?curid=' + (i[3:] if i.startswith('ID ') else curid[i])) if (i.startswith('ID ') or i in curid) else i for i in v})
             short = lambda au: re.sub(r'\s+from\s+[^,]*', '', re.sub(r';.*$', '', au)).strip()[:48]
             out += [L['cc']] + [f'- {short(au)}, {lic}: ' + ' '.join(ids_(ids))
                                 for (au, lic), ids in sorted(cc.items(), key=lambda x: x[0][0].lower())]
@@ -175,6 +177,11 @@ def main():
         txt = '\n'.join(out)
         return (nolinks(txt) if a.no_links else txt).replace('<', '').replace('>', '')  # YouTube rejects angle brackets anywhere in a description
 
+    if a.credits_only:  # the CC block and licence deeds only; the story description has no maps, PD archives or channel line
+        lines = build(len(pd)).split('\n')
+        i = lines.index(L['src']) + 2 if L['src'] in lines else 0
+        print('\n'.join(x for x in lines[i:lines.index(L['maps'])] if x))
+        return
     n = len(pd)
     txt = build(n, with_ids=True) if len(build(n, with_ids=True)) <= LIMIT else build(n)  # the fullest credits that fit
     while len(txt) > LIMIT and n > 3:

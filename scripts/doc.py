@@ -16,7 +16,7 @@
 
 Later stages (media, maps, music, sfx, render, mix, studio) are designed in docs/ARCHITECTURE.md and not built yet.
 """
-import argparse, difflib, json, re, shutil, subprocess, sys, unicodedata
+import argparse, difflib, json, re, shutil, subprocess, sys, unicodedata, urllib.parse
 from pathlib import Path
 
 import numpy as np
@@ -1025,6 +1025,9 @@ def media_pick(job, slot, tag, k, caption, t_in=0.0, dur=None, exact=False):
     author = re.sub(r'\s+', ' ', c['author'] or 'unknown author')[:80]
     if c['source'] == 'nara':  # archive name + plain licence; the agency author is usually just "National Archives"
         credit = ('' if author in ('National Archives', 'unknown author') else f'{author} / ') + 'U.S. National Archives (public domain)'
+    elif (ba := re.search(r'Bundesarchiv[_ ]((?:B[_ ]\d+[_ ])?Bild[_ -][\w-]+)', urllib.parse.unquote(c['page']))):
+        # CC BY-SA 3.0 DE terms of the Bundesarchiv: "Bundesarchiv, Bild <signature> / <photographer> / CC-BY-SA 3.0" on screen
+        credit = f'Bundesarchiv, {ba.group(1).replace("_", " ")} / {author} / {c["licence"]}'
     else:
         credit = f'{author} / {c["source"].split(":")[-1].title()} ({c["licence"]})'
     clip.update(src=rel, credit=credit, caption=caption or clip.get('caption'), page=c['page'])
