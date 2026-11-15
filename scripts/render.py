@@ -672,8 +672,10 @@ def credit_layer(text, narrow=0):
     if LOOK:  # source label top-right on the look's box (the 通史3 reference keeps the bottom free for the subtitle band)
         d.rectangle((W - 64 - w - 16, 26, W - 52, 60), fill=OV_BOX + (205,)); d.rectangle((W - 64 - w - 16, 26, W - 64 - w - 13, 60), fill=OV_TEXT + (255,))
         d.text((W - 64 - w, 28), text, font=f, fill=OV_TEXT + (235,)); return lay
-    d.text((W - 64 - w + 2, H - 62 + 2), text, font=f, fill=(0, 0, 0, 170))
-    d.text((W - 64 - w, H - 62), text, font=f, fill=OFFWHITE + (220,))
+    # no look: top-right on a dark box. Bottom-right with only a shadow was unreadable on snow photos and ran into the
+    # subtitle line (Korsun story, 2026-11-15: real Bundesarchiv photos filled the frame)
+    d.rectangle((W - 64 - w - 14, 26, W - 50, 62), fill=(0, 0, 0, 150))
+    d.text((W - 64 - w, 30), text, font=f, fill=OFFWHITE + (235,))
     return lay
 
 
