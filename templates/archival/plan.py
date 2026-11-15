@@ -40,6 +40,7 @@ FLATMAP = {'en': 'Map: Natural Earth (public domain) · Positions, arrows: schem
            'fr': 'Carte : Natural Earth (domaine public) · Positions, flèches : schématiques', 'ja': '地図: Natural Earth（パブリックドメイン）· 位置・矢印は模式図'}
 if LOOK in ('paper', 'dark'):  # looks draw flat Natural Earth maps (maps/engine.html), not satellite imagery
     MAPCREDIT = FLATMAP.get(LANG, FLATMAP['en'])
+INTRO_GAIN = -6.0  # opening music intro level (dB, after the bed levelling): about the voice's level before the first word
 SUBS_OVER = set()  # scenes with no text of their own: subtitles stay on. Every other scene hides them (films 74-88; user review)
 SCENE_MEDIA = {}  # JS scenes that draw real photos (film 6): {'scene-name': ('credit line', ['media/x.jpg', ...])}; listed as `uses` so LICENSES/credits keep them
 ORIGINAL = {}  # film clips whose own field sound plays: {'v-tag#K': gain dB}; only after Scribe tags it as no music/speech (docs/SOUND.md)
@@ -177,6 +178,10 @@ def check():
             print(f'!! {worst[0]} standalone photos in a row (ending {worst[1]}): put some on an analysis board with what they prove (K.board, docs/SCENES.md)'); warn += 1
         if bd / tot < 0.25:
             print('!! analysis boards under 25 % of the film: analysis, comparison and cause/effect sentences go on K.board boards'); warn += 1
+    v0 = S['S001']['start']
+    has_intro = any(r[1].startswith('music/') and r[0].split('..')[0].strip().startswith('S001-') for r in lines('sound.txt'))
+    if v0 > 1.0 and not has_intro and not lines('sound.txt'):
+        print(f'!! the voice starts at {v0:.1f} s and sound.txt has no music: the opening is silent (plan.py apply adds the intro once a bed is placed)'); warn += 1
     import reviewcheck  # overlay text inside the frame, typing sound, firing sound (scripts/reviewcheck.py, film 76)
     warn += reviewcheck.check(D, sh)
     import filmrepeat  # footage an earlier film already showed (scripts/filmrepeat.py, film 88)
@@ -303,7 +308,7 @@ def apply(sound_only=False):
                 return float(x[6:]) if x.startswith('START+') else resolve(x)
             t0, t1 = (0.0 if a == 'S001-start' else _pt(a)), (DUR if b == 'END' else _pt(b))
             mus.append({'id': f'M{len(mus) + 1:03d}', 'src': asset(r[1]), 'start': t0, 'end': t1, 'in': float(r[3]) if len(r) > 3 else 0, 'loop': False,
-                        'gain_db': float(r[2]), 'fade_in': 0.4 if t0 < 0.1 else 2, 'fade_out': 2.5,  # the opening bed comes in at once (通史3: music at 0.4 s) 'duck': True, 'mood': r[1].split('/')[1],
+                        'gain_db': float(r[2]), 'fade_in': 0.4 if t0 < 0.1 else 2, 'fade_out': 2.5, 'duck': True, 'mood': r[1].split('/')[1],  # the opening bed comes in at once (通史3: music at 0.4 s)
                         'anchor': anchors.anchor(t0), 'end_anchor': anchors.anchor(t1), 'frame': round(t0 * FPS)})
             for kv in (r[4].split() if len(r) > 4 else []):  # e.g. `fade_out=5 noduck` (opening bed fading out smoothly under the first words)
                 if kv == 'noduck': mus[-1]['duck'] = False
@@ -324,6 +329,15 @@ def apply(sound_only=False):
                 c.update(loop=True, fade_out=2)
             sfx.append(c)
 
+    # opening music intro (通史3 opening, user 2026-11-14/15: "câm đầu" twice): before the first word the bed plays alone at about
+    # the voice's level, then fades out over ~6 s under the first words, not ducked. Added automatically unless sound.txt has one.
+    v0 = S['S001']['start']
+    if mus and v0 > 0.8 and not any(m['start'] < 0.1 and m.get('duck') is False for m in mus):
+        first = min(mus, key=lambda m: m['start'])
+        mus.append({'id': f'M{len(mus) + 1:03d}', 'src': first['src'], 'start': 0.0, 'end': round(v0 + 5.4, 3), 'in': first.get('in', 0), 'loop': False,
+                    'gain_db': INTRO_GAIN, 'fade_in': 0.4, 'fade_out': 6.0, 'duck': False, 'mood': first.get('mood', 'intro') + '-intro',
+                    'anchor': anchors.anchor(0.0), 'end_anchor': anchors.anchor(v0 + 5.4), 'frame': 0})
+        print(f'opening music intro: {first["src"].split("music/")[-1]} 0-{v0 + 5.4:.1f} s, fades under the first words')
     for m in mus:
         m['dips'] = [d for d in dips if d[0] < m['end'] and d[1] > m['start']]
 

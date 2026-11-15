@@ -1,3 +1,4 @@
 # Music beds (no drums or pulses under narration, assets/music/MOODS.md; 2-3 min per bed):  ANCHOR .. ANCHOR | music/mood/el_01 | gain [| in]
 # Hand-placed one-shots:  ANCHOR | sfx/type/el_01 | gain [| dur]. Card, scene-event, typing and subscribe SFX come from gen_sound.py.
-# Measure the ducked music 20-22 dB under the voice before the studio stop (docs/WORKFLOW.md stage 7; was 8-10 until viewers found it loud, 2026-11-14).
+# Measure the ducked music about 30-32 dB under the voice: only a faint trace (user 2026-11-14). The first bed starts at S001-<voice lead-in>;
+# plan.py apply adds the opening music intro by itself (bed alone at about voice level, fading out under the first words; 通史3).

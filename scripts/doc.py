@@ -32,7 +32,7 @@ DEFAULTS = {
     'pacing': {'lead_in': 1.5, 'tail': 2.0, 'beat_snap': True},
     # default voice path: script.txt -> AI84 eleven_v4 per sentence with emotion tags (voice chosen by language)
     'voice': {'provider': 'ai84', 'voice_id': '', 'model': 'eleven_v4', 'language_code': None, 'audio_tags': True,
-              'format': 'mp3_44100_128', 'lead_in': 3.4, 'tail': 2.5, 'settings': {}},
+              'format': 'mp3_44100_128', 'lead_in': 2.6, 'tail': 2.5, 'settings': {}},  # 2.6 s: archival films open on a music intro (通史3, 2026-11-14); stories raise it for their notice
     'video': {'width': 1920, 'height': 1080, 'fps': 24},
     'qa': {'stt_model': 'scribe_v1', 'stt_min_match': 0.97},
 }
