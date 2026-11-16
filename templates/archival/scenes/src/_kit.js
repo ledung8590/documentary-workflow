@@ -185,14 +185,26 @@ const K = {
   //   = wide soft felt hat, o.capCol), 'iraq' (Iraqi army 1991 olive field tunic; hat 'beret', black by default, o.capCol for the
   //   Republican Guard red). since 2026-11-16 (Stalingrad film): 'rum' (Romanian army 1942 khaki-brown tunic, blue-yellow-red breast patch;
   //   hat 'rumhelm' = M1939 Dutch-pattern helmet with an even all-round brim, or 'peaked' for officers). Sheet: projects/<film-90+>/qa/w/doll-costumes.jpg
+  //   since 2026-11-16 (Nagato film): 'ijn' (IJN officer, dark navy 詰襟 standing collar closed at the throat, black braid edge, one row of
+  //   5 gold buttons; o.whites = summer whites 第二種軍装 with shoulder boards; o.stripes = number of gold sleeve stripes; hat 'peaked' =
+  //   dark cap, black band, gold anchor in cherry-blossom wreath, white cover with o.whites), 'ijnrate' (IJN 水兵: navy jumper, square
+  //   sailor collar with white stripes, white neckerchief; hat 'jpsailor' = brimless round cap, black ribbon with gold dashes, two tails),
+  //   'usn' (US Navy enlisted 1940s: chambray shirt + dark dungaree trousers, o.whites = white jumper with navy square collar and black
+  //   neckerchief; hat 'dixie' = white dixie cup). US Navy officers: side 'navy' + 'peaked' (white top, gold eagle-and-anchors badge, o.whites too).
+  //   since 2026-11-16 (Nagato film): 'kmrate' (Kaiserliche Marine sailor 1914-1919: dark navy jumper, square sailor collar with THREE
+  //   white stripes, black neckerchief knotted with a white bow; hat 'kmsailor' = wide flat Tellermütze, black ribbon band with small gold
+  //   dashes (no text), two long black ribbon tails hanging down at the back). Reads apart from 'ijnrate' (two stripes, white
+  //   neckerchief, smaller 'jpsailor' cap with short tails).
   //   o.rifle (bolt-action), o.binos (binoculars on the chest), o.helmCol (helmet paint). A film needing a costume not listed here
   //   adds it in THIS function (templates/archival kit), drawn the same way, so every later film has it.
   doll(c, L, x, y, h, t, o = {}) {
     const C = ({ pru: ['#141a2b', '#c0282d', '#ece6d8'], fra: ['#2f5fc4', '#f4f0e6', '#ece6d8'], brit: ['#b52a2c', '#ece6d8', '#22305a'], civ: ['#6a5238', '#d9cfb8', '#3a2e22'], rus: ['#34552f', '#c0282d', '#ece6d8'], dnam: ['#7a1f1a', '#1a1612', '#c9a24a'], quan: ['#1f2a5a', '#c9a24a', '#c9a24a'], dan: ['#3a3128', '#2a221a', '#5a4a38'], mar: ['#1c2440', '#c0282d', '#ece6d8'],
       wehr: ['#5b6150', '#3d4a3a', '#1e1c18'], sov: ['#7c7550', '#6e6844', '#4a3424'], us: ['#6b6440', '#5c5636', '#4a4630'], tommy: ['#7a6a48', '#6a5c3e', '#5a4a30'], jap: ['#8a7a4a', '#7a6a40', '#5a4228'],
       navy: ['#1c2440', '#141a30', '#d8b450'], usaf: ['#3a4b6e', '#2c3a58', '#1a1c22'], astro: ['#e8e6e0', '#c9c6be', '#8a8a90'], cosmo: ['#e4e0d6', '#c0282d', '#8a8a90'], lab: ['#ecebe6', '#d8d6cf', '#3a3a40'], suit: ['#23262c', '#1a1c22', '#7a1f1a'], work: ['#4a4a52', '#3a3a40', '#2a2420'],
-      union: ['#232c4a', '#1c2440', '#d8b450'], confed: ['#7d796e', '#6a665c', '#d8b450'], iraq: ['#5a5c3c', '#4c4e32', '#3a3424'], rum: ['#6e6244', '#5e5438', '#3a2c1e'] }[o.side || 'pru']).slice();
-    const MOD = ['wehr', 'sov', 'us', 'tommy', 'jap', 'iraq', 'rum'].includes(o.side), NEW = MOD || ['navy', 'suit', 'work', 'usaf', 'astro', 'cosmo', 'lab', 'union', 'confed'].includes(o.side);
+      union: ['#232c4a', '#1c2440', '#d8b450'], confed: ['#7d796e', '#6a665c', '#d8b450'], iraq: ['#5a5c3c', '#4c4e32', '#3a3424'], rum: ['#6e6244', '#5e5438', '#3a2c1e'],
+      ijn: ['#151a2a', '#0e1220', '#d8b450'], ijnrate: ['#1a2034', '#141a30', '#ece8e0'], kmrate: ['#161c2e', '#10152a', '#ece8e0'], usn: ['#8fa6c4', '#8296b2', '#232a3e'] }[o.side || 'pru']).slice();
+    const MOD = ['wehr', 'sov', 'us', 'tommy', 'jap', 'iraq', 'rum'].includes(o.side), NEW = MOD || ['navy', 'suit', 'work', 'usaf', 'astro', 'cosmo', 'lab', 'union', 'confed', 'ijn', 'ijnrate', 'kmrate', 'usn'].includes(o.side);
+    if (o.whites && (o.side === 'ijn' || o.side === 'usn')) { C[0] = '#eeebe2'; C[1] = '#e2ded4'; }
     if (o.side === 'confed' && o.butternut) C[0] = '#8c7148';
     const star = (sx, sy, r, col) => { c.fillStyle = col; c.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.42 : r; c.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr); } c.closePath(); c.fill(); };
     if (o.coat) C[0] = o.coat;  // e.g. the emperor's yellow robe
@@ -203,7 +215,7 @@ const K = {
     // skin fills the whole egg, coat is clipped to the lower part
     c.save(); egg(); c.clip();
     c.fillStyle = o.skin || '#f2d9c2'; c.fillRect(-160, -420, 320, 440);
-    const g = c.createLinearGradient(-130, 0, 130, 0); g.addColorStop(0, C[0]); g.addColorStop(0.6, C[0]); g.addColorStop(1, '#0b0e18');
+    const g = c.createLinearGradient(-130, 0, 130, 0); g.addColorStop(0, C[0]); g.addColorStop(0.6, C[0]); g.addColorStop(1, o.whites && (o.side === 'ijn' || o.side === 'usn') ? '#a29e94' : '#0b0e18');
     c.fillStyle = g; c.beginPath(); c.moveTo(-160, -205); c.quadraticCurveTo(0, -175, 160, -205); c.lineTo(160, 20); c.lineTo(-160, 20); c.fill();
     c.fillStyle = C[1]; c.fillRect(-160, -212, 320, 18);  // collar
     // chest tells the armies apart (1815): French habit-veste = wide white plastron with two button rows;
@@ -242,6 +254,38 @@ const K = {
     } else if (o.side === 'navy') {  // reefer jacket, double row of brass buttons
       c.fillStyle = '#ece6d8'; c.beginPath(); c.moveTo(-30, -200); c.lineTo(0, -150); c.lineTo(30, -200); c.fill(); c.fillStyle = '#16120f'; c.fillRect(-6, -196, 12, 40);
       c.fillStyle = C[2]; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(-36, -150 + i * 30, 6, 0, 7); c.arc(36, -150 + i * 30, 6, 0, 7); c.fill(); }
+    } else if (o.side === 'ijn') {  // IJN officer 第一種軍装 (dark navy 詰襟, closed at the throat, black braid edging, one row of 5 gold buttons) / o.whites 第二種軍装
+      const W = o.whites;
+      c.strokeStyle = W ? 'rgba(0,0,0,0.18)' : '#06080e'; c.lineWidth = W ? 3 : 7; c.beginPath(); c.moveTo(0, -196); c.lineTo(0, 20); c.stroke();  // front opening (braid edge)
+      if (!W) { c.strokeStyle = '#06080e'; c.lineWidth = 5; c.beginPath(); c.moveTo(-160, -194); c.quadraticCurveTo(0, -186, 160, -194); c.stroke(); }  // braid under the standing collar
+      c.fillStyle = '#d8b450'; for (let i = 0; i < 5; i++) { c.beginPath(); c.arc(0, -178 + i * 34, 6, 0, 7); c.fill(); }
+      if (W) { c.fillStyle = '#16120f'; [-1, 1].forEach(sd => { c.fillRect(sd * 98 - 22, -206, 44, 13); c.fillStyle = '#d8b450'; c.fillRect(sd * 98 - 22, -202, 44, 3); c.beginPath(); c.arc(sd * 98 + sd * 12, -199, 3, 0, 7); c.fill(); c.fillStyle = '#16120f'; }); }  // shoulder boards
+      if (o.stripes && !W) { c.fillStyle = '#d8b450'; [-1, 1].forEach(sd => { for (let k = 0; k < o.stripes; k++) c.fillRect(sd * 128 - 20, -58 + k * 11, 40, 5); }); }  // sleeve rank stripes
+    } else if (o.side === 'ijnrate' || o.side === 'usn') {  // sailors: square collar with stripes + neckerchief (IJN 水兵 / USN whites), or USN chambray shirt + dark trousers
+      const SQ = o.side === 'ijnrate' || o.whites, colCol = o.side === 'ijnrate' ? '#141a30' : '#1c2440';
+      if (SQ) {
+        c.fillStyle = colCol; c.beginPath(); c.moveTo(-110, -206); c.lineTo(-56, -206); c.lineTo(0, -120); c.lineTo(56, -206); c.lineTo(110, -206); c.lineTo(110, -170); c.lineTo(0, -96); c.lineTo(-110, -170); c.closePath(); c.fill();
+        if (o.side === 'ijnrate') { c.fillStyle = C[0]; c.beginPath(); c.moveTo(-40, -206); c.lineTo(0, -140); c.lineTo(40, -206); c.fill(); }  // jumper V front under the collar
+        else { c.fillStyle = '#ece8e0'; c.beginPath(); c.moveTo(-40, -206); c.lineTo(0, -140); c.lineTo(40, -206); c.fill(); }
+        c.strokeStyle = '#ece8e0'; c.lineWidth = 4; [7, 15].forEach(d => { c.beginPath(); c.moveTo(-112, -170 - d); c.lineTo(0, -96 - d); c.lineTo(112, -170 - d); c.stroke(); });  // collar stripes
+        const nk = o.side === 'ijnrate' ? '#f4f2ec' : '#141418';  // neckerchief
+        c.fillStyle = nk; c.beginPath(); c.moveTo(-26, -150); c.lineTo(26, -150); c.lineTo(10, -118); c.lineTo(-10, -118); c.closePath(); c.fill();
+        c.beginPath(); c.moveTo(-10, -120); c.lineTo(-20, -70); c.lineTo(-4, -76); c.lineTo(0, -116); c.lineTo(4, -76); c.lineTo(20, -70); c.lineTo(10, -120); c.closePath(); c.fill();
+      } else {  // USN dungarees: chambray work shirt (open collar, two patch pockets) over dark denim trousers
+        c.fillStyle = '#16120f'; c.globalAlpha = 0.25; c.beginPath(); c.moveTo(-40, -206); c.lineTo(0, -160); c.lineTo(40, -206); c.fill(); c.globalAlpha = 1;
+        c.fillStyle = '#f2d9c2'; c.beginPath(); c.moveTo(-26, -206); c.lineTo(0, -170); c.lineTo(26, -206); c.fill();  // open neck
+        c.strokeStyle = 'rgba(0,0,0,0.3)'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, -170); c.lineTo(0, -60); c.stroke(); [-1, 1].forEach(sd => c.strokeRect(sd * 58 - 24, -150, 48, 44));
+        c.fillStyle = '#ece8e0'; for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(0, -150 + i * 34, 4, 0, 7); c.fill(); }
+        c.fillStyle = '#232a3e'; c.fillRect(-160, -56, 320, 80); c.fillStyle = '#141418'; c.fillRect(-160, -60, 320, 10);  // trousers + belt
+      }
+    } else if (o.side === 'kmrate') {  // Kaiserliche Marine Matrose: wide square collar with three white stripes, black neckerchief tied in a white bow
+      c.fillStyle = '#0e1326'; c.beginPath(); c.moveTo(-124, -206); c.lineTo(-60, -206); c.lineTo(0, -116); c.lineTo(60, -206); c.lineTo(124, -206); c.lineTo(124, -160); c.lineTo(0, -82); c.lineTo(-124, -160); c.closePath(); c.fill();
+      c.fillStyle = C[0]; c.beginPath(); c.moveTo(-44, -206); c.lineTo(0, -136); c.lineTo(44, -206); c.fill();  // jumper V front under the collar
+      c.strokeStyle = '#f4f2ec'; c.lineWidth = 4; [6, 14, 22].forEach(d => { c.beginPath(); c.moveTo(-126, -160 - d); c.lineTo(0, -82 - d); c.lineTo(126, -160 - d); c.stroke(); });  // three collar stripes
+      c.fillStyle = '#0a0a0c'; c.beginPath(); c.moveTo(-30, -152); c.lineTo(30, -152); c.lineTo(12, -116); c.lineTo(-12, -116); c.closePath(); c.fill();  // black neckerchief
+      c.beginPath(); c.moveTo(-12, -118); c.lineTo(-24, -60); c.lineTo(-6, -66); c.lineTo(0, -112); c.lineTo(6, -66); c.lineTo(24, -60); c.lineTo(12, -118); c.closePath(); c.fill();
+      c.fillStyle = '#f4f2ec'; [-1, 1].forEach(sd => { c.beginPath(); c.moveTo(0, -116); c.lineTo(sd * 24, -128); c.lineTo(sd * 22, -102); c.closePath(); c.fill(); });  // white bow at the knot
+      c.beginPath(); c.arc(0, -115, 6, 0, 7); c.fill();
     } else if (o.side === 'suit' || o.side === 'work') {  // jacket lapels; suit: white shirt and tie
       if (o.side === 'suit') { c.fillStyle = '#ece6d8'; c.beginPath(); c.moveTo(-44, -204); c.lineTo(0, -110); c.lineTo(44, -204); c.fill(); c.fillStyle = o.tie || C[2]; c.beginPath(); c.moveTo(-9, -198); c.lineTo(9, -198); c.lineTo(13, -128); c.lineTo(0, -112); c.lineTo(-13, -128); c.closePath(); c.fill(); }
       c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 6; c.beginPath(); c.moveTo(-50, -206); c.lineTo(-6, -100); c.lineTo(-6, 0); c.moveTo(50, -206); c.lineTo(6, -100); c.stroke();
@@ -373,12 +417,35 @@ const K = {
       c.fillStyle = '#8a7a4a'; c.beginPath(); c.ellipse(0, -398, 98, 52, 0, Math.PI, 0); c.lineTo(98, -372); c.lineTo(-98, -372); c.fill(); rim();
       c.fillStyle = '#4a3a24'; c.beginPath(); c.ellipse(0, -368, 94, 14, 0, 0, Math.PI); c.fill(); star(0, -404, 15, '#e0bd5a');
     } else if (hat === 'peaked') {  // officer's peaked cap: band colour + badge by side
-      const top = o.capCol || { usaf: '#3a4b6e', wehr: '#5b6150', sov: '#6e6844', us: '#6b6440', navy: '#ece8e0', jap: '#8a7a4a', tommy: '#7a6a48', rum: '#6e6244' }[o.side] || '#2a2a2e';
-      const band = { usaf: '#16120f', wehr: '#3d4a3a', sov: '#c0282d', navy: '#16120f', jap: '#c0282d', tommy: '#5a4a30', rum: '#3a2c1e' }[o.side] || '#3a3a30';
+      const top = o.capCol || (o.whites && (o.side === 'ijn' || o.side === 'navy') ? '#eeebe2' : null) || { ijn: '#151a2a', usaf: '#3a4b6e', wehr: '#5b6150', sov: '#6e6844', us: '#6b6440', navy: '#ece8e0', jap: '#8a7a4a', tommy: '#7a6a48', rum: '#6e6244' }[o.side] || '#2a2a2e';
+      const band = { ijn: '#0a0a0c', usaf: '#16120f', wehr: '#3d4a3a', sov: '#c0282d', navy: '#16120f', jap: '#c0282d', tommy: '#5a4a30', rum: '#3a2c1e' }[o.side] || '#3a3a30';
       c.fillStyle = band; c.fillRect(-88, -420, 176, 52); c.fillStyle = top; c.beginPath(); c.moveTo(-88, -418); c.quadraticCurveTo(-150, -470, -60, -476); c.quadraticCurveTo(0, -470, 60, -476); c.quadraticCurveTo(150, -470, 88, -418); c.closePath(); c.fill(); rim();
       c.fillStyle = '#16120f'; c.beginPath(); c.ellipse(0, -366, 100, 18, 0, 0, Math.PI); c.fill();
       if (o.side === 'sov') star(0, -398, 14, '#c0282d'); else if (o.side === 'wehr') { c.fillStyle = '#c9ccc0'; c.beginPath(); c.moveTo(-34, -440); c.lineTo(0, -428); c.lineTo(34, -440); c.lineTo(0, -420); c.closePath(); c.fill(); c.beginPath(); c.arc(0, -396, 9, 0, 7); c.fill(); }
-      else { c.fillStyle = '#d8b450'; c.beginPath(); c.arc(0, -400, 12, 0, 7); c.fill(); }
+      else if (o.side === 'ijn') {  // IJN cap badge: gold anchor inside a ring of cherry-blossom leaves
+        c.fillStyle = '#d8b450'; for (let k = 0; k < 7; k++) { const a = Math.PI * (0.15 + k * 0.7 / 6) * 2 - Math.PI * 0.2; c.beginPath(); c.ellipse(Math.cos(a + Math.PI / 2) * 20, -396 + Math.sin(a + Math.PI / 2) * 20, 6, 4, a, 0, 7); c.fill(); }
+        c.beginPath(); c.arc(0, -418, 7, 0, 7); c.fill(); c.strokeStyle = '#d8b450'; c.lineWidth = 4; c.beginPath(); c.moveTo(0, -410); c.lineTo(0, -386); c.moveTo(-9, -404); c.lineTo(9, -404); c.stroke(); c.beginPath(); c.arc(0, -394, 10, 0.3, Math.PI - 0.3); c.stroke();
+      } else if (o.side === 'navy') {  // US Navy officer: gold eagle with spread wings over a silver shield, gold chin strap
+        c.fillStyle = '#d8b450'; c.beginPath(); c.moveTo(-36, -414); c.quadraticCurveTo(-14, -392, 0, -404); c.quadraticCurveTo(14, -392, 36, -414); c.quadraticCurveTo(14, -400, 0, -394); c.quadraticCurveTo(-14, -400, -36, -414); c.fill();
+        c.beginPath(); c.arc(0, -410, 6, 0, 7); c.fill(); c.fillStyle = '#c9ccd0'; c.beginPath(); c.moveTo(-9, -398); c.lineTo(9, -398); c.lineTo(9, -388); c.lineTo(0, -380); c.lineTo(-9, -388); c.closePath(); c.fill();
+        c.fillStyle = '#d8b450'; c.fillRect(-88, -376, 176, 5);
+      } else { c.fillStyle = '#d8b450'; c.beginPath(); c.arc(0, -400, 12, 0, 7); c.fill(); }
+    } else if (hat === 'jpsailor') {  // IJN 水兵帽: round brimless cap, black ribbon band with gold characters (dashes), two short tails at the back
+      c.fillStyle = '#141a30'; c.beginPath(); c.ellipse(0, -420, 112, 30, 0, 0, 7); c.fill(); rim();
+      c.beginPath(); c.moveTo(-96, -414); c.lineTo(-92, -366); c.quadraticCurveTo(0, -356, 92, -366); c.lineTo(96, -414); c.closePath(); c.fill();
+      c.fillStyle = '#0a0a0c'; c.beginPath(); c.moveTo(-94, -394); c.quadraticCurveTo(0, -384, 94, -394); c.lineTo(92, -368); c.quadraticCurveTo(0, -358, -92, -368); c.closePath(); c.fill();
+      c.fillStyle = '#d8b450'; for (let k = -3; k <= 3; k++) c.fillRect(k * 16 - 5, -382 + Math.abs(k) * 0.6, 10, 4);
+      c.fillStyle = '#0a0a0c'; [[96, -380, 120, -326], [90, -376, 104, -322]].forEach(([a1, b1, a2, b2]) => { c.beginPath(); c.moveTo(a1, b1); c.lineTo(a2, b2); c.lineTo(a2 - 9, b2 + 4); c.lineTo(a1 - 10, b1 + 4); c.closePath(); c.fill(); });
+    } else if (hat === 'kmsailor') {  // Kaiserliche Marine Tellermütze: wide flat crown, black ribbon band with gold dashes (no text), two long tails down the back
+      c.fillStyle = '#0a0a0c'; [[106, -378, 170, -244], [94, -374, 150, -232]].forEach(([a1, b1, a2, b2]) => { c.beginPath(); c.moveTo(a1, b1); c.lineTo(a2, b2); c.lineTo(a2 - 12, b2 + 6); c.lineTo(a2 - 18, b2 - 2); c.lineTo(a1 - 12, b1 + 4); c.closePath(); c.fill(); });  // long tails
+      c.fillStyle = '#121830'; c.beginPath(); c.ellipse(0, -426, 136, 30, 0, 0, 7); c.fill(); rim();
+      c.beginPath(); c.moveTo(-108, -420); c.lineTo(-100, -364); c.quadraticCurveTo(0, -354, 100, -364); c.lineTo(108, -420); c.closePath(); c.fill();
+      c.fillStyle = '#0a0a0c'; c.beginPath(); c.moveTo(-104, -398); c.quadraticCurveTo(0, -388, 104, -398); c.lineTo(100, -366); c.quadraticCurveTo(0, -356, -100, -366); c.closePath(); c.fill();
+      c.fillStyle = '#d8b450'; for (let k = -4; k <= 4; k++) c.fillRect(k * 18 - 5, -384 + Math.abs(k) * 0.6, 10, 4);
+    } else if (hat === 'dixie') {  // US Navy white "dixie cup": round crown, brim turned up all round
+      c.fillStyle = '#f2efe8'; c.beginPath(); c.moveTo(-84, -380); c.bezierCurveTo(-90, -470, 90, -470, 84, -380); c.closePath(); c.fill(); c.strokeStyle = 'rgba(60,60,70,0.55)'; c.lineWidth = 3; c.stroke();
+      c.fillStyle = '#ffffff'; c.beginPath(); c.moveTo(-104, -404); c.quadraticCurveTo(0, -418, 104, -404); c.lineTo(96, -366); c.quadraticCurveTo(0, -354, -96, -366); c.closePath(); c.fill(); c.stroke();
+      c.strokeStyle = 'rgba(60,60,70,0.3)'; c.lineWidth = 2; for (let k = 0; k < 2; k++) { c.beginPath(); c.moveTo(-98, -396 + k * 12); c.quadraticCurveTo(0, -408 + k * 12, 98, -396 + k * 12); c.stroke(); }
     } else if (hat === 'space') {  // pressure-suit helmet: clear bubble over the head, metal neck ring; cosmo: red "СССР" on the shell
       c.fillStyle = 'rgba(200,220,240,0.16)'; c.beginPath(); c.ellipse(0, -292, 150, 140, 0, 0, 7); c.fill();
       c.strokeStyle = 'rgba(70,70,76,0.85)'; c.lineWidth = 9; c.stroke();

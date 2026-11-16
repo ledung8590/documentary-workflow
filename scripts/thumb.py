@@ -95,16 +95,17 @@ def panel(s, lang):
         od.line((0, y, W, y), fill=(22, 26, 34, a))
     img = Image.alpha_composite(img.convert('RGBA'), ov); d = ImageDraw.Draw(img)
     if s.get('photo2'):
-        p2 = photo(s['photo2'], 330, 210); img.paste(Image.new('RGB', (342, 222), (235, 232, 224)), (W - 372, H - 262)); img.paste(p2, (W - 366, H - 256))
-    maxw = W - (420 if s.get('photo2') else 80) - 40
+        iw, ih = s.get('inset_w', 330), s.get('inset_h', 210)  # inset size: a long ship reads better wide and low (film 91)
+        p2 = photo(s['photo2'], iw, ih, s.get('fx2', 0.5), s.get('fy2', 0.5)); img.paste(Image.new('RGB', (iw + 12, ih + 12), (235, 232, 224)), (W - iw - 42, H - ih - 52)); img.paste(p2, (W - iw - 36, H - ih - 46))
+    maxw = W - ((s.get('inset_w', 330) + 90) if s.get('photo2') else 80) - 40
     ft = fit(d, s['title'], 'serif', 118, lang, maxw); d.text((40, H - 300), s['title'], font=ft, fill=(255, 255, 255))
     if s.get('title2') or s.get('red'):
         f2 = font('serif', 58, lang); x = 44; y = H - 150
         if s.get('title2'):
             d.text((x, y + 20), s['title2'], font=f2, fill=(238, 236, 230)); x += d.textlength(s['title2'] + ' ', font=f2)
         if s.get('red'):
-            fr = fit(d, s['red'], 'serif', 96, lang, maxw - (x - 44)); d.text((x, y - 6), s['red'], font=fr, fill=RED)
-    label(d, 22, 18, s['tag'], lang, 24, bg=(14, 14, 16))
+            fr = fit(d, s['red'], 'serif', 96, lang, maxw - (x - 44)); d.text((x, y - 6), s['red'], font=fr, fill=tuple(s.get('red_col', RED)), stroke_width=s.get('red_stroke', 0), stroke_fill=(10, 10, 12))
+    label(d, 22, 18, s['tag'], lang, s.get('tag_size', 24), bg=(14, 14, 16))
     credit(d, s.get('credit'), lang)
     return img
 

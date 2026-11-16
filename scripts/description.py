@@ -173,14 +173,18 @@ def main():
                 out += [L.get('pdids', 'Public-domain files, Commons ID:') + ' ' + ', '.join(sorted(set(pd_ids)))]
             if not compact and not a.cc_links:  # the compact list names authors only, there are no IDs to look up
                 out += [L.get('idurl', 'File pages: https://commons.wikimedia.org/?curid= followed by the ID.')]
-        out += [L['maps'], L['music'], '', ' '.join(hashtags), '', 'TAGS', ', '.join(tags)]
+        sat = any('Sentinel' in str(c.get('credit', '')) for t in tl['tracks'] for c in t['clips'])  # paper/dark looks draw flat Natural Earth maps (film 91)
+        flat = {'en': 'Maps: drawn from Natural Earth (public domain).', 'de': 'Karten: auf Grundlage von Natural Earth (gemeinfrei).',
+                'vi': 'Bản đồ: vẽ từ Natural Earth (phạm vi công cộng).', 'ja': '地図: Natural Earth（パブリックドメイン）をもとに作成。',
+                'es': 'Mapas: elaborados con Natural Earth (dominio público).'}
+        out += [L['maps'] if sat else flat.get(lang, flat['en']), L['music'], '', ' '.join(hashtags), '', 'TAGS', ', '.join(tags)]
         txt = '\n'.join(out)
         return (nolinks(txt) if a.no_links else txt).replace('<', '').replace('>', '')  # YouTube rejects angle brackets anywhere in a description
 
     if a.credits_only:  # the CC block and licence deeds only; the story description has no maps, PD archives or channel line
         lines = build(len(pd)).split('\n')
         i = lines.index(L['src']) + 2 if L['src'] in lines else 0
-        print('\n'.join(x for x in lines[i:lines.index(L['maps'])] if x))
+        print('\n'.join(x for x in lines[i:next(k for k, x in enumerate(lines) if x == L['maps'] or x.startswith(('Maps:', 'Karten:', 'Bản đồ:', '地図:', 'Mapas:')))] if x))
         return
     n = len(pd)
     txt = build(n, with_ids=True) if len(build(n, with_ids=True)) <= LIMIT else build(n)  # the fullest credits that fit

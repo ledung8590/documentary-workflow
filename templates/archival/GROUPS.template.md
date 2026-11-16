@@ -56,7 +56,7 @@ board/doll API: comments above `board(` and `doll(` in P/scenes/src/_kit.js.
 Types used in the reference: `chapter` {"n", "title"}, `date_tag` {"text"}, `lower_third` {"kicker","name","sub","plate":true,"plate2":true},
 `callout` {"text","plate":true}, `quote` {"kicker","title","lines":[…],"cps":16}, `question` {"text"}, `stat` cards with
 `items` (each `"at": "S043 \"500,000\""` on its word). See projects/_ref/moon/barb/overlays-*.txt for exact props.
-Book case English, no caps. Never a callout or date tag over a JS scene that has its own labels. Scene text never below y 860.
+Book case English, no caps. Never a callout or date tag over a JS scene that has its own labels. Scene text never below y 860. Scene text never under the top-right source label (y < 120 right of x 820; render adds it, stills do not show it): board titles top-left or below y 120; lookcheck flags it (film 91).
 Chapter cards: chapter numbers and titles exactly as in STORY.md. Group A also does the title card (film title) after S022.
 
 ## Checks before you report

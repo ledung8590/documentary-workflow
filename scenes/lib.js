@@ -75,7 +75,13 @@
     if (o.spacing) c.letterSpacing = o.spacing + 'px';
     if (o.shadow && !LOOK) { c.shadowColor = 'rgba(0,0,0,0.7)'; c.shadowBlur = 12; }
     const v = o.upper === false || (LOOK && o.upper !== true) ? str : (o.font === 'body' || o.font === 'mono' ? str : str.toUpperCase());  // looks: book case, no caps
-    c.fillText(v, x, y); c.restore();
+    c.fillText(v, x, y);
+    if (window.__texts && c.globalAlpha > 0.3 && String(v).trim()) {  // jsscene.mjs --texts: where scene text lands (label-zone check, film 91)
+      const w = c.measureText(v).width, al = o.align || 'left', x0 = al === 'center' ? x - w / 2 : al === 'right' ? x - w : x, m = c.getTransform();
+      const pts = [[x0, y - s * 0.85], [x0 + w, y - s * 0.85], [x0, y + s * 0.2], [x0 + w, y + s * 0.2]].map(([px, py]) => [m.a * px + m.c * py + m.e, m.b * px + m.d * py + m.f]);
+      window.__texts.push([String(v), Math.min(...pts.map(q => q[0])), Math.min(...pts.map(q => q[1])), Math.max(...pts.map(q => q[0])), Math.max(...pts.map(q => q[1]))]);
+    }
+    c.restore();
     font(c, o.font || 'head', s); return c.measureText(v).width;
   }
   function textW(c, str, f, s) { font(c, f, s); return c.measureText(str).width; }

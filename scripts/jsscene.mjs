@@ -1,6 +1,7 @@
 // Record a motion-graphics scene (scenes/engine.html + a scene .js) frame by frame in headless Chromium, encode with ffmpeg.
 //   node scripts/jsscene.mjs <scene.js> <out.mp4> [--fps 24] [--dur seconds] [--still t out.jpg]
 //   node scripts/jsscene.mjs <scene.js> <spans.json> --typing     typing spans, for typewriter SFX
+//   node scripts/jsscene.mjs <scene.js> <hits.json> --texts [--zone x0,y0,x1,y1]  scene text inside the top-right source label (lookcheck)
 //   node scripts/jsscene.mjs <scene.js> <out.mov> --alpha           transparent overlay (bg 'none', vignette 0) for a media_overlay fx clip
 //   node scripts/jsscene.mjs <scene.js> <events.json> --events     K.stamp/flash/burst/flashAt times, for SFX
 //   --look paper|dark|none   override the film look (default: brief.json "look", archival films paper)
@@ -49,6 +50,15 @@ if (args.includes('--typing')) {  // spans [[a, b], ...] (scene seconds) where L
   }
   if (a !== null) spans.push([+a.toFixed(3), +DUR.toFixed(3)]);
   fs.writeFileSync(out, JSON.stringify(spans));
+} else if (args.includes('--texts')) {  // [[text, t, x0, y0, x1, y1], ...]: scene text boxes in the top-right source-label zone (render.py label), every 0.5 s
+  const Z = opt('--zone', '840,22,1880,92').split(',').map(Number);  // the clip's real label box from render.credit_layer (lookcheck)
+  const hits = await page.evaluate(([dur, Z]) => {
+    const seen = new Map();
+    for (let t = 0.25; t < dur; t += 0.5) { window.__texts = []; window.renderAt(t);
+      for (const [v, x0, y0, x1, y1] of window.__texts) if (x1 > Z[0] && x0 < Z[2] && y1 > Z[1] && y0 < Z[3] && !seen.has(v)) seen.set(v, [v, +t.toFixed(2), Math.round(x0), Math.round(y0), Math.round(x1), Math.round(y1)]); }
+    window.__texts = null; return [...seen.values()];
+  }, [DUR, Z]);
+  fs.writeFileSync(out, JSON.stringify(hits));
 } else if (args.includes('--events')) {  // [[kind, t0], ...] of every K.stamp / K.flash / K.burst / K.flashAt the scene calls (scene seconds), for SFX
   const ev = await page.evaluate(([dur, fps]) => {
     const seen = new Map(), idx = { stamp: 6, flash: 5, burst: 5, flashAt: 2 };

@@ -4,7 +4,8 @@ PY scripts/lookcheck.py JOB      run after render_all.sh (docs/WORKFLOW.md stage
 For each media/scene-*.mp4 and media/map-*.mp4 used on the video track, three frames (25/50/75 %) are measured:
   - ground: the median colour of the frame border (outer 8 %) must be near the look's bg (scenes) or its land/sea (maps);
   - accents: strongly saturated pixels whose hue is far from the look's accent/accent2/highlight (and not a drawn doll or
-    a photo inside the scene) are counted; more than 3 % of the frame is flagged as off-palette colour.
+    a photo inside the scene) are counted; more than 3 % of the frame is flagged as off-palette colour;
+  - label: scene text (L.text boxes from jsscene.mjs --texts) under the clip's real top-right source label (render.credit_layer box; user 2026-11-17, film 91).
 User 2026-11-14: the 通史3 reference keeps one colour family for the whole film; our films mixed dark navy, brown,
 satellite green and bright reds, which read as modern and patchy.
 """
@@ -51,12 +52,26 @@ def main(job):
     tl = json.loads((d / 'timeline.json').read_text(encoding='utf-8'))
     srcs = sorted({c['src'] for t in tl['tracks'] if t['id'] == 'video' for c in t['clips']
                    if str(c.get('src', '')).startswith(('media/scene-', 'media/map-'))})
+    labels = {}  # the source label render.py draws over each scene clip: its real box (credit_layer), widest per file, +12 px margin
+    sys.path[:0] = [str(ROOT / 'scripts')]
+    import render as R
+    R.set_look(name)
+    for c in (c for t in tl['tracks'] if t['id'] == 'video' for c in t['clips'] if str(c.get('src', '')).startswith('media/scene-')):
+        line = ' · '.join(x for x in ((None if R.is_exhibit(c) else c.get('caption')), c.get('credit')) if x)
+        if c.get('label') and line:
+            line = c['label'] + '\n' + line
+        if not line or c.get('kind') == 'card':
+            continue
+        bb = R.credit_layer(line).getchannel('A').getbbox()
+        if bb:
+            o = labels.get(c['src']); b = [bb[0] - 12, bb[1] - 6, bb[2], bb[3] + 12]
+            labels[c['src']] = b if not o else [min(o[0], b[0]), min(o[1], b[1]), max(o[2], b[2]), max(o[3], b[3])]
     warn = 0
     for s in srcs:
         p = d / s; kind = 'map' if '/map-' in s else 'scene'
         if not p.exists():
             continue
-        L = dur(p); bad_g, bad_c = [], []
+        L = dur(p); bad_g, bad_c, bad_l = [], [], []
         for f in (0.25, 0.5, 0.75):
             a = frame(p, L * f)
             if a is None:
@@ -82,9 +97,19 @@ def main(job):
             print(f'!! {s}: ground {bad_g[0]} is not the {name} look ({lk["bg"] if kind == "scene" else "flat land/sea: render with the look, no satellite"}): use the default background / L.C.bg, not a fixed colour'); warn += 1
         if bad_c:
             print(f'!! {s}: {max(bad_c)} % of the frame in colours outside the {name} palette: use L.C.accent / accent2 / highlight'); warn += 1
+        js = d / 'scenes' / (Path(s).stem[len('scene-'):] + '.js')
+        box = labels.get(s)
+        if kind == 'scene' and js.exists() and box:  # scene text under the top-right source label (user 2026-11-17, film 91 bd-a-ask)
+            out = d / 'qa' / '_texts.json'
+            subprocess.run(['node', str(ROOT / 'scripts' / 'jsscene.mjs'), str(js), str(out), '--texts', '--zone', ','.join(map(str, box))], capture_output=True, cwd=ROOT)
+            hits = json.loads(out.read_text(encoding='utf-8')) if out.exists() else []
+            out.unlink(missing_ok=True)
+            if hits:
+                print(f'!! {s}: scene text under the top-right source label (label box {box}): ' + '; '.join(f'"{h[0][:24]}" at {h[1]} s y {h[3]}-{h[5]}' for h in hits[:3]) + ' -> move it top-left or below y 200 (docs/SCENES.md)'); warn += 1
     print(f'look {name}: {len(srcs)} scenes/maps checked, {warn} warnings')
     return warn
 
 
 if __name__ == '__main__':
+    sys.stdout.reconfigure(encoding='utf-8', errors='replace')  # Japanese scene text in the label-zone lines
     sys.exit(1 if main(sys.argv[1]) else 0)
