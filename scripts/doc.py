@@ -48,6 +48,9 @@ VOICES = {'en': ('Gubgw9l4dtIoQA9YZHgx', 'Brian - Deep, Resonant and Comforting'
 # (viewers disliked the sudden emphasis of per-sentence eleven_v4 jobs with emotion tags)
 MINIMAX_VOICES = {'vi': 'TUNG_DUY_V2', 'en': 'LS_US', 'es': 'LS_TBN', 'ja': 'LS_NHAT', 'de': 'LS_ĐỨC'}
 STORY_VOICES = MINIMAX_VOICES
+# every language uses AI84 eleven_v4 with VOICES again, films and stories, never MiniMax by default (user 2026-11-16:
+# de/ja first, then "Tiếng Việt, Anh và Tây Ban Nha cho luôn elevenlabs"); a job's brief.json voice can still pick MiniMax
+V4_LANGS = set(MINIMAX_VOICES) | set(VOICES)
 MINIMAX_LANG = {'vi': 'Vietnamese', 'en': 'English', 'de': 'German', 'es': 'Spanish', 'fr': 'French', 'ja': 'Japanese'}
 EDGE_DB = -40.0          # clip head/tail must be quieter than this after trimming
 TRIM_DB = -42.0          # speech onset/offset threshold (10 ms RMS)
@@ -189,11 +192,16 @@ def ingest(folder, story=False, only=None):
             (p / 'script.txt').write_text(text, encoding='utf-8')
             cfg['language'] = cfg.get('language') or detect_language(text)
             cfg['voice']['language_code'] = cfg['voice'].get('language_code') or cfg['language']
-            if cfg['voice'].get('provider', 'ai84') == 'ai84' and not cfg['voice'].get('voice_id') and cfg['language'] in MINIMAX_VOICES:
+            # German and Japanese (films AND stories) use AI84 eleven_v4 (Robert Ranger / Koichi Yashiro): MiniMax LS_ĐỨC read a
+            # third of the years as 'eintausendneunhundert...' (Stalingrad, user 2026-11-16 "v4 cả đi + cho cả nhật")
+            mm_ok = cfg['language'] in MINIMAX_VOICES and cfg['language'] not in V4_LANGS
+            if cfg['voice'].get('provider', 'ai84') == 'ai84' and not cfg['voice'].get('voice_id') and mm_ok:
                 cfg['voice'].update(provider='minimax', voice_name=MINIMAX_VOICES[cfg['language']], model='speech-2.6-hd',
                                     chunked=True, chunk_chars=9500, audio_tags=False)
             if not cfg['voice'].get('voice_id') and cfg['language'] in VOICES and cfg['voice'].get('provider') != 'minimax':
                 cfg['voice']['voice_id'], cfg['voice']['voice_name'] = VOICES[cfg['language']]
+                # eleven_v4 read in whole chunks like MiniMax, no emotion tags (faster; user 2026-11-16 "vẫn cụm như minimax")
+                cfg['voice'].update(chunked=True, chunk_chars=cfg['voice'].get('chunk_chars') or 9500, audio_tags=False)
             print(f'{job}: language {cfg["language"]}, voice {cfg["voice"].get("voice_name") or cfg["voice"]["voice_id"] or "NOT SET"}')
         write(p / 'brief.json', cfg)
         if state.get('input_digest'):
@@ -287,6 +295,36 @@ def spoken(text):
     text = re.sub(r'(\d)\.\s+(\d{3})', r'\1.\2', text)
     text = re.sub(r'(\w)-\s+(\w)', r'\1-\2', text)
     return re.sub(r'(\d)\s*mm\b', r'\1 li', text)
+
+
+_DE1 = ['', 'ein', 'zwei', 'drei', 'vier', 'fünf', 'sechs', 'sieben', 'acht', 'neun']
+_DE10 = ['zehn', 'elf', 'zwölf', 'dreizehn', 'vierzehn', 'fünfzehn', 'sechzehn', 'siebzehn', 'achtzehn', 'neunzehn']
+_DETENS = ['', '', 'zwanzig', 'dreißig', 'vierzig', 'fünfzig', 'sechzig', 'siebzig', 'achtzig', 'neunzig']
+
+
+def de_years(text):
+    """German years 1100-1999 as words ('1942' -> 'neunzehnhundertzweiundvierzig'). MiniMax's German voice read about a
+    third of the digit years as 'eintausendneunhundert...' (Stalingrad film 2026-11-16: 97 sentences re-voiced); ElevenLabs
+    v4 never did. Only the spoken text changes; subtitles keep the digits."""
+    def two(n):
+        if n < 10:
+            return 'eins' if n == 1 else _DE1[n]
+        if n < 20:
+            return _DE10[n - 10]
+        t, o = divmod(n, 10)
+        return (_DE1[o] + 'und' if o else '') + _DETENS[t]
+
+    def year(m):
+        hi, lo = divmod(int(m.group(0)), 100)
+        return two(hi) + 'hundert' + (two(lo) if lo else '')
+    out = re.sub(r'(?<![\d.,])1[1-9]\d\d(?![\d.,]\d)', year, text)
+    return out[:1].upper() + out[1:] if out[:1] != text[:1] else out
+
+
+def minimax_text(s, voice):
+    """What the MiniMax cloned voice is sent for one sentence (`say` wins; German years spelled out)."""
+    sp = (s.get('say') or spoken(s['text'])).strip()
+    return de_years(sp) if not s.get('say') and (voice.get('language_code') or '')[:2] == 'de' else sp
 
 
 def voice_gen(job, do_run=False, only=None):
@@ -384,7 +422,10 @@ def v4_request(s, voice):
     """Spoken text with the emotion tag, and voice settings, for eleven_v4 via AI84 (per-sentence `tag`/`say` override).
     MiniMax (cloned voices): plain text, one speed for the whole job, no per-sentence stretch: the voice's own reading is kept."""
     if voice.get('provider') == 'minimax':
-        return (s.get('say') or spoken(s['text'])).strip(), {'speed': float(voice.get('speed', 1.0))}
+        return minimax_text(s, voice), {'speed': float(voice.get('speed', 1.0))}
+    if voice.get('audio_tags') is False:  # v4 in whole chunks like MiniMax (user 2026-11-16): no emotion tag, one speed, no stretch
+        return (s.get('say') or spoken(s['text'])).strip(), {'stability': 0.5, 'similarity_boost': 0.8, 'style': 0.35,
+                                                             'speed': float(voice.get('speed', 1.0)), 'use_speaker_boost': True}
     tag = s.get('tag', V4_TAGS.get(s['emotion'], ''))
     settings = {'stability': 0.5, 'similarity_boost': 0.8, 'style': 0.35, 'speed': V4_SPEED.get(s['emotion'], 1.0),
                 'use_speaker_boost': True, **voice.get('settings', {}).get(s['emotion'], {})}
@@ -578,7 +619,8 @@ def chunk_request(sents, voice):
     tagged, plain, spans = '', '', []
     for k, s in enumerate(sents):
         sep = '' if k == 0 else ('\n' if s.get('paragraph') != sents[k - 1].get('paragraph') else ' ')
-        tg = v4_request(s, voice)[0]; sp = s.get('say') or spoken(s['text'])
+        tg = v4_request(s, voice)[0]
+        sp = minimax_text(s, voice) if voice.get('provider') == 'minimax' else s.get('say') or spoken(s['text'])
         tagged += sep + tg; plain += sep; spans.append((len(plain), len(plain) + len(sp))); plain += sp
     if voice.get('provider') == 'minimax':
         return tagged, plain, spans, {'speed': float(voice.get('speed', 1.0))}

@@ -131,7 +131,7 @@ def main():
     intro = Path(a.intro).read_text(encoding='utf-8').strip()
     note = Path(a.note).read_text(encoding='utf-8').strip() if a.note else ''
 
-    def build(n_pd, compact=False, with_ids=False):
+    def build(n_pd, compact=False, with_ids=False, nosig=False):
         orgs = {name for _, name in ORGS}
         names = [k for k, _ in pd.most_common() if k in orgs] + [k for k, _ in pd.most_common() if k not in orgs][:min(n_pd, 12)]
         out = [intro, '', L['ch'], f'0:00 {L["first"]}'] + [f'{ts(s)} {t}' for s, t in sorted(chapters)]
@@ -145,7 +145,7 @@ def main():
             for cj in (d / 'media' / 'candidates').glob('*/candidates.json'):
                 for c_ in json.loads(cj.read_text(encoding='utf-8'))['candidates']:
                     if c_.get('source') == 'commons' and str(c_.get('id', '')).isdigit(): curid[c_['page']] = c_['id']
-            ba_ = lambda i: re.sub(r'^(Bild .+?) \(ID (\d+)\)$', r'\1 https://commons.wikimedia.org/?curid=\2', i)  # Bundesarchiv: signature + its file link
+            ba_ = lambda i: re.sub(r'^(Bild .+?) \(ID (\d+)\)$', r'https://commons.wikimedia.org/?curid=\2' if nosig else r'\1 https://commons.wikimedia.org/?curid=\2', i)  # Bundesarchiv: signature + its file link (link only when too long)
             ids_ = lambda v: sorted({ba_(i) if re.match(r'Bild .+ \(ID \d+\)$', i) else('https://commons.wikimedia.org/?curid=' + (i[3:] if i.startswith('ID ') else curid[i])) if (i.startswith('ID ') or i in curid) else i for i in v})
             short = lambda au: re.sub(r'\s+from\s+[^,]*', '', re.sub(r';.*$', '', au)).strip()[:48]
             out += [L['cc']] + [f'- {short(au)}, {lic}: ' + ' '.join(ids_(ids))
@@ -190,6 +190,10 @@ def main():
         n = len(pd); txt = build(n, True)
         while len(txt) > LIMIT and n > 3:
             n -= 3; txt = build(n, True)
+    if len(txt) > LIMIT and a.cc_links:  # Stalingrad 2026-11-16: ~60 Bundesarchiv files; drop the Bild signatures, keep every file link
+        n = len(pd); txt = build(n, True, nosig=True)
+        while len(txt) > LIMIT and n > 3:
+            n -= 3; txt = build(n, True, nosig=True)
     if len(txt) > LIMIT:
         (d / "qa" / "description_too_long.txt").write_text(txt, encoding="utf-8"); sys.exit(f"{len(txt)} characters even with a short author list: shorten the intro or note")
     (d / 'description_youtube.txt').write_text(txt + '\n', encoding='utf-8')

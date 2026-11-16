@@ -19,7 +19,7 @@ Optional `input/<name>.json` (or `job.json` in the folder): `title`, `language`,
 `ingest` detects the script language (ja / vi / es / de / en; `language` overrides) and picks the narrator (`VOICES` in `doc.py`: en Brian, es Alberto, de Robert Ranger, vi Tung Dang, ja Koichi Yashiro). Every on-screen word follows it: title, `CHAPTER`/`CHƯƠNG`/`CAPÍTULO`/`KAPITEL`, cards, subtitles.
 
 ## Voice
-Vietnamese and US English stories use the user's MiniMax cloned voices on AI84 by default: TUNG_DUY_V2 (vi) and LS_US (en). Whole chunks of up to 9,500 characters each are read with the voice's own expression, then Whisper cuts them into sentences for the subtitles (`docs/VOICE.md`, MiniMax section). Other languages keep the per-sentence AI84 eleven_v4 voice. The script must pass `storycheck.py` before any voice, so the voice is always generated here, never outside.
+Stories use AI84 eleven_v4 in whole chunks without emotion tags (cut into sentences by Whisper), with the language's voice from `VOICES` in doc.py (user 2026-11-16: ElevenLabs v4 for every language again; the MiniMax cloned voices TUNG_DUY_V2/LS_US are opt-in via job.json `voice`). The script must pass `storycheck.py` before any voice, so the voice is always generated here, never outside.
 
 ## Images without the user's folder: Z-Image local (default since 2026-11-14)
 When a story arrives without images, generate them on the local **Z-Image Turbo** (ComfyUI) by default: read `docs/ZIMAGE.md` for the settings, the prompt rules and the runner. User rule 2026-11-14: TST Auto Generate Image is broken and switched off, so do not use it unless the user asks for it again. On Vitebsk (2026-11-14) TST ran ~24 s per image (87 images in 30 min, then abandoned), Z-Image ~9 s.

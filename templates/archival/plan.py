@@ -143,6 +143,10 @@ def check():
             flag = '! long still'
         elif kind == 'vid' and L > 6.5:
             flag = '! long clip'
+        if kind == 'scene' and not (D / 'scenes' / 'src' / f"{s['src'].split(':', 1)[1]}.js").exists():
+            flag += ' !! MISSING scene source'  # film 2026-11-16: e-zivil was planned but never written, the draft render crashed at the end
+        if kind == 'map' and not (D / 'maps' / 'src' / f"{s['src'].split(':', 1)[1]}.json").exists():
+            flag += ' !! MISSING map source'
         key, _, tin = s['src'].replace('+exhibit', '').partition('@')  # a mounted exhibit is the same candidate
         if kind in ('pick', 'vid'):  # the same file can sit under several search tags: compare the source id
             tag, _, k = key.split(':', 1)[1].partition('#')

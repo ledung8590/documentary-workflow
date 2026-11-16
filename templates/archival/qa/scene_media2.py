@@ -22,7 +22,10 @@ out, miss = {}, []
 for f in sorted((D / 'scenes' / 'src').glob('*.js')):
     if f.stem.startswith('_'):
         continue
-    names = sorted({m.group(0) for m in pat.finditer(f.read_text(encoding='utf-8'))})
+    names = {m.group(0) for m in pat.finditer(f.read_text(encoding='utf-8'))}
+    for gj in (D / 'qa').glob('scene_media-*.json'):  # group lists: scenes that build file names in code (dImg('p-d-kut-2'))
+        names |= {Path(x).name for x in json.loads(gj.read_text(encoding='utf-8')).get(f.stem, [None, []])[1]}
+    names = sorted(names)
     credits, files = [], []
     for name in names:
         stem = name.rsplit('.', 1)[0]

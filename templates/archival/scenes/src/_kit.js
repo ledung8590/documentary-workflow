@@ -183,15 +183,16 @@ const K = {
   //   oval US belt plate; hat 'kepi' turns into the dark blue forage cap with a brass bugle), 'confed' (Confederate cadet-grey shell jacket,
   //   o.butternut for the brown-yellow homespun, light-blue collar trim, seven brass buttons, white haversack strap, CS plate; hat 'slouch'
   //   = wide soft felt hat, o.capCol), 'iraq' (Iraqi army 1991 olive field tunic; hat 'beret', black by default, o.capCol for the
-  //   Republican Guard red). Sheet: projects/<film-90+>/qa/w/doll-costumes.jpg
+  //   Republican Guard red). since 2026-11-16 (Stalingrad film): 'rum' (Romanian army 1942 khaki-brown tunic, blue-yellow-red breast patch;
+  //   hat 'rumhelm' = M1939 Dutch-pattern helmet with an even all-round brim, or 'peaked' for officers). Sheet: projects/<film-90+>/qa/w/doll-costumes.jpg
   //   o.rifle (bolt-action), o.binos (binoculars on the chest), o.helmCol (helmet paint). A film needing a costume not listed here
   //   adds it in THIS function (templates/archival kit), drawn the same way, so every later film has it.
   doll(c, L, x, y, h, t, o = {}) {
     const C = ({ pru: ['#141a2b', '#c0282d', '#ece6d8'], fra: ['#2f5fc4', '#f4f0e6', '#ece6d8'], brit: ['#b52a2c', '#ece6d8', '#22305a'], civ: ['#6a5238', '#d9cfb8', '#3a2e22'], rus: ['#34552f', '#c0282d', '#ece6d8'], dnam: ['#7a1f1a', '#1a1612', '#c9a24a'], quan: ['#1f2a5a', '#c9a24a', '#c9a24a'], dan: ['#3a3128', '#2a221a', '#5a4a38'], mar: ['#1c2440', '#c0282d', '#ece6d8'],
       wehr: ['#5b6150', '#3d4a3a', '#1e1c18'], sov: ['#7c7550', '#6e6844', '#4a3424'], us: ['#6b6440', '#5c5636', '#4a4630'], tommy: ['#7a6a48', '#6a5c3e', '#5a4a30'], jap: ['#8a7a4a', '#7a6a40', '#5a4228'],
       navy: ['#1c2440', '#141a30', '#d8b450'], usaf: ['#3a4b6e', '#2c3a58', '#1a1c22'], astro: ['#e8e6e0', '#c9c6be', '#8a8a90'], cosmo: ['#e4e0d6', '#c0282d', '#8a8a90'], lab: ['#ecebe6', '#d8d6cf', '#3a3a40'], suit: ['#23262c', '#1a1c22', '#7a1f1a'], work: ['#4a4a52', '#3a3a40', '#2a2420'],
-      union: ['#232c4a', '#1c2440', '#d8b450'], confed: ['#7d796e', '#6a665c', '#d8b450'], iraq: ['#5a5c3c', '#4c4e32', '#3a3424'] }[o.side || 'pru']).slice();
-    const MOD = ['wehr', 'sov', 'us', 'tommy', 'jap', 'iraq'].includes(o.side), NEW = MOD || ['navy', 'suit', 'work', 'usaf', 'astro', 'cosmo', 'lab', 'union', 'confed'].includes(o.side);
+      union: ['#232c4a', '#1c2440', '#d8b450'], confed: ['#7d796e', '#6a665c', '#d8b450'], iraq: ['#5a5c3c', '#4c4e32', '#3a3424'], rum: ['#6e6244', '#5e5438', '#3a2c1e'] }[o.side || 'pru']).slice();
+    const MOD = ['wehr', 'sov', 'us', 'tommy', 'jap', 'iraq', 'rum'].includes(o.side), NEW = MOD || ['navy', 'suit', 'work', 'usaf', 'astro', 'cosmo', 'lab', 'union', 'confed'].includes(o.side);
     if (o.side === 'confed' && o.butternut) C[0] = '#8c7148';
     const star = (sx, sy, r, col) => { c.fillStyle = col; c.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.42 : r; c.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr); } c.closePath(); c.fill(); };
     if (o.coat) C[0] = o.coat;  // e.g. the emperor's yellow robe
@@ -230,12 +231,13 @@ const K = {
       c.fillStyle = '#141210'; c.fillRect(-160, -84, 320, 18); c.fillStyle = '#d8b450'; c.beginPath(); c.ellipse(0, -75, 26, 14, 0, 0, 7); c.fill();  // belt + plate
       c.fillStyle = '#141210'; c.font = 'bold 15px serif'; c.textAlign = 'center'; c.fillText(U ? 'US' : 'CS', 0, -70);
     } else if (MOD) {  // field tunic: breast pockets with flaps, one button row (sov: short placket), waist belt
-      const btn = o.side === 'us' || o.side === 'tommy' || o.side === 'iraq' ? '#8a7a4a' : o.side === 'jap' ? '#c9a24a' : '#9a9a8a';
+      const btn = o.side === 'us' || o.side === 'tommy' || o.side === 'iraq' || o.side === 'rum' ? '#8a7a4a' : o.side === 'jap' ? '#c9a24a' : '#9a9a8a';
       c.fillStyle = 'rgba(0,0,0,0.18)'; [-1, 1].forEach(sd => { c.fillRect(sd * 62 - 30, -170, 60, 54); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(sd * 62 - 32, -172, 64, 14); c.fillStyle = 'rgba(0,0,0,0.18)'; });
       c.fillStyle = btn; const nb = o.side === 'sov' ? 2 : 5; for (let i = 0; i < nb; i++) { c.beginPath(); c.arc(0, -186 + i * 26, 5, 0, 7); c.fill(); }
       if (o.side === 'wehr') { c.fillStyle = '#c9ccc0'; [-1, 1].forEach(sd => c.fillRect(sd * 40 - 14, -210, 28, 7)); c.fillStyle = '#b8b8a8'; c.beginPath(); c.moveTo(-40, -150); c.lineTo(-62, -160); c.lineTo(-40, -144); c.lineTo(-18, -160); c.closePath(); c.fill(); }  // collar Litzen, breast eagle
       if (o.side === 'sov') { c.fillStyle = '#c0282d'; [-1, 1].forEach(sd => c.fillRect(sd * 46 - 14, -212, 28, 16)); }  // collar tabs
       if (o.side === 'jap') { c.fillStyle = '#c0282d'; [-1, 1].forEach(sd => c.fillRect(sd * 44 - 14, -212, 28, 14)); }
+      if (o.side === 'rum') { [['#2a4c9a', -10], ['#e0bd5a', 0], ['#c0282d', 10]].forEach(([col, dx]) => { c.fillStyle = col; c.fillRect(-66 + dx - 5, -168, 10, 24); }); }  // Romanian blue-yellow-red patch on the left breast
       c.fillStyle = C[2]; c.fillRect(-160, -78, 320, 18); c.fillStyle = '#9a9a8a'; c.fillRect(-16, -80, 32, 22);  // belt + buckle
     } else if (o.side === 'navy') {  // reefer jacket, double row of brass buttons
       c.fillStyle = '#ece6d8'; c.beginPath(); c.moveTo(-30, -200); c.lineTo(0, -150); c.lineTo(30, -200); c.fill(); c.fillStyle = '#16120f'; c.fillRect(-6, -196, 12, 40);
@@ -349,11 +351,12 @@ const K = {
       c.fillStyle = '#1a1612'; c.beginPath(); c.ellipse(0, -372, 104, 40, 0, Math.PI, 0); c.fill(); rim();
       c.strokeStyle = 'rgba(210,205,195,0.25)'; c.lineWidth = 3; for (let k = 0; k < 3; k++) { c.beginPath(); c.ellipse(0, -360 - k * 10, 100 - k * 8, 30, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); }
     }
-    else if (hat === 'stahlhelm' || hat === 'm1' || hat === 'brodie') {  // steel helmets: dome + (M35) flared skirt / (M1) small rim / (Brodie) wide brim
-      const col = o.helmCol || { stahlhelm: '#565d4c', m1: '#5a5a3c', brodie: '#5e5a40' }[hat];
+    else if (hat === 'stahlhelm' || hat === 'm1' || hat === 'brodie' || hat === 'rumhelm') {  // steel helmets: dome + (M35) flared skirt / (M1) small rim / (Brodie) wide brim
+      const col = o.helmCol || { stahlhelm: '#565d4c', m1: '#5a5a3c', brodie: '#5e5a40', rumhelm: '#5c5a3e' }[hat];
       const hg = c.createLinearGradient(-110, -470, 110, -340); hg.addColorStop(0, col); hg.addColorStop(1, '#1e2018'); c.fillStyle = hg; c.beginPath();
       if (hat === 'stahlhelm') { c.moveTo(-100, -360); c.bezierCurveTo(-108, -488, 108, -488, 100, -360); c.lineTo(134, -316); c.quadraticCurveTo(112, -330, 92, -338); c.lineTo(-92, -338); c.quadraticCurveTo(-112, -330, -134, -316); c.closePath(); }
       else if (hat === 'm1') { c.moveTo(-114, -346); c.bezierCurveTo(-116, -486, 116, -486, 114, -346); c.quadraticCurveTo(0, -362, -114, -346); }
+      else if (hat === 'rumhelm') { c.moveTo(-138, -342); c.quadraticCurveTo(-118, -356, -104, -360); c.bezierCurveTo(-112, -486, 112, -486, 104, -360); c.quadraticCurveTo(118, -356, 138, -342); c.quadraticCurveTo(0, -330, -138, -342); }  // Romanian M1939 (Dutch pattern): high dome, even all-round brim
       else { c.ellipse(0, -372, 158, 24, 0, 0, 7); c.moveTo(-92, -372); c.bezierCurveTo(-96, -460, 96, -460, 92, -372); }
       c.fill(); rim();
       c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 6; c.beginPath(); c.arc(-14, -392, 52, Math.PI * 1.15, Math.PI * 1.45); c.stroke();  // highlight
@@ -370,8 +373,8 @@ const K = {
       c.fillStyle = '#8a7a4a'; c.beginPath(); c.ellipse(0, -398, 98, 52, 0, Math.PI, 0); c.lineTo(98, -372); c.lineTo(-98, -372); c.fill(); rim();
       c.fillStyle = '#4a3a24'; c.beginPath(); c.ellipse(0, -368, 94, 14, 0, 0, Math.PI); c.fill(); star(0, -404, 15, '#e0bd5a');
     } else if (hat === 'peaked') {  // officer's peaked cap: band colour + badge by side
-      const top = o.capCol || { usaf: '#3a4b6e', wehr: '#5b6150', sov: '#6e6844', us: '#6b6440', navy: '#ece8e0', jap: '#8a7a4a', tommy: '#7a6a48' }[o.side] || '#2a2a2e';
-      const band = { usaf: '#16120f', wehr: '#3d4a3a', sov: '#c0282d', navy: '#16120f', jap: '#c0282d', tommy: '#5a4a30' }[o.side] || '#3a3a30';
+      const top = o.capCol || { usaf: '#3a4b6e', wehr: '#5b6150', sov: '#6e6844', us: '#6b6440', navy: '#ece8e0', jap: '#8a7a4a', tommy: '#7a6a48', rum: '#6e6244' }[o.side] || '#2a2a2e';
+      const band = { usaf: '#16120f', wehr: '#3d4a3a', sov: '#c0282d', navy: '#16120f', jap: '#c0282d', tommy: '#5a4a30', rum: '#3a2c1e' }[o.side] || '#3a3a30';
       c.fillStyle = band; c.fillRect(-88, -420, 176, 52); c.fillStyle = top; c.beginPath(); c.moveTo(-88, -418); c.quadraticCurveTo(-150, -470, -60, -476); c.quadraticCurveTo(0, -470, 60, -476); c.quadraticCurveTo(150, -470, 88, -418); c.closePath(); c.fill(); rim();
       c.fillStyle = '#16120f'; c.beginPath(); c.ellipse(0, -366, 100, 18, 0, 0, Math.PI); c.fill();
       if (o.side === 'sov') star(0, -398, 14, '#c0282d'); else if (o.side === 'wehr') { c.fillStyle = '#c9ccc0'; c.beginPath(); c.moveTo(-34, -440); c.lineTo(0, -428); c.lineTo(34, -440); c.lineTo(0, -420); c.closePath(); c.fill(); c.beginPath(); c.arc(0, -396, 9, 0, 7); c.fill(); }

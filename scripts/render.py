@@ -892,15 +892,16 @@ def mix_graph(d, tl, t0=0.0, t1=None, only=None):
             gain = c.get('gain_db', {'video': -20, 'original': -18, 'music': -16, 'sfx': -9}[tr['id']])
             ins += (['-stream_loop', '-1'] if c.get('loop') else []) + ['-i', str(p)]  # loop: short ambience under a long span
             fi, fo = c.get('fade_in', 0.15 if tr['id'] != 'sfx' else 0.005), c.get('fade_out', 0.3)
-            skip = max(0.0, t0 - c['start']) if win else 0.0  # window starts inside the clip
-            ms = int(max(0.0, c['start'] - t0) * 1000) if win else int(c['start'] * 1000)
+            # window starts inside the clip; a clip that starts before 0 (music pre-roll, Stalingrad 2026-11-16) is cut at 0
+            skip = max(0.0, t0 - c['start']) if win else max(0.0, -c['start'])
+            ms = int(max(0.0, c['start'] - t0) * 1000) if win else int(max(0.0, c['start']) * 1000)
             src_in = c.get('in', 0) if tr['id'] != 'video' else 0
             fade_in = f'afade=t=in:d={fi},' if not win or skip < fi else ''
             # music beds often build from near-silence (measured: -31 LUFS intro, -12 at the climax): even them out
             # ...and carve the voice's presence band (1-4 kHz) out of the music so piano/trumpet melodies do not mask the words
             level = ('dynaudnorm=f=400:g=31:p=0.9:m=8,loudnorm=I=-16:TP=-2:LRA=7,equalizer=f=2200:t=o:w=1.6:g=-4,'
                      if tr['id'] == 'music' else '')
-            if win:
+            if skip:
                 src_in = round(src_in + skip, 3)
             # key-line dips on music beds ("dips": [[start, end, dB], ...] in film seconds, from sound.txt "| dip |"):
             # after the levelling above, so dynaudnorm cannot lift the bed back; 0.6 s ramps either side
