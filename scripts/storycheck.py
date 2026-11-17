@@ -42,6 +42,37 @@ Operation Panzerfaust Panzer Panzers Infantry Artillery Platz Strasse Straße Ke
 Mỹ Việt Nam Pháp Nga Đức Trung Quốc Liên Xô Sư Đoàn Trung Đoàn Tiểu Đoàn Đại Đội Trung Đội Ông Bà Anh Chị Em Cô Chú Bác""".split())
 
 
+# 8. motifs: a renamed character is still the same character. Viewers of "The Last Line Before Berlin" (2026-11-17): "Railway
+# timetable again, seriously?", "How come in every story the tank crewmen are a prototype of the crewmen in the previous
+# videos?" The crewman who knows the railway timetable by heart was in 4 stories (Leo, Kranich, Thiel, Jost), the zoo hippo in 3,
+# a hero with a musical craft in 6. Each family = one regex on the lowercased text; more in stories/motifs.txt ("name = regex").
+MOTIFS = {
+    'the man who knows the railway timetable by heart / railway family': r'timetable|train schedule|reichsbahn|station ?master|signalman|sold tickets|fahrplan|kursbuch|giờ tàu',
+    'zoo animal / hippo and its keeper': r'\bhippo|\bzoo\b|zoo ?keeper|nilpferd',
+    'musical craft or perfect ear (tuner, organ, bells, tuning fork, harmonium)': r'tuning fork|piano tuner|organ builder|organist|harmonium|bell founder|bellows|\bbayan\b|accordion|stimmgabel|orgelbau|lên dây đàn',
+    'the stammerer who speaks clearly in action': r'stammer|stutter|stotter',
+    'chess by post / chess board': r'\bchess|schach',
+    'stamp collector': r'stamp collect|stamp album|postage stamp|overprint|philatel|briefmarke',
+    'postman / lost letter chased through the field post': r'field post|feldpost|postman|undelivered letter|briefträger',
+    'the man who writes receipts / keeps an inventory of everything': r'receipt|inventory|quittung',
+    'a pet or mascot carried in the vehicle': r'\bchicken\b|\brooster\b|\bkitten\b|\bpuppy\b|mascot',
+    'the lucky jar / food saved for the end': r'\bplums?\b|pflaumen',
+}
+CAST = re.compile(r"\b(son of an?|daughter of an?|worked as|had been an?|apprentice|by heart|before the war|before they drafted|in civilian life|"
+                  r"his father (?:was|is|had|ran|kept)|von beruf|lehrling|auswendig|vor dem krieg|con trai (?:của )?(?:một|ông)|vốn là|thuộc lòng)\b", re.I)
+
+
+def motifs():
+    m = dict(MOTIFS)
+    p = ROOT / 'stories' / 'motifs.txt'
+    if p.exists():
+        for line in p.read_text(encoding='utf-8').splitlines():
+            if '=' in line and not line.lstrip().startswith('#'):
+                k, v = line.split('=', 1)
+                m[k.strip()] = v.strip()
+    return {k: re.compile(v, re.I) for k, v in m.items()}
+
+
 def names_of(t):
     """Capitalised words used mid-sentence (so not just sentence starts), counted."""
     c = collections.Counter()
@@ -166,6 +197,8 @@ def check(path, corpus):
 
     # 6. against earlier stories
     mine6 = {g for g in grams(words(body(t)), 6) if plain(g)}
+    used = collections.defaultdict(list)  # motif family -> earlier stories that built on it
+    mots = motifs()
     for o in corpus:
         if o.resolve() == path.resolve():
             continue
@@ -190,8 +223,23 @@ def check(path, corpus):
             # Vietnamese syllables double as places and words (Bình, Tây, Tết): warn there; elsewhere a shared name blocks the voice
             (warn if lang == 'vi' else err).append(f'names already used in {o.name[:45]}: ' + ', '.join(same) + ' (viewers notice recurring names across episodes,'
                        ' "a soldier named Beddo in all these videos": rename them; a real place/person shared on purpose goes in stories/names_ok.txt)')
+        for k, rx in mots.items():
+            if len(rx.findall(ob)) >= 2:
+                used[k].append(o.name[:28])
         if ss and sentences(ob) and words(ss[0])[:2] == words(sentences(ob)[0])[:2]:
             warn.append(f'opens with the same two words as {o.name[:40]}')
+
+    # 8. motifs: character types and running gags an earlier story already built on
+    for k, rx in mots.items():
+        hits = rx.findall(body(t))
+        if len(hits) >= 2 and used[k]:
+            err.append(f'motif used before, x{len(hits)} here ({", ".join(sorted(set(h.lower() for h in hits))[:5])}): {k}; already in {len(used[k])} '
+                       f'earlier stories ({"; ".join(used[k][:4])}). Viewers: "Railway timetable again, seriously?" Replace this character\'s trade, '
+                       'quirk and running gag with ones no earlier story has, then add the new family to stories/motifs.txt')
+    cast = [s2 for s2 in ss if CAST.search(s2)]
+    if cast:
+        warn.append(f'{len(cast)} cast introductions; compare each trade/quirk with the "Cast" column of stories/published/LOG.md (no type twice):\n     - '
+                    + '\n     - '.join(c[:170] for c in cast[:25]))
 
     print(f'{path.name}: {lang}, {len(t)} chars, {n} sentences, {len(corpus)} earlier stories compared')
     for e in err:

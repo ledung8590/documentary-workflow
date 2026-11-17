@@ -49,7 +49,7 @@ Story mode only (`docs/STORY_MODE.md`). Archival films follow `docs/WORKFLOW.md`
 ## Prompt block for an outside writer (GPT/Gemini)
 When the user writes with another model, give it this (Vietnamese) on top of their own prompt:
 
-> Viết truyện hoàn chỉnh, có cao trào và kết thúc rõ ràng, rồi mới tới lời chào cuối. Không mở đầu bằng "Tôi muốn bắt đầu câu chuyện hôm nay từ khoảnh khắc…". Vẫn có các đoạn kể bối cảnh lịch sử (1–3 phút mỗi đoạn, 2–4 đoạn), nhưng đặt ở chỗ khác nhau mỗi truyện, gắn với cảnh nó giải thích, không luôn nằm ngay sau phần mở đầu và mật danh. Nhân vật chính có nghề, quê, tính cách và điểm yếu khác hẳn các truyện trước; không giới thiệu bằng "sinh năm…, cha ông làm nghề…". Mỗi truyện một đồ vật đặc trưng riêng (không dùng lại mảnh giấy, dây đồng, bật lửa bạc). Câu văn đa dạng 8–20 chữ, câu cụt 1–4 chữ chỉ ở cao trào, không lặp cùng chữ đầu câu ba lần liền. Mỗi chương phải thay đổi tình thế; không lặp vòng "chờ – hoãn – chờ".
+> Viết truyện hoàn chỉnh, có cao trào và kết thúc rõ ràng, rồi mới tới lời chào cuối. Không mở đầu bằng "Tôi muốn bắt đầu câu chuyện hôm nay từ khoảnh khắc…". Vẫn có các đoạn kể bối cảnh lịch sử (1–3 phút mỗi đoạn, 2–4 đoạn), nhưng đặt ở chỗ khác nhau mỗi truyện, gắn với cảnh nó giải thích, không luôn nằm ngay sau phần mở đầu và mật danh. Nhân vật chính có nghề, quê, tính cách và điểm yếu khác hẳn các truyện trước; không giới thiệu bằng "sinh năm…, cha ông làm nghề…". Mỗi truyện một đồ vật đặc trưng riêng (không dùng lại mảnh giấy, dây đồng, bật lửa bạc). Câu văn đa dạng 8–20 chữ, câu cụt 1–4 chữ chỉ ở cao trào, không lặp cùng chữ đầu câu ba lần liền. Mỗi chương phải thay đổi tình thế; không lặp vòng "chờ – hoãn – chờ". Mỗi nhân vật phụ có nghề, thói quen và trò đùa chưa từng xuất hiện ở truyện trước: không dùng lại người thuộc lòng bảng giờ tàu hay con nhà đường sắt, hà mã và sở thú, thợ lên dây đàn, người chơi organ, thợ đúc chuông, người nói lắp, người sưu tầm tem, cờ vua qua thư, người đưa thư, người ghi biên lai (danh sách đầy đủ tôi gửi kèm). Tối đa hai người trong kíp có thói quen gây cười.
 
 
 ## New names every story (viewer comment, Military Chronicle, 2026-11-15)
@@ -58,3 +58,23 @@ as hero, comrade and even a battery's nickname; Hinnerk, Emil, Fritz and the hom
 pet, nickname and hometown is new for each story. `storycheck.py` compares capitalised names with stories/published and prints
 `!!` (English/German/Spanish; `!` for Vietnamese, whose syllables double as places) for any name an earlier story already used;
 rename before tts. A real place or person shared on purpose (Königsberg, Bagration) goes in `stories/names_ok.txt`.
+
+
+## New cast types every story (viewer comments, Military Chronicle, 2026-11-17)
+On "The Last Line Before Berlin": "Railway timetable again, seriously?", "Young German men must have really liked train schedules",
+"How come in every story the tank crewmen are a prototype of the crewmen in the previous videos?" The names were new, the people
+were not. Measured on the published scripts: the crewman who knows the railway timetable by heart was in 4 stories (Leo, Kranich,
+Thiel, Jost); the zoo hippo and its keeper in 3; a hero or driver with a musical craft (tuner, organ, bells, harmonium) in 6; "fear
+shows in his body" as the hero's flaw in 3; every crew was the same set of one-quirk men.
+
+- **A character type is used once on the channel.** A type is the trade or family trade, the party trick (recites X by heart,
+  weighs everything, counts in "reels"), the speech tic, the running gag and the pet. Renaming Leo to Jost changes nothing.
+- **Before writing or rewriting**, read the "Cast types already used" list in `stories/published/LOG.md` and give every named
+  crew member a trade and a habit from a field no story has touched. Not every man needs a party trick: at most two per crew
+  have a comic habit, the others are told through what they do and choose.
+- **The hero's flaw and the secondary props rotate too** (LOG columns), not only the signature prop.
+- `storycheck.py` prints `!!` for every motif family (`MOTIFS` in the script plus `stories/motifs.txt`, one `name = regex` per
+  line) that the new script and an earlier story both build on, and lists the script's cast introductions to compare with the LOG.
+  Fix by rewriting that character's trade, habit and every scene of the gag, not by deleting the word.
+- **At delivery** (STORY_MODE step 10) add the story's cast to the LOG list and every new type to `stories/motifs.txt`, so the
+  next script is checked against it.
