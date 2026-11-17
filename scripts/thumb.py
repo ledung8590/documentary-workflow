@@ -96,7 +96,7 @@ def panel(s, lang):
     img = Image.alpha_composite(img.convert('RGBA'), ov); d = ImageDraw.Draw(img)
     if s.get('photo2'):
         iw, ih = s.get('inset_w', 330), s.get('inset_h', 210)  # inset size: a long ship reads better wide and low (film 91)
-        p2 = photo(s['photo2'], iw, ih, s.get('fx2', 0.5), s.get('fy2', 0.5)); img.paste(Image.new('RGB', (iw + 12, ih + 12), (235, 232, 224)), (W - iw - 42, H - ih - 52)); img.paste(p2, (W - iw - 36, H - ih - 46))
+        p2 = photo(s['photo2'], iw, ih, s.get('fx2', 0.5), s.get('fy2', 0.5)); img.paste(Image.new('RGB', (iw + 12, ih + 12), (235, 232, 224)), (W - iw - 42, H - ih - 52 - s.get('inset_dy', 0))); img.paste(p2, (W - iw - 36, H - ih - 46 - s.get('inset_dy', 0)))  # inset_dy: lift it off YouTube's duration stamp
     maxw = W - ((s.get('inset_w', 330) + 90) if s.get('photo2') else 80) - 40
     ft = fit(d, s['title'], 'serif', 118, lang, maxw); d.text((40, H - 300), s['title'], font=ft, fill=(255, 255, 255))
     if s.get('title2') or s.get('red'):

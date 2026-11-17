@@ -29,7 +29,7 @@ for f in sorted((D / 'scenes' / 'src').glob('*.js')):
     credits, files = [], []
     for name in names:
         stem = name.rsplit('.', 1)[0]
-        m = re.match(r'^(p-[a-e]2?-[a-z0-9-]+?)-(\d+)$', stem)
+        m = re.match(r'^(p-[a-z]2?-[a-z0-9-]+?)-(\d+)$', stem)
         c = None
         if m and m.group(1) in bytag:
             c = bytag[m.group(1)][int(m.group(2)) - 1]

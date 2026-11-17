@@ -198,6 +198,10 @@ def main():
         n = len(pd); txt = build(n, True, nosig=True)
         while len(txt) > LIMIT and n > 3:
             n -= 3; txt = build(n, True, nosig=True)
+    if len(txt) > LIMIT and a.cc_links:  # Berlin 2026-11-17: 47 CC links still 800 over; YouTube links bare domains, so drop "https://"
+        n = len(pd); txt = build(n, True, nosig=True).replace('https://', '')
+        while len(txt) > LIMIT and n > 3:
+            n -= 3; txt = build(n, True, nosig=True).replace('https://', '')
     if len(txt) > LIMIT:
         (d / "qa" / "description_too_long.txt").write_text(txt, encoding="utf-8"); sys.exit(f"{len(txt)} characters even with a short author list: shorten the intro or note")
     (d / 'description_youtube.txt').write_text(txt + '\n', encoding='utf-8')
