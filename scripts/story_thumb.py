@@ -66,8 +66,11 @@ def stencil_line(im, xy, s, height, fill, squeeze=0.84):
     return tmp.width
 
 
-def label(d, xy, s, size=34):
+def label(d, xy, s, size=34, bg=False):
+    """bg: a dark paper patch behind the label, so red text stays legible at YouTube's small size (Smolensk review)."""
     f = R.font('head', size); x, y = xy
+    if bg:
+        b = d.textbbox((x, y), s, font=f); d.rectangle((b[0] - 10, b[1] - 6, b[2] + 10, b[3] + 8), fill=(14, 12, 10))
     d.text((x + 2, y + 2), s, font=f, fill=(0, 0, 0)); d.text((x, y), s, font=f, fill=RED)
 
 
@@ -94,7 +97,7 @@ def notes(im, spec):
                     d.line((ax + (bx - ax) * t0, ay + (by - ay) * t0, ax + (bx - ax) * t1, ay + (by - ay) * t1), fill=RED, width=6)
                     k += 30
         if n.get('label'):
-            label(d, n['label_xy'], n['label'])
+            label(d, n['label_xy'], n['label'], n.get('size', 34), n.get('bg', False))
 
 
 def main():

@@ -708,6 +708,35 @@ def tts_ai84_chunked(d, cfg, voice, data, todo, do_run):
         mark(d, 'tts', model=voice['model'], provider=voice.get('provider', 'ai84'), chunked=True, weak=len(weak))
 
 
+CHUNK_LUFS = -18.5   # every TTS chunk is levelled to this before it is cut into sentence clips
+
+
+def level_chunk(x, path):
+    """AI84 returns short chunks quieter: on Smolensk (2026-11-17) the 428-char intro and the 919-char outro came back at
+    -24.8 LUFS against -18.6 for the 9,500-char chapters, so the film jumped 6 dB louder after the title card. Level each
+    chunk to CHUNK_LUFS (integrated, ffmpeg ebur128), with the peak kept under -1 dBFS."""
+    import numpy as np
+    err = subprocess.run(['ffmpeg', '-hide_banner', '-nostats', '-i', str(path), '-af', 'ebur128', '-f', 'null', '-'],
+                         capture_output=True, text=True, encoding='utf-8', errors='replace').stderr
+    m = re.findall(r'I:\s+(-?[\d.]+) LUFS', err)
+    if not m:
+        return x
+    gdb = CHUNK_LUFS - float(m[-1])
+    if abs(gdb) <= 0.3:
+        return x
+    if float(np.max(np.abs(x))) * 10 ** (gdb / 20) <= 0.89:
+        y = x * 10 ** (gdb / 20)
+    else:  # the full gain would clip: ffmpeg gain + lookahead limiter at -1 dBFS (a plain peak cap left it 3 dB short)
+        import tempfile
+        tmp = Path(tempfile.mkdtemp()) / 'lev.wav'
+        subprocess.run(['ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-i', str(path), '-af',
+                        f'volume={gdb:.2f}dB,alimiter=limit=0.89:attack=5:release=50:level=disabled', '-ar', str(SR), '-ac', '1', str(tmp)], check=True)
+        y = load_audio(tmp); shutil.rmtree(tmp.parent, ignore_errors=True)
+        y = y[:len(x)] if len(y) >= len(x) else np.pad(y, (0, len(x) - len(y)))
+    print(f'  {path.name}: {float(m[-1]):.1f} LUFS, levelled {gdb:+.1f} dB', flush=True)
+    return y
+
+
 def cut_chunk(d, voice, r, worker, lang):
     """Whisper the chunk, align the script, cut one clip per sentence. Returns warnings for poorly heard sentences."""
     import difflib
@@ -717,7 +746,7 @@ def cut_chunk(d, voice, r, worker, lang):
     if times is None:
         raise RuntimeError(f'whisper heard nothing in {r["audio"].name}')
     spans = [(times[a], times[b - 1] + 0.08) for a, b in r['spans']]
-    x = load_audio(r['audio']); cuts = [0] + WA.cut_points(x, SR, spans) + [len(x)]
+    x = level_chunk(load_audio(r['audio']), r['audio']); cuts = [0] + WA.cut_points(x, SR, spans) + [len(x)]
     heard = ' '.join(w['word'] for w in words).lower(); weak = []
     for k, s in enumerate(r['sents']):
         a, b = cuts[k], cuts[k + 1]; t0 = a / SR
