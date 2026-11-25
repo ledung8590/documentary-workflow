@@ -43,6 +43,7 @@ if LOOK in ('paper', 'dark'):  # looks draw flat Natural Earth maps (maps/engine
 MUSIC = bool((read(D / 'brief.json') or {}).get('music', False))  # user 2026-11-22: no background music any more, only SFX; brief "music": true only when the user asks for music on a film
 INTRO_GAIN = -6.0  # opening music intro level (dB, after the bed levelling): about the voice's level before the first word
 SUBS_OVER = set()  # scenes with no text of their own: subtitles stay on. Every other scene hides them (films 74-88; user review)
+VID_CENTER = {}  # {'v-tag#K': 1.35}: centred crop that removes pillarbox bars burned into a 16:9 file (film 144)
 VID_ZOOM = {}  # {'v-tag#K': 1.2}: zoom a film in from the bottom-right to crop a logo off its top-left corner
 SCENE_MEDIA = {k: tuple(v) for k, v in json.loads((D / 'qa' / 'scene_media.json').read_text(encoding='utf-8')).items()} if (D / 'qa' / 'scene_media.json').exists() else {}  # JS scenes that draw real photos (film 6): {'scene-name': ('credit line', ['media/x.jpg', ...])}; listed as `uses` so LICENSES/credits keep them
 ORIGINAL = {}  # film clips whose own field sound plays: {'v-tag#K': gain dB}; only after Scribe tags it as no music/speech (docs/SOUND.md)
@@ -355,6 +356,8 @@ def apply(sound_only=False):
                 c['mute'] = True
                 if f'{tag}#{kk}' in VID_ZOOM:  # crop a broadcaster logo / burned-in corner off a film (render.Video 'zoom', anchored away from the top-left)
                     c['zoom'] = VID_ZOOM[f'{tag}#{kk}']
+                if f'{tag}#{kk}' in VID_CENTER:
+                    c['crop_center'] = VID_CENTER[f'{tag}#{kk}']
                 if f'{tag}#{kk}' in ORIGINAL:  # real field sound (film 90: riveting under the factory line, instead of a generated SFX)
                     c.update(mute=False, original_audio=True, gain_db=ORIGINAL[f'{tag}#{kk}'])
         else:

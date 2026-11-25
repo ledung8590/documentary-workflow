@@ -272,6 +272,8 @@ class Video:
             vf = f'scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}'
         if clip.get('zoom'):  # plan.py VID_ZOOM: crop a logo or burned-in corner off; keeps the bottom-right part of the frame
             z = float(clip['zoom']); vf = f'crop=iw/{z}:ih/{z}:iw-iw/{z}:ih-ih/{z},' + vf
+        if clip.get('crop_center'):  # plan.py VID_CENTER: a 4:3 reel inside a 16:9 file (pillarbox) fills the frame
+            z = float(clip['crop_center']); vf = f'crop=iw/{z}:ih/{z},' + vf
         if clip.get('bloom'):  # glow on bright parts (map arrows, fire): threshold, blur, screen-blend back
             vf += (',split[a][b];[b]colorlevels=rimin=0.5:gimin=0.55:bimin=0.55,gblur=sigma=16[g];'
                    '[a][g]blend=all_mode=screen:all_opacity=0.8')
