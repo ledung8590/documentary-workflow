@@ -291,3 +291,23 @@ def test_free_thumbnail_layout(tmp_path):
     assert im.size == (1280, 720) and (tmp_path / 't.json').exists()
     assert im.getpixel((1000, 300))[0] > 150 and im.getpixel((1000, 300))[2] < 90     # the red box sits where the spec put it
     assert thumb.make({'photo': str(tmp_path / 'p.jpg'), 'tag': '1918', 'title': 'Old spec'}, tmp_path / 'old.jpg')  # no layout, no lines: still the panel
+
+
+def test_evidence_cleanup_only_when_whole(tmp_path, monkeypatch):
+    import evidence as E
+    monkeypatch.setattr(E, 'ROOT', tmp_path)
+    proj = tmp_path / 'projects' / 'j'; (proj / 'render').mkdir(parents=True); (proj / 'render' / 'x.bin').write_bytes(b'1')
+    (proj / 'thumb').mkdir(); (proj / 'thumb' / 'src.jpg').write_bytes(b'1')
+    dst = tmp_path / 'evidence' / 'Film'
+    for sub in ('video', 'media', 'sources', 'project'):
+        (dst / sub).mkdir(parents=True)
+    index = [{'file': 'media/a.jpg'}]
+    for f in ('video/Film.mp4', 'video/Film.jpg', 'INDEX.csv', 'README.md', 'project/timeline.json'):
+        (dst / f).write_text('x')
+    (dst / 'sources' / 's.json').write_text('{}')
+    with pytest.raises(SystemExit):                      # the on-screen picture is not in the pack
+        E.cleanup(proj, dst, index, 1)
+    assert (proj / 'render' / 'x.bin').exists()
+    (dst / 'media' / 'a.jpg').write_text('x')
+    E.cleanup(proj, dst, index, 1)
+    assert not proj.exists() and (dst / 'project' / 'thumb' / 'src.jpg').exists()

@@ -99,6 +99,7 @@ def mv(src, dst):
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument('job'); ap.add_argument('--run', action='store_true')
     ap.add_argument('--name', help='folder name (default: the renamed video in output/<id>/, else the job id)')
+    ap.add_argument('--keep', action='store_true', help='leave the leftovers in projects/<id>/ (default: delete them once the pack is verified)')
     ap.add_argument('--story', action='store_true', help='story with archival photos: pack under evidence/stories/ (outside the archival repeat checks)')
     a = ap.parse_args()
     proj = ROOT / 'projects' / a.job; outd = ROOT / 'output' / a.job
@@ -211,9 +212,70 @@ Built {__import__('datetime').date.today()} from `projects/{a.job}` after upload
 4. Own-work animated scenes and maps: the JS sources are in `project/scenes` and `project/maps`.
 5. Music and SFX: see `audio/LICENSES.md`. ElevenLabs Sound Effects are used under the Starter plan's commercial licence.
 """, encoding='utf-8')
-    left = sum(p.stat().st_size for p in proj.rglob('*') if p.is_file())
-    print(f'done: {dst}\nleft in {proj}: {left / 1e9:.2f} GB of regenerable cache (render/, unused candidates, voice clips, studio history): delete it (not evidence)')
+    if a.story or a.keep:   # a story's leftovers go in story_done.py, after its own copies
+        print(f'done: {dst}'); return
+    cleanup(proj, dst, index, len(pages))
 
+
+EXTRA = ('thumb', 'intro.txt', 'note.txt')   # what the pack still needs that is not on the timeline
+
+
+def reparse(p):
+    """A junction or symlink: deleting through one would reach another drive (evidence/ is one)."""
+    try:
+        return os.path.islink(p) or bool(getattr(os.lstat(p), 'st_file_attributes', 0) & 0x400)
+    except OSError:
+        return True
+
+
+def problems(dst, index, pages):
+    """What is missing from a pack; empty = the leftovers may go."""
+    out = []
+    if not list((dst / 'video').glob('*.mp4')):
+        out.append('no video in video/')
+    if not list((dst / 'video').glob('*.jpg')):
+        out.append('no thumbnail in video/')
+    lost = sorted({r['file'] for r in index if not (dst / r['file']).exists()})
+    if lost:
+        out.append(f'{len(lost)} on-screen files not in the pack, e.g. {lost[0]}')
+    bad = 0
+    for f in (dst / 'sources').glob('*.json'):
+        try:
+            bad += 'error' in json.loads(f.read_text(encoding='utf-8'))
+        except ValueError:
+            bad += 1
+    have = len(list((dst / 'sources').glob('*.json')))
+    if have < pages or bad:
+        out.append(f'source records: {have - bad}/{pages} fetched (rerun evidence.py --run)')
+    for f in ('INDEX.csv', 'README.md', 'project/timeline.json'):
+        if not (dst / f).exists():
+            out.append(f'no {f}')
+    return out
+
+
+def cleanup(proj, dst, index, pages):
+    """Delete the leftovers of projects/<id>/ without asking (user 2026-11-25: every film asked "delete 35 GB?"),
+    but only when the pack is whole. Anything missing: nothing is deleted."""
+    for rel in EXTRA:
+        p = proj / rel
+        if p.exists():
+            t = dst / 'project' / rel; t.parent.mkdir(parents=True, exist_ok=True); mv(p, t)
+    bad = problems(dst, index, pages)
+    if bad:
+        print(f'done: {dst}\nNOT deleted, the pack is incomplete:', *bad, sep='\n  '); sys.exit(1)
+    if not proj.exists():
+        print(f'done: {dst}'); return
+    if proj.resolve().parent != (ROOT / 'projects').resolve() or reparse(proj):
+        sys.exit(f'refused: {proj} is not a plain folder under projects/')
+    links = [str(Path(r) / n) for r, ds, _ in os.walk(proj) for n in ds if reparse(Path(r) / n)]
+    if links:
+        sys.exit('refused: a junction inside the project, nothing deleted: ' + ', '.join(links[:3]))
+    size = sum(f.stat().st_size for f in proj.rglob('*') if f.is_file())
+    shutil.rmtree(proj, ignore_errors=True)
+    if proj.exists():
+        print(f'done: {dst}\npack verified; {proj} could not be removed completely (a studio or another program holds it open): close it and rerun')
+    else:
+        print(f'done: {dst}\npack verified; deleted {proj} ({size / 1e9:.1f} GB of regenerable cache)')
 
 if __name__ == '__main__':
     main()
