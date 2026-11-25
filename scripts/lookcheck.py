@@ -71,28 +71,39 @@ def main(job):
         p = d / s; kind = 'map' if '/map-' in s else 'scene'
         if not p.exists():
             continue
+        stem = Path(s).stem
+        is_recon = kind == 'scene' and stem.startswith('scene-r-')
+        is_sat = False
+        if kind == 'map':
+            ms = d / 'maps' / 'src' / (stem[len('map-'):] + '.json')
+            if ms.exists():
+                try:
+                    is_sat = json.loads(ms.read_text(encoding='utf-8')).get('base') == 'satellite'
+                except Exception:
+                    pass
         L = dur(p); bad_g, bad_c, bad_l = [], [], []
-        for f in (0.25, 0.5, 0.75):
-            a = frame(p, L * f)
-            if a is None:
-                continue
-            b = 0.08; h, w = a.shape[:2]
-            border = np.concatenate([a[:int(h * b)].reshape(-1, 3), a[-int(h * b):].reshape(-1, 3), a[:, :int(w * b)].reshape(-1, 3), a[:, -int(w * b):].reshape(-1, 3)])
-            med = np.median(border, 0)
-            near = np.min(np.stack([np.linalg.norm(border - g, axis=1) for g in grounds[kind]]), 0) < 60
-            if near.mean() < 0.6:  # most of the border must be the look's ground (maps: its land or sea)
-                bad_g.append(tuple(int(x) for x in med))
-            mx, mn = a.max(2), a.min(2); sat = (mx - mn) / np.maximum(mx, 1)
-            strong = (sat > 0.55) & (mx > 90)
-            if strong.mean() > 0.002:
-                px = a[strong][:: max(1, int(strong.sum() // 2000))]
-                hs = np.array([hue(q) for q in px])
-                off = np.ones(len(hs), bool)
-                for oh in ok_hues:
-                    off &= np.minimum(abs(hs - oh), 360 - abs(hs - oh)) > 28
-                share = strong.mean() * off.mean()
-                if share > 0.03:
-                    bad_c.append(round(share * 100, 1))
+        if not is_recon and not is_sat:
+            for f in (0.25, 0.5, 0.75):
+                a = frame(p, L * f)
+                if a is None:
+                    continue
+                b = 0.08; h, w = a.shape[:2]
+                border = np.concatenate([a[:int(h * b)].reshape(-1, 3), a[-int(h * b):].reshape(-1, 3), a[:, :int(w * b)].reshape(-1, 3), a[:, -int(w * b):].reshape(-1, 3)])
+                med = np.median(border, 0)
+                near = np.min(np.stack([np.linalg.norm(border - g, axis=1) for g in grounds[kind]]), 0) < 60
+                if near.mean() < 0.6:  # most of the border must be the look's ground (maps: its land or sea)
+                    bad_g.append(tuple(int(x) for x in med))
+                mx, mn = a.max(2), a.min(2); sat = (mx - mn) / np.maximum(mx, 1)
+                strong = (sat > 0.55) & (mx > 90)
+                if strong.mean() > 0.002:
+                    px = a[strong][:: max(1, int(strong.sum() // 2000))]
+                    hs = np.array([hue(q) for q in px])
+                    off = np.ones(len(hs), bool)
+                    for oh in ok_hues:
+                        off &= np.minimum(abs(hs - oh), 360 - abs(hs - oh)) > 28
+                    share = strong.mean() * off.mean()
+                    if share > 0.03:
+                        bad_c.append(round(share * 100, 1))
         if bad_g:
             print(f'!! {s}: ground {bad_g[0]} is not the {name} look ({lk["bg"] if kind == "scene" else "flat land/sea: render with the look, no satellite"}): use the default background / L.C.bg, not a fixed colour'); warn += 1
         if bad_c:

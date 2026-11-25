@@ -45,6 +45,10 @@ def _req(method, path, body=None, timeout=60):
             if e.code >= 500 and method == 'GET':
                 time.sleep(3); continue
             raise RuntimeError(f'AI84 HTTP {e.code}: {e.read()[:300].decode("utf-8", "replace")}') from None
+        except (TimeoutError, urllib.error.URLError, ConnectionError) as e:  # a dropped poll must not lose a paid job (2026-11-18)
+            if method == 'GET' and attempt < 29:
+                time.sleep(5 + min(attempt, 10)); continue
+            raise
     raise RuntimeError('AI84: too many retries')
 
 
@@ -53,7 +57,7 @@ def voices(search, page_size=20):
     return _req('GET', f'/v1/shared-voices?{q}')
 
 
-def tts(text, voice_id, model='eleven_v4', settings=None, language_code=None, out=None, deadline=600):
+def tts(text, voice_id, model='eleven_v4', settings=None, language_code=None, out=None, deadline=1500):
     """Create a TTS job, poll until done, download the audio to `out`. Returns (path, credit_cost)."""
     body = {'text': text, 'voice_id': voice_id, 'model_id': model, 'output_format': 'mp3_44100_192'}
     if settings: body['voice_settings'] = settings

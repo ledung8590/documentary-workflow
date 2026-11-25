@@ -200,14 +200,28 @@ const K = {
 //   hat 'tankist' (Soviet padded leather tank helmet: three ridges, ear flaps), o.armband = 'vs' (Volkssturm yellow band with dark
 //   lettering dashes) | 'hj' (red-white-red band, no emblem) | 'white' (surrender/parlementaire) | any CSS colour, on the left upper coat.
 //   o.rifle (bolt-action), o.binos (binoculars on the chest), o.helmCol (helmet paint). A film needing a costume not listed here
+//   since 2026-11-18 (MiG-25 film): 'flight' (jet pilot one-piece coverall + harness; o.air = 'usaf' sage + name tape/wings, 'pvo' grey-olive
+//   VKK suit with lacing tubes + red star, 'iaf' olive + white/blue star patch, 'irq' olive + red-white-black patch, 'jasdf' + red disc),
+//   hat 'flighthelmet' (hard shell over the ears, visor housing; o.visor dark visor down, o.mask oxygen mask + hose, o.helmCol).
+  //   since 2026-11-24 (Meuse-Argonne film): 'kaiser' (German Army 1914-18 feldgrau field tunic, plain stand collar with thin red piping,
+  //   no eagle or Litzen; hat 'm1916' = WWI Stahlhelm with deep flared skirt and side lugs, 'peaked' for officers), 'poilu' (French 1915-18
+  //   horizon-blue greatcoat, two button rows, brown belt + pouches; hat 'adrian' = Adrian helmet with crest). AEF doughboys: 'us' + 'brodie'.
+  //   since 2026-11-24 (Königgrätz 1866 film): 'aut' (Austrian 1866 white Waffenrock, o.facing = regimental colour, one brass row, black belt;
+  //   hat 'autshako' = low black Tschako with brass double-eagle plate + rosette; generals hat 'federhut' = bicorne with green plume),
+  //   'sax' (Saxon light-blue tunic, same cut); Prussians 1866: 'pru' + hat 'pickel' (Pickelhaube: black dome, brass spike, eagle plate).
   //   adds it in THIS function (templates/archival kit), drawn the same way, so every later film has it.
   doll(c, L, x, y, h, t, o = {}) {
-    const C = ({ pru: ['#141a2b', '#c0282d', '#ece6d8'], fra: ['#2f5fc4', '#f4f0e6', '#ece6d8'], brit: ['#b52a2c', '#ece6d8', '#22305a'], civ: ['#6a5238', '#d9cfb8', '#3a2e22'], rus: ['#34552f', '#c0282d', '#ece6d8'], dnam: ['#7a1f1a', '#1a1612', '#c9a24a'], quan: ['#1f2a5a', '#c9a24a', '#c9a24a'], dan: ['#3a3128', '#2a221a', '#5a4a38'], mar: ['#1c2440', '#c0282d', '#ece6d8'],
+    const C = ({ pru: ['#141a2b', '#c0282d', '#ece6d8'], aut: ['#ece8dc', o.facing || '#8a1f2a', '#141210'], sax: ['#6b8fbf', '#1c2440', '#141210'], fra: ['#2f5fc4', '#f4f0e6', '#ece6d8'], brit: ['#b52a2c', '#ece6d8', '#22305a'], civ: ['#6a5238', '#d9cfb8', '#3a2e22'], rus: ['#34552f', '#c0282d', '#ece6d8'], dnam: ['#7a1f1a', '#1a1612', '#c9a24a'], quan: ['#1f2a5a', '#c9a24a', '#c9a24a'], dan: ['#3a3128', '#2a221a', '#5a4a38'], mar: ['#1c2440', '#c0282d', '#ece6d8'],
+      lycourt: ['#704638', '#d3b89a', '#987755'], trancourt: ['#34465a', '#abbaaf', '#6d5d55'],
+      lyking: ['#c59632', '#7a1f1a', '#e0bd5a'], lymonk: ['#7b6652', '#cfbc9c', '#5a4432'],
+      lystaff: ['#595849', '#b8a47c', '#8f7c5b'], lysoldier: ['#4d4236', '#2b241d', '#8f7c5b'],
+      transoldier: ['#2f3d4c', '#1c242e', '#8f7c5b'], mongol: ['#52483c', '#8b7a64', '#2a221c'],
       wehr: ['#5b6150', '#3d4a3a', '#1e1c18'], sov: ['#7c7550', '#6e6844', '#4a3424'], us: ['#6b6440', '#5c5636', '#4a4630'], tommy: ['#7a6a48', '#6a5c3e', '#5a4a30'], jap: ['#8a7a4a', '#7a6a40', '#5a4228'],
       navy: ['#1c2440', '#141a30', '#d8b450'], usaf: ['#3a4b6e', '#2c3a58', '#1a1c22'], astro: ['#e8e6e0', '#c9c6be', '#8a8a90'], cosmo: ['#e4e0d6', '#c0282d', '#8a8a90'], lab: ['#ecebe6', '#d8d6cf', '#3a3a40'], suit: ['#23262c', '#1a1c22', '#7a1f1a'], work: ['#4a4a52', '#3a3a40', '#2a2420'],
       union: ['#232c4a', '#1c2440', '#d8b450'], confed: ['#7d796e', '#6a665c', '#d8b450'], iraq: ['#5a5c3c', '#4c4e32', '#3a3424'], rum: ['#6e6244', '#5e5438', '#3a2c1e'],
-      ss: ['#5a5f4c', '#16120f', '#1e1c18'], frau: ['#4e463e', '#3e3832', '#2a2420'], ijn: ['#151a2a', '#0e1220', '#d8b450'], ijnrate: ['#1a2034', '#141a30', '#ece8e0'], kmrate: ['#161c2e', '#10152a', '#ece8e0'], usn: ['#8fa6c4', '#8296b2', '#232a3e'] }[o.side || 'pru']).slice();
-    const MOD = ['wehr', 'sov', 'us', 'tommy', 'jap', 'iraq', 'rum', 'ss'].includes(o.side), NEW = MOD || ['frau', 'navy', 'suit', 'work', 'usaf', 'astro', 'cosmo', 'lab', 'union', 'confed', 'ijn', 'ijnrate', 'kmrate', 'usn'].includes(o.side);
+      ss: ['#5a5f4c', '#16120f', '#1e1c18'], frau: ['#4e463e', '#3e3832', '#2a2420'], ijn: ['#151a2a', '#0e1220', '#d8b450'], ijnrate: ['#1a2034', '#141a30', '#ece8e0'], kmrate: ['#161c2e', '#10152a', '#ece8e0'], usn: ['#8fa6c4', '#8296b2', '#232a3e'], flight: ['#5f6a4e', '#535d44', '#2a2a24'], kaiser: ['#6a6d58', '#525642', '#1e1c18'], poilu: ['#8296ae', '#6c7f99', '#3a3428'] }[o.side || 'pru']).slice();
+    const MOD = ['wehr', 'sov', 'us', 'tommy', 'jap', 'iraq', 'rum', 'ss', 'kaiser'].includes(o.side), NEW = MOD || ['frau', 'navy', 'suit', 'work', 'usaf', 'astro', 'cosmo', 'lab', 'union', 'confed', 'ijn', 'ijnrate', 'kmrate', 'usn', 'flight', 'poilu'].includes(o.side);
+    if (o.side === 'flight' && !o.coat) C[0] = { usaf: '#5f6a4e', pvo: '#77745e', iaf: '#6a6c4a', irq: '#646a4c', jasdf: '#5a6450' }[o.air || 'usaf'];
     if (o.whites && (o.side === 'ijn' || o.side === 'usn')) { C[0] = '#eeebe2'; C[1] = '#e2ded4'; }
     if (o.side === 'confed' && o.butternut) C[0] = '#8c7148';
     const star = (sx, sy, r, col) => { c.fillStyle = col; c.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.42 : r; c.lineTo(sx + Math.cos(a) * rr, sy + Math.sin(a) * rr); } c.closePath(); c.fill(); };
@@ -219,7 +233,7 @@ const K = {
     // skin fills the whole egg, coat is clipped to the lower part
     c.save(); egg(); c.clip();
     c.fillStyle = o.skin || '#f2d9c2'; c.fillRect(-160, -420, 320, 440);
-    const g = c.createLinearGradient(-130, 0, 130, 0); g.addColorStop(0, C[0]); g.addColorStop(0.6, C[0]); g.addColorStop(1, o.whites && (o.side === 'ijn' || o.side === 'usn') ? '#a29e94' : '#0b0e18');
+    const g = c.createLinearGradient(-130, 0, 130, 0); g.addColorStop(0, C[0]); g.addColorStop(0.6, C[0]); g.addColorStop(1, (o.whites && (o.side === 'ijn' || o.side === 'usn')) || o.side === 'aut' ? '#a29e94' : '#0b0e18');
     c.fillStyle = g; c.beginPath(); c.moveTo(-160, -205); c.quadraticCurveTo(0, -175, 160, -205); c.lineTo(160, 20); c.lineTo(-160, 20); c.fill();
     c.fillStyle = C[1]; c.fillRect(-160, -212, 320, 18);  // collar
     // chest tells the armies apart (1815): French habit-veste = wide white plastron with two button rows;
@@ -232,6 +246,31 @@ const K = {
       c.strokeStyle = C[1]; c.lineWidth = 10; c.beginPath(); c.moveTo(-20, -200); c.quadraticCurveTo(60, -170, 70, -80); c.stroke();
       if (o.side === 'dnam') { c.fillStyle = '#c9a24a'; c.beginPath(); c.arc(0, -140, 26, 0, 7); c.fill(); c.fillStyle = '#7a1f1a'; c.font = 'bold 30px serif'; c.textAlign = 'center'; c.fillText(String.fromCharCode(0x5175), 0, -129); }
       c.fillStyle = C[2]; c.fillRect(-160, -64, 320, 14);
+    } else if (['lycourt', 'trancourt', 'lyking', 'lymonk', 'lystaff'].includes(o.side)) {  // Plain cross-collared robes, early Đại Việt (illustrative)
+      c.strokeStyle = C[1]; c.lineWidth = 11;
+      c.beginPath(); c.moveTo(-72, -205); c.quadraticCurveTo(-22, -168, 80, -134); c.stroke();
+      c.beginPath(); c.moveTo(66, -205); c.quadraticCurveTo(52, -182, 10, -163); c.stroke();
+      if (o.side === 'lymonk') {  // monastic kasaya sash draped across left shoulder + prayer beads
+        c.fillStyle = C[2]; c.beginPath(); c.moveTo(-120, -205); c.lineTo(-42, -205); c.lineTo(135, -35); c.lineTo(125, 18); c.lineTo(50, 18); c.closePath(); c.fill();
+        c.strokeStyle = '#3b2b1e'; c.lineWidth = 3; c.stroke();
+        c.fillStyle = '#3b2b1e'; for (let k = -3; k <= 3; k++) { c.beginPath(); c.arc(k * 13, -182 + Math.abs(k) * 5, 4.5, 0, 7); c.fill(); }
+      } else if (o.side === 'lyking') {  // imperial belt with jade/gold clasp
+        c.fillStyle = '#7a1f1a'; c.fillRect(-140, -70, 280, 16);
+        c.fillStyle = '#e0bd5a'; c.beginPath(); c.ellipse(0, -62, 20, 13, 0, 0, 7); c.fill();
+      } else {
+        c.fillStyle = C[2]; c.fillRect(-140, -67, 280, 12);
+      }
+    } else if (o.side === 'lysoldier' || o.side === 'transoldier') {  // Lý-Trần infantry: buffalo-leather lamellar/jerkin + chest mirror + waist belt
+      c.strokeStyle = C[1]; c.lineWidth = 9;
+      c.beginPath(); c.moveTo(-66, -205); c.quadraticCurveTo(-18, -172, 72, -140); c.stroke();
+      c.fillStyle = C[1]; c.fillRect(-76, -185, 152, 112);  // leather cuirass
+      c.strokeStyle = 'rgba(210,195,165,0.35)'; c.lineWidth = 2.5;
+      for (let ry = -162; ry <= -94; ry += 22) { c.beginPath(); c.moveTo(-72, ry); c.lineTo(72, ry); c.stroke(); }
+      c.fillStyle = '#b8a06a'; c.beginPath(); c.arc(0, -138, 18, 0, 7); c.fill();  // bronze chest disc (hộ tâm kính)
+      c.fillStyle = C[2]; c.fillRect(-140, -72, 280, 14);
+    } else if (o.side === 'mongol') {  // Mongol warrior: fur-trimmed steppe deel coat + waist sash
+      c.fillStyle = C[1]; c.beginPath(); c.moveTo(-70, -205); c.lineTo(66, -130); c.lineTo(66, 20); c.lineTo(44, 20); c.lineTo(44, -120); c.lineTo(-92, -205); c.closePath(); c.fill();
+      c.fillStyle = C[2]; c.fillRect(-140, -74, 280, 16); c.fillStyle = '#c9a24a'; c.fillRect(-16, -76, 32, 20);
     } else if (o.side === 'quan') {  // áo thụng with a square rank badge (bổ tử)
       c.strokeStyle = C[1]; c.lineWidth = 8; c.beginPath(); c.moveTo(-20, -200); c.quadraticCurveTo(60, -170, 70, -80); c.stroke();
       c.fillStyle = '#c9a24a'; c.fillRect(-46, -170, 92, 84); c.fillStyle = '#1f2a5a'; c.fillRect(-36, -160, 72, 64); c.strokeStyle = '#c9a24a'; c.lineWidth = 3; c.beginPath(); c.arc(0, -128, 18, 0, 7); c.stroke();
@@ -252,6 +291,7 @@ const K = {
       c.fillStyle = btn; const nb = o.side === 'sov' ? 2 : 5; for (let i = 0; i < nb; i++) { c.beginPath(); c.arc(0, -186 + i * 26, 5, 0, 7); c.fill(); }
       if (o.side === 'wehr') { c.fillStyle = '#c9ccc0'; [-1, 1].forEach(sd => c.fillRect(sd * 40 - 14, -210, 28, 7)); c.fillStyle = '#b8b8a8'; c.beginPath(); c.moveTo(-40, -150); c.lineTo(-62, -160); c.lineTo(-40, -144); c.lineTo(-18, -160); c.closePath(); c.fill(); }  // collar Litzen, breast eagle
       if (o.side === 'sov') { c.fillStyle = '#c0282d'; [-1, 1].forEach(sd => c.fillRect(sd * 46 - 14, -212, 28, 16)); }  // collar tabs
+      if (o.side === 'kaiser') { c.fillStyle = '#3e4232'; c.fillRect(-60, -214, 120, 12); c.fillStyle = '#b0302a'; c.fillRect(-60, -204, 120, 3); }  // WWI German M1915 Bluse: plain darker stand collar with thin red piping, no eagle
       if (o.side === 'jap') { c.fillStyle = '#c0282d'; [-1, 1].forEach(sd => c.fillRect(sd * 44 - 14, -212, 28, 14)); }
       if (o.side === 'ss') {  // pea-dot camouflage smock over the tunic (Erbsenmuster), black collar patch
         const dots = [['#7a6a3c', 0], ['#3e4a2c', 1], ['#8a5a32', 2], ['#2a2a1e', 3]]; dots.forEach(([col, k]) => { c.fillStyle = col; for (let i = 0; i < 26; i++) { const dx = ((i * 73 + k * 41) % 300) - 150, dy = -196 + ((i * 37 + k * 59) % 190); c.beginPath(); c.ellipse(dx, dy, 13 - k * 2, 8, (i + k) * 0.7, 0, 7); c.fill(); } });
@@ -262,6 +302,10 @@ const K = {
     } else if (o.side === 'frau') {  // plain wool coat with a turned-down collar and three large buttons
       c.fillStyle = C[1]; c.beginPath(); c.moveTo(-70, -206); c.lineTo(0, -150); c.lineTo(70, -206); c.lineTo(48, -212); c.lineTo(0, -170); c.lineTo(-48, -212); c.closePath(); c.fill();
       c.fillStyle = '#1e1a16'; for (let i = 0; i < 3; i++) { c.beginPath(); c.arc(14, -140 + i * 40, 8, 0, 7); c.fill(); }
+    } else if (o.side === 'poilu') {  // French 1915-18 horizon-blue capote: turned-down collar, two button rows, leather belt + brown cartridge pouches
+      c.fillStyle = C[1]; c.beginPath(); c.moveTo(-64, -210); c.lineTo(0, -170); c.lineTo(64, -210); c.lineTo(44, -214); c.lineTo(0, -186); c.lineTo(-44, -214); c.closePath(); c.fill();
+      c.fillStyle = '#c9b98a'; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(-34, -156 + i * 28, 5, 0, 7); c.arc(34, -156 + i * 28, 5, 0, 7); c.fill(); }
+      c.fillStyle = '#5a3e24'; c.fillRect(-160, -80, 320, 16); [-1, 1].forEach(sd => c.fillRect(sd * 70 - 22, -96, 44, 30));
     } else if (o.side === 'navy') {  // reefer jacket, double row of brass buttons
       c.fillStyle = '#ece6d8'; c.beginPath(); c.moveTo(-30, -200); c.lineTo(0, -150); c.lineTo(30, -200); c.fill(); c.fillStyle = '#16120f'; c.fillRect(-6, -196, 12, 40);
       c.fillStyle = C[2]; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(-36, -150 + i * 30, 6, 0, 7); c.arc(36, -150 + i * 30, 6, 0, 7); c.fill(); }
@@ -318,14 +362,31 @@ const K = {
       c.fillStyle = o.tie || '#23262c'; c.beginPath(); c.moveTo(-7, -198); c.lineTo(7, -198); c.lineTo(10, -146); c.lineTo(0, -134); c.lineTo(-10, -146); c.closePath(); c.fill();
       c.strokeStyle = 'rgba(0,0,0,0.3)'; c.lineWidth = 5; c.beginPath(); c.moveTo(-56, -206); c.lineTo(-4, -96); c.lineTo(-4, 0); c.moveTo(56, -206); c.lineTo(4, -96); c.stroke();
       c.strokeStyle = 'rgba(0,0,0,0.3)'; c.lineWidth = 3; c.strokeRect(46, -150, 44, 40); c.fillStyle = '#2a4c9a'; c.fillRect(54, -168, 5, 24); c.fillStyle = '#c0282d'; c.fillRect(64, -164, 5, 20);
+    } else if (o.side === 'flight') {  // jet pilot 1960s-90s: one-piece flight coverall, zip, chest pockets, harness straps; o.air = usaf|pvo|iaf|irq|jasdf picks colour + patch
+      c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 4; c.beginPath(); c.moveTo(0, -204); c.lineTo(0, 0); c.stroke();  // zip
+      c.fillStyle = 'rgba(0,0,0,0.18)'; [-1, 1].forEach(sd => c.fillRect(sd * 52 - 26, -170, 52, 40));  // pockets
+      c.strokeStyle = '#2a2a24'; c.lineWidth = 11; c.beginPath(); c.moveTo(-70, -204); c.lineTo(-56, 0); c.moveTo(70, -204); c.lineTo(56, 0); c.moveTo(-60, -60); c.lineTo(60, -60); c.stroke();  // parachute/G-suit harness
+      c.fillStyle = '#9a9a8a'; c.fillRect(-12, -70, 24, 22);  // harness buckle
+      const air = o.air || 'usaf';
+      if (air === 'pvo') { c.strokeStyle = 'rgba(40,38,30,0.55)'; c.lineWidth = 6; [-1, 1].forEach(sd => { c.beginPath(); c.moveTo(sd * 104, -200); c.lineTo(sd * 96, 0); c.stroke(); }); star(-110, -170, 18, '#c0282d'); }  // VKK pressure suit lacing tubes + red star
+      else if (air === 'usaf') { c.fillStyle = '#ece6d8'; c.fillRect(-82, -192, 52, 12); c.fillStyle = '#c9ccd0'; c.beginPath(); c.moveTo(-82, -204); c.lineTo(-30, -204); c.lineTo(-56, -196); c.fill(); }  // name tape + wings
+      else if (air === 'iaf') { c.fillStyle = '#f2efe8'; c.fillRect(-122, -184, 36, 26); c.strokeStyle = '#2a4c9a'; c.lineWidth = 3; c.beginPath(); c.moveTo(-104, -180); c.lineTo(-113, -164); c.lineTo(-95, -164); c.closePath(); c.moveTo(-104, -158); c.lineTo(-113, -174); c.lineTo(-95, -174); c.closePath(); c.stroke(); }  // white-blue star patch
+      else if (air === 'irq') { [['#c0282d', 0], ['#f2efe8', 9], ['#16120f', 18]].forEach(([col, dy]) => { c.fillStyle = col; c.fillRect(-122, -184 + dy, 36, 9); }); }
+      else if (air === 'jasdf') { c.fillStyle = '#f2efe8'; c.fillRect(-122, -184, 36, 26); c.fillStyle = '#c0282d'; c.beginPath(); c.arc(-104, -171, 8, 0, 7); c.fill(); }
+    } else if (o.side === 'aut' || o.side === 'sax') {  // Austrian 1866 white Waffenrock (o.facing = regimental colour) / Saxon light blue: one brass row, black belt
+      c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(-2, -196, 4, 130);
+      c.fillStyle = '#d8b450'; for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(0, -184 + i * 24, 6, 0, 7); c.fill(); }
+      c.fillStyle = C[1]; c.fillRect(-160, -66, 320, 0);
+      c.fillStyle = '#141210'; c.fillRect(-160, -66, 320, 16); c.fillStyle = '#d8b450'; c.fillRect(-15, -68, 30, 20);
     } else if (o.side === 'pru') {
       c.fillStyle = '#e8e2d2'; for (let i = 0; i < 6; i++) { c.beginPath(); c.arc(0, -184 + i * 28, 5, 0, 7); c.fill(); }
+      if (o.hat === 'pickel' && !o.epaulettes) { c.fillStyle = '#141210'; c.fillRect(-160, -74, 320, 16); [-1, 1].forEach(sd => { c.fillStyle = '#1e1a16'; c.fillRect(sd * 60 - 22, -84, 44, 34); }); c.fillStyle = '#d8b450'; c.fillRect(-14, -76, 28, 20); }  // 1866 Waffenrock: black belt, two front cartridge pouches, brass buckle
       c.fillStyle = C[1]; c.fillRect(-160, -60, 320, 0);
     } else {
       c.beginPath(); c.moveTo(-40, -196); c.lineTo(0, -70); c.lineTo(40, -196); c.lineTo(22, -196); c.lineTo(0, -120); c.lineTo(-22, -196); c.fill();  // facings
       c.fillStyle = '#e0bd5a'; for (let i = 0; i < 4; i++) { c.beginPath(); c.arc(-12, -170 + i * 34, 5, 0, 7); c.arc(12, -170 + i * 34, 5, 0, 7); c.fill(); }
     }
-    if (o.belts !== false && !o.epaulettes && !NEW && !['dnam', 'quan', 'dan'].includes(o.side)) { c.strokeStyle = C[2]; c.lineWidth = 12; c.beginPath(); c.moveTo(-90, -190); c.lineTo(90, -20); c.moveTo(90, -190); c.lineTo(-90, -20); c.stroke(); }
+    if (o.belts !== false && !o.epaulettes && o.hat !== 'pickel' && ['pru', 'fra', 'brit', 'civ', 'rus'].includes(o.side || 'pru')) { c.strokeStyle = C[2]; c.lineWidth = 12; c.beginPath(); c.moveTo(-90, -190); c.lineTo(90, -20); c.moveTo(90, -190); c.lineTo(-90, -20); c.stroke(); }
     if (o.epaulettes) { c.fillStyle = C[1]; c.fillRect(-160, -80, 320, 14); }  // sash
     if (o.armband) {  // band round the left upper arm (viewer's right edge of the coat)
       const ab = { vs: '#d8b440', hj: '#c0282d', white: '#f2efe8' }[o.armband] || o.armband; c.fillStyle = ab; c.beginPath(); c.moveTo(78, -176); c.lineTo(170, -184); c.lineTo(170, -146); c.lineTo(80, -140); c.closePath(); c.fill();
@@ -339,7 +400,7 @@ const K = {
     c.strokeStyle = 'rgba(0,0,0,0.55)'; c.lineWidth = 4; egg(); c.stroke();
     if (o.epaulettes) { c.fillStyle = '#e0bd5a'; [-1, 1].forEach(sd => { c.beginPath(); c.ellipse(sd * 105, -190, 34, 12, sd * 0.35, 0, 7); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.4)'; c.lineWidth = 2; c.stroke(); }); }
     const hair = { grey: '#a19d96', white: '#ece8e0', dark: '#3e2c1f', bald: null }[o.hair || 'dark'];
-    if (hair && o.hat !== 'bearskin' && o.hat !== 'hussar') { c.fillStyle = hair; c.beginPath(); c.ellipse(-92, -290, 20, 40, 0.15, 0, 7); c.ellipse(92, -290, 20, 40, -0.15, 0, 7); c.fill(); if (o.hat === 'none') { c.beginPath(); c.ellipse(0, -372, 80, 34, 0, Math.PI, 0); c.fill(); } }
+    if (hair && o.hat !== 'bearskin' && o.hat !== 'hussar' && o.hat !== 'flighthelmet') { c.fillStyle = hair; c.beginPath(); c.ellipse(-92, -290, 20, 40, 0.15, 0, 7); c.ellipse(92, -290, 20, 40, -0.15, 0, 7); c.fill(); if (o.hat === 'none') { c.beginPath(); c.ellipse(0, -372, 80, 34, 0, Math.PI, 0); c.fill(); } }
     if (o.moustache) { c.fillStyle = hair || '#3e2c1f'; c.beginPath(); c.ellipse(-18, -246, 22, 7, 0.25, 0, 7); c.ellipse(18, -246, 22, 7, -0.25, 0, 7); c.fill(); }
     // face: dot eyes and one stroke
     c.fillStyle = '#16120f'; c.strokeStyle = '#16120f'; c.lineWidth = 5; const f = o.face || 'calm';
@@ -380,6 +441,28 @@ const K = {
       c.fillStyle = felt(0, -460, 0, -360); c.beginPath(); c.ellipse(0, -410, 92, 64, 0, 0, 7); c.fill(); rim();
       c.fillStyle = C[1]; c.beginPath(); c.moveTo(60, -440); c.quadraticCurveTo(130, -400, 100, -330); c.lineTo(78, -360); c.fill();
     }
+    else if (hat === 'pickel') {  // Prussian Pickelhaube 1860s: tall black leather dome, front + rear peak, brass spike on a cross base, brass eagle plate, black-white cockade
+      const lg = c.createLinearGradient(-90, 0, 90, 0); lg.addColorStop(0, '#3a3a3e'); lg.addColorStop(0.45, '#1a1a1d'); lg.addColorStop(1, '#050506');
+      c.fillStyle = lg; c.beginPath(); c.moveTo(-96, -366); c.bezierCurveTo(-104, -500, 104, -500, 96, -366); c.closePath(); c.fill(); rim();
+      c.fillStyle = 'rgba(255,255,255,0.22)'; c.beginPath(); c.ellipse(-40, -440, 14, 34, -0.3, 0, 7); c.fill();  // leather shine
+      c.fillStyle = '#16120f'; c.beginPath(); c.ellipse(0, -364, 104, 18, 0, 0, Math.PI); c.fill();  // front peak
+      c.fillStyle = '#d8b450'; c.fillRect(-100, -370, 200, 5);  // brass peak trim
+      c.beginPath(); c.ellipse(0, -478, 30, 9, 0, 0, 7); c.fill(); c.beginPath(); c.moveTo(-14, -482); c.lineTo(0, -548); c.lineTo(14, -482); c.closePath(); c.fill();  // cross base + spike
+      c.fillStyle = '#e0bd5a'; c.beginPath(); c.ellipse(0, -416, 22, 28, 0, 0, 7); c.fill();  // eagle plate body
+      c.beginPath(); c.moveTo(-18, -426); c.lineTo(-52, -446); c.lineTo(-40, -404); c.closePath(); c.moveTo(18, -426); c.lineTo(52, -446); c.lineTo(40, -404); c.closePath(); c.fill();  // spread wings
+      c.fillStyle = '#9a7a2a'; c.beginPath(); c.arc(0, -420, 7, 0, 7); c.fill();
+      c.fillStyle = '#ece6d8'; c.beginPath(); c.arc(84, -392, 12, 0, 7); c.fill(); c.fillStyle = '#16120f'; c.beginPath(); c.arc(84, -392, 6, 0, 7); c.fill();
+    } else if (hat === 'autshako') {  // Austrian infantry Tschako 1860s: low black shako narrowing upward, brass double-eagle plate, black-yellow rosette, short peak
+      c.fillStyle = felt(-70, 0, 70, 0); c.beginPath(); c.moveTo(-84, -368); c.lineTo(-72, -468); c.lineTo(72, -468); c.lineTo(84, -368); c.closePath(); c.fill(); rim();
+      c.fillStyle = '#16120f'; c.beginPath(); c.ellipse(0, -366, 100, 16, 0, 0, Math.PI); c.fill();
+      c.fillStyle = '#d8b450'; c.fillRect(-84, -380, 168, 6);
+      c.fillStyle = '#e0bd5a'; c.beginPath(); c.arc(0, -414, 18, 0, 7); c.fill(); c.beginPath(); c.moveTo(-12, -420); c.lineTo(-40, -436); c.lineTo(-30, -400); c.closePath(); c.moveTo(12, -420); c.lineTo(40, -436); c.lineTo(30, -400); c.closePath(); c.fill();
+      c.fillStyle = '#e0bd5a'; c.beginPath(); c.arc(0, -458, 13, 0, 7); c.fill(); c.fillStyle = '#16120f'; c.beginPath(); c.arc(0, -458, 6, 0, 7); c.fill();
+    } else if (hat === 'federhut') {  // Austrian general's bicorne (Generalshut) worn sideways with a green feather plume (Benedek, Ramming, Gablenz)
+      c.fillStyle = felt(0, -500, 0, -360); c.beginPath(); c.moveTo(-170, -352); c.quadraticCurveTo(-60, -500, 0, -488); c.quadraticCurveTo(60, -500, 170, -352); c.quadraticCurveTo(0, -386, -170, -352); c.fill(); rim();
+      c.fillStyle = '#d8b450'; c.fillRect(-4, -470, 8, 90);
+      const fg = ['#2f6a3a', '#3f8a4a', '#24502c']; for (let i = 0; i < 9; i++) { c.fillStyle = fg[i % 3]; c.beginPath(); c.ellipse(-120 + i * 30, -470 - Math.sin(i / 8 * Math.PI) * 40, 34, 16, -0.4 + i * 0.1, 0, 7); c.fill(); }
+    }
     else if (hat === 'kepi' && (o.side === 'union' || o.side === 'confed')) {  // Civil War forage cap ("bummer"): soft crown slumped forward-right, plain band, brass bugle (Union)
       c.fillStyle = o.capCol || (o.side === 'union' ? '#1f2846' : '#7d796e'); c.beginPath(); c.moveTo(-86, -368); c.lineTo(-80, -432); c.quadraticCurveTo(-30, -478, 60, -474); c.quadraticCurveTo(104, -470, 98, -440); c.lineTo(86, -368); c.closePath(); c.fill(); rim();
       c.fillStyle = 'rgba(0,0,0,0.28)'; c.fillRect(-86, -394, 172, 20);
@@ -399,6 +482,29 @@ const K = {
       c.fillStyle = o.cover ? '#e8e2d2' : '#1c2440'; c.beginPath(); c.moveTo(-80, -370); c.lineTo(-70, -455); c.lineTo(76, -445); c.lineTo(80, -370); c.closePath(); c.fill(); rim();
       c.fillStyle = '#c0282d'; c.fillRect(-82, -392, 164, 12); c.fillStyle = '#16120f'; c.beginPath(); c.ellipse(20, -366, 90, 14, 0, 0, Math.PI); c.fill();
       if (o.cover) { c.fillStyle = '#e8e2d2'; c.beginPath(); c.moveTo(-82, -380); c.lineTo(-110, -300); c.lineTo(-40, -330); c.closePath(); c.fill(); }
+    } else if (hat === 'lycap') {  // Simple cloth head covering, deliberately without speculative court insignia
+      c.fillStyle = felt(0, -455, 0, -348); c.beginPath();
+      c.moveTo(-103, -357); c.quadraticCurveTo(-96, -428, -40, -437);
+      c.quadraticCurveTo(28, -455, 72, -405); c.lineTo(108, -357);
+      c.quadraticCurveTo(0, -332, -103, -357); c.fill(); rim();
+      c.strokeStyle = 'rgba(210,205,195,0.28)'; c.lineWidth = 5;
+      c.beginPath(); c.moveTo(-96, -365); c.quadraticCurveTo(0, -347, 98, -365); c.stroke();
+    } else if (hat === 'xungthien') {  // Lý-Trần royal crown (mũ Xung Thiên / Bình Đính viền vàng)
+      c.fillStyle = felt(0, -475, 0, -350); c.beginPath();
+      c.moveTo(-98, -356); c.lineTo(-88, -445); c.quadraticCurveTo(0, -482, 88, -445); c.lineTo(98, -356); c.quadraticCurveTo(0, -336, -98, -356); c.fill(); rim();
+      c.fillStyle = '#d8b450'; c.fillRect(-94, -372, 188, 12); c.beginPath(); c.arc(0, -412, 12, 0, 7); c.fill();
+      [-1, 1].forEach(sd => { c.beginPath(); c.ellipse(sd * 114, -395, 28, 11, sd * 0.25, 0, 7); c.fill(); });
+    } else if (hat === 'phocdau') {  // Lý-Trần court official hat (phốc đầu / cánh nhỏ)
+      c.fillStyle = felt(0, -460, 0, -355); c.beginPath();
+      c.moveTo(-94, -356); c.lineTo(-82, -432); c.quadraticCurveTo(0, -462, 82, -432); c.lineTo(94, -356); c.quadraticCurveTo(0, -340, -94, -356); c.fill(); rim();
+      c.fillStyle = '#16120f'; [-1, 1].forEach(sd => { c.beginPath(); c.ellipse(sd * 124, -384, 42, 11, sd * 0.12, 0, 7); c.fill(); rim(); });
+    } else if (hat === 'daumau') {  // Lý-Trần conical leather/iron helmet (mũ đầu mâu)
+      c.fillStyle = '#4e4842'; c.beginPath(); c.moveTo(-124, -350); c.lineTo(0, -466); c.lineTo(124, -350); c.quadraticCurveTo(0, -332, -124, -350); c.fill(); rim();
+      c.strokeStyle = 'rgba(210,205,195,0.4)'; c.lineWidth = 3; c.beginPath(); c.moveTo(0, -466); c.lineTo(0, -342); c.stroke();
+      c.fillStyle = '#8f7c5b'; c.beginPath(); c.arc(0, -470, 9, 0, 7); c.fill();
+    } else if (hat === 'mongolhat') {  // Mongol fur-brimmed conical steppe cap
+      c.fillStyle = '#5c4e3e'; c.beginPath(); c.moveTo(-98, -364); c.lineTo(0, -468); c.lineTo(98, -364); c.closePath(); c.fill(); rim();
+      c.fillStyle = '#3a2e22'; c.beginPath(); c.ellipse(0, -364, 114, 24, 0, 0, 7); c.fill(); rim();
     } else if (hat === 'nondau') {  // Nguyễn soldier's small conical hat with a red tuft
       c.fillStyle = '#d9c48c'; c.beginPath(); c.moveTo(-150, -350); c.lineTo(0, -470); c.lineTo(150, -350); c.quadraticCurveTo(0, -330, -150, -350); c.fill(); rim();
       c.strokeStyle = 'rgba(90,70,40,0.5)'; c.lineWidth = 2; for (let k = -2; k <= 2; k++) { c.beginPath(); c.moveTo(0, -470); c.lineTo(k * 60, -345); c.stroke(); }
@@ -411,15 +517,23 @@ const K = {
       c.fillStyle = '#1a1612'; c.beginPath(); c.ellipse(0, -372, 104, 40, 0, Math.PI, 0); c.fill(); rim();
       c.strokeStyle = 'rgba(210,205,195,0.25)'; c.lineWidth = 3; for (let k = 0; k < 3; k++) { c.beginPath(); c.ellipse(0, -360 - k * 10, 100 - k * 8, 30, 0, Math.PI * 1.05, Math.PI * 1.95); c.stroke(); }
     }
-    else if (hat === 'stahlhelm' || hat === 'm1' || hat === 'brodie' || hat === 'rumhelm') {  // steel helmets: dome + (M35) flared skirt / (M1) small rim / (Brodie) wide brim
-      const col = o.helmCol || { stahlhelm: '#565d4c', m1: '#5a5a3c', brodie: '#5e5a40', rumhelm: '#5c5a3e' }[hat];
+    else if (hat === 'adrian') {  // French M1915 Adrian helmet: rounded crown, front visor + rear brim, raised crest along the top
+      const col = o.helmCol || '#6f8099'; const hg = c.createLinearGradient(-110, -470, 110, -340); hg.addColorStop(0, col); hg.addColorStop(1, '#2a3040'); c.fillStyle = hg;
+      c.beginPath(); c.moveTo(-150, -350); c.quadraticCurveTo(-120, -366, -96, -368); c.bezierCurveTo(-100, -470, 100, -470, 96, -368); c.quadraticCurveTo(120, -366, 150, -350); c.quadraticCurveTo(0, -372, -150, -350); c.closePath(); c.fill(); rim();
+      c.fillStyle = col; c.beginPath(); c.moveTo(-70, -418); c.quadraticCurveTo(0, -474, 70, -418); c.quadraticCurveTo(0, -440, -70, -418); c.fill(); rim();  // crest on the crown
+      c.fillStyle = '#c9b98a'; c.beginPath(); c.arc(0, -410, 10, 0, 7); c.fill();  // grenade badge (plain disc)
+      c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 6; c.beginPath(); c.arc(-14, -398, 50, Math.PI * 1.15, Math.PI * 1.45); c.stroke();
+    } else if (hat === 'stahlhelm' || hat === 'm1916' || hat === 'm1' || hat === 'brodie' || hat === 'rumhelm') {  // steel helmets: dome + (M35) flared skirt / (M1) small rim / (Brodie) wide brim
+      const col = o.helmCol || { stahlhelm: '#565d4c', m1916: '#5c6150', m1: '#5a5a3c', brodie: '#5e5a40', rumhelm: '#5c5a3e' }[hat];
       const hg = c.createLinearGradient(-110, -470, 110, -340); hg.addColorStop(0, col); hg.addColorStop(1, '#1e2018'); c.fillStyle = hg; c.beginPath();
-      if (hat === 'stahlhelm') { c.moveTo(-100, -360); c.bezierCurveTo(-108, -488, 108, -488, 100, -360); c.lineTo(134, -316); c.quadraticCurveTo(112, -330, 92, -338); c.lineTo(-92, -338); c.quadraticCurveTo(-112, -330, -134, -316); c.closePath(); }
+      if (hat === 'm1916') { c.moveTo(-100, -364); c.bezierCurveTo(-108, -490, 108, -490, 100, -364); c.lineTo(108, -330); c.lineTo(146, -296); c.quadraticCurveTo(118, -318, 94, -330); c.lineTo(-94, -330); c.quadraticCurveTo(-118, -318, -146, -296); c.lineTo(-108, -330); c.closePath(); }  // WWI M1916: deeper skirt, big flare over the neck
+      else if (hat === 'stahlhelm') { c.moveTo(-100, -360); c.bezierCurveTo(-108, -488, 108, -488, 100, -360); c.lineTo(134, -316); c.quadraticCurveTo(112, -330, 92, -338); c.lineTo(-92, -338); c.quadraticCurveTo(-112, -330, -134, -316); c.closePath(); }
       else if (hat === 'm1') { c.moveTo(-114, -346); c.bezierCurveTo(-116, -486, 116, -486, 114, -346); c.quadraticCurveTo(0, -362, -114, -346); }
       else if (hat === 'rumhelm') { c.moveTo(-138, -342); c.quadraticCurveTo(-118, -356, -104, -360); c.bezierCurveTo(-112, -486, 112, -486, 104, -360); c.quadraticCurveTo(118, -356, 138, -342); c.quadraticCurveTo(0, -330, -138, -342); }  // Romanian M1939 (Dutch pattern): high dome, even all-round brim
       else { c.ellipse(0, -372, 158, 24, 0, 0, 7); c.moveTo(-92, -372); c.bezierCurveTo(-96, -460, 96, -460, 92, -372); }
       c.fill(); rim();
       c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 6; c.beginPath(); c.arc(-14, -392, 52, Math.PI * 1.15, Math.PI * 1.45); c.stroke();  // highlight
+      if (hat === 'm1916') { c.fillStyle = '#3a3e30'; [-1, 1].forEach(sd => { c.beginPath(); c.ellipse(sd * 92, -380, 9, 12, 0, 0, 7); c.fill(); }); }  // ventilation lugs (Stirnpanzer mounts)
       if (hat === 'm1' && o.side === 'us') { c.strokeStyle = 'rgba(40,36,24,0.6)'; c.lineWidth = 3; c.beginPath(); c.moveTo(-100, -352); c.quadraticCurveTo(0, -300, 100, -352); c.stroke(); }  // chinstrap
     } else if (hat === 'kopftuch') {  // headscarf over the hair, knotted under the chin
       c.fillStyle = o.capCol || '#6a5a4a'; c.beginPath(); c.moveTo(-112, -250); c.bezierCurveTo(-130, -470, 130, -470, 112, -250); c.quadraticCurveTo(96, -330, 0, -352); c.quadraticCurveTo(-96, -330, -112, -250); c.closePath(); c.fill(); rim();
@@ -441,11 +555,11 @@ const K = {
       c.fillStyle = '#8a7a4a'; c.beginPath(); c.ellipse(0, -398, 98, 52, 0, Math.PI, 0); c.lineTo(98, -372); c.lineTo(-98, -372); c.fill(); rim();
       c.fillStyle = '#4a3a24'; c.beginPath(); c.ellipse(0, -368, 94, 14, 0, 0, Math.PI); c.fill(); star(0, -404, 15, '#e0bd5a');
     } else if (hat === 'peaked') {  // officer's peaked cap: band colour + badge by side
-      const top = o.capCol || (o.whites && (o.side === 'ijn' || o.side === 'navy') ? '#eeebe2' : null) || { ijn: '#151a2a', usaf: '#3a4b6e', wehr: '#5b6150', sov: '#6e6844', us: '#6b6440', navy: '#ece8e0', jap: '#8a7a4a', tommy: '#7a6a48', rum: '#6e6244' }[o.side] || '#2a2a2e';
-      const band = { ijn: '#0a0a0c', usaf: '#16120f', wehr: '#3d4a3a', sov: '#c0282d', navy: '#16120f', jap: '#c0282d', tommy: '#5a4a30', rum: '#3a2c1e' }[o.side] || '#3a3a30';
+      const top = o.capCol || (o.whites && (o.side === 'ijn' || o.side === 'navy') ? '#eeebe2' : null) || { ijn: '#151a2a', usaf: '#3a4b6e', wehr: '#5b6150', sov: '#6e6844', us: '#6b6440', navy: '#ece8e0', jap: '#8a7a4a', tommy: '#7a6a48', rum: '#6e6244', kaiser: '#6a6d58', poilu: '#7d90aa' }[o.side] || '#2a2a2e';
+      const band = { ijn: '#0a0a0c', usaf: '#16120f', wehr: '#3d4a3a', sov: '#c0282d', navy: '#16120f', jap: '#c0282d', tommy: '#5a4a30', rum: '#3a2c1e', kaiser: '#b0302a', poilu: '#2a3450' }[o.side] || '#3a3a30';
       c.fillStyle = band; c.fillRect(-88, -420, 176, 52); c.fillStyle = top; c.beginPath(); c.moveTo(-88, -418); c.quadraticCurveTo(-150, -470, -60, -476); c.quadraticCurveTo(0, -470, 60, -476); c.quadraticCurveTo(150, -470, 88, -418); c.closePath(); c.fill(); rim();
       c.fillStyle = '#16120f'; c.beginPath(); c.ellipse(0, -366, 100, 18, 0, 0, Math.PI); c.fill();
-      if (o.side === 'sov') star(0, -398, 14, '#c0282d'); else if (o.side === 'wehr') { c.fillStyle = '#c9ccc0'; c.beginPath(); c.moveTo(-34, -440); c.lineTo(0, -428); c.lineTo(34, -440); c.lineTo(0, -420); c.closePath(); c.fill(); c.beginPath(); c.arc(0, -396, 9, 0, 7); c.fill(); }
+      if (o.side === 'sov') { c.fillStyle = '#d8b450'; c.beginPath(); c.arc(0, -398, 19, 0, 7); c.fill(); star(0, -398, 14, '#c0282d'); } else if (o.side === 'wehr') { c.fillStyle = '#c9ccc0'; c.beginPath(); c.moveTo(-34, -440); c.lineTo(0, -428); c.lineTo(34, -440); c.lineTo(0, -420); c.closePath(); c.fill(); c.beginPath(); c.arc(0, -396, 9, 0, 7); c.fill(); }
       else if (o.side === 'ijn') {  // IJN cap badge: gold anchor inside a ring of cherry-blossom leaves
         c.fillStyle = '#d8b450'; for (let k = 0; k < 7; k++) { const a = Math.PI * (0.15 + k * 0.7 / 6) * 2 - Math.PI * 0.2; c.beginPath(); c.ellipse(Math.cos(a + Math.PI / 2) * 20, -396 + Math.sin(a + Math.PI / 2) * 20, 6, 4, a, 0, 7); c.fill(); }
         c.beginPath(); c.arc(0, -418, 7, 0, 7); c.fill(); c.strokeStyle = '#d8b450'; c.lineWidth = 4; c.beginPath(); c.moveTo(0, -410); c.lineTo(0, -386); c.moveTo(-9, -404); c.lineTo(9, -404); c.stroke(); c.beginPath(); c.arc(0, -394, 10, 0.3, Math.PI - 0.3); c.stroke();
@@ -476,6 +590,14 @@ const K = {
       c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = 6; c.beginPath(); c.arc(0, -292, 120, 3.6, 4.4); c.stroke();
       c.fillStyle = '#8a8a90'; c.beginPath(); c.ellipse(0, -198, 128, 22, 0, 0, 7); c.fill(); c.strokeStyle = 'rgba(0,0,0,0.45)'; c.lineWidth = 3; c.stroke();
       if (o.side === 'cosmo') { c.fillStyle = '#c0282d'; c.font = 'bold 30px sans-serif'; c.textAlign = 'center'; c.fillText('СССР', 0, -404); }
+    } else if (hat === 'flighthelmet') {  // jet pilot hard helmet: shell over the head and ears, visor housing, o.visor = dark visor down, o.mask = oxygen mask + hose; o.helmCol (USAF grey/white, Soviet ZSh white, IAF olive)
+      const col = o.helmCol || { usaf: '#d9dbd6', pvo: '#e6e4dc', iaf: '#7a7c5a', irq: '#c9c9bf', jasdf: '#e4e4dc' }[o.air || 'usaf'];
+      const hg = c.createLinearGradient(-130, -470, 130, -260); hg.addColorStop(0, col); hg.addColorStop(1, '#5a5a56'); c.fillStyle = hg;
+      c.beginPath(); c.moveTo(-122, -236); c.bezierCurveTo(-140, -500, 140, -500, 122, -236); c.lineTo(96, -236); c.quadraticCurveTo(104, -330, 0, -344); c.quadraticCurveTo(-104, -330, -96, -236); c.closePath(); c.fill(); rim();
+      c.fillStyle = 'rgba(0,0,0,0.22)'; c.beginPath(); c.ellipse(0, -360, 98, 22, 0, Math.PI, 0); c.fill();  // visor housing
+      if (o.visor) { c.fillStyle = 'rgba(30,34,44,0.88)'; c.beginPath(); c.moveTo(-96, -350); c.quadraticCurveTo(0, -364, 96, -350); c.lineTo(88, -262); c.quadraticCurveTo(0, -244, -88, -262); c.closePath(); c.fill(); c.strokeStyle = 'rgba(255,255,255,0.35)'; c.lineWidth = 5; c.beginPath(); c.moveTo(-60, -334); c.quadraticCurveTo(-40, -300, -56, -276); c.stroke(); }
+      if (o.mask) { c.fillStyle = '#4a4c44'; c.beginPath(); c.moveTo(-36, -276); c.quadraticCurveTo(0, -292, 36, -276); c.lineTo(26, -222); c.quadraticCurveTo(0, -210, -26, -222); c.closePath(); c.fill(); c.strokeStyle = '#3a3c36'; c.lineWidth = 12; c.beginPath(); c.moveTo(0, -214); c.quadraticCurveTo(30, -170, 20, -120); c.stroke(); }
+      if ((o.air || 'usaf') === 'pvo') star(0, -404, 15, '#c0282d');
     } else if (hat === 'fedora' || hat === 'flatcap') {  // civilian hats
       c.fillStyle = felt(0, -470, 0, -360);
       if (hat === 'fedora') { c.beginPath(); c.ellipse(0, -372, 140, 20, 0, 0, 7); c.fill(); rim(); c.beginPath(); c.moveTo(-78, -374); c.lineTo(-70, -452); c.quadraticCurveTo(0, -430, 70, -452); c.lineTo(78, -374); c.closePath(); c.fill(); rim(); c.fillStyle = '#16120f'; c.fillRect(-78, -396, 156, 16); }

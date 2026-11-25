@@ -23,6 +23,11 @@ def main():
     proj = core.Project(job); tl, _ = proj.read(); t0 = time.time()
     if tl.get('mock_voice'):
         sys.exit('mock voice in the timeline: not deliverable')
+    import gate  # review fixes must not break what the draft passed: the timeline checks run again before every export
+    if os.environ.get('DOC_GATE_SKIP', '').strip():
+        gate.require(job, 'export')  # records the override
+    elif not gate.gate(job, 'export')[0]:
+        sys.exit('export stopped: fix every !! above (scripts/gate.py), then export again')
     log = lambda m: print(f'{time.time() - t0:6.0f}s {m}', flush=True)  # noqa: E731
     dirty = core.dirty_ranges(proj, tl)
     if dirty is None:

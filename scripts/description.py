@@ -83,6 +83,32 @@ def ts(s):
     return f'{int(s // 3600)}:{int(s % 3600 // 60):02d}:{int(s % 60):02d}' if s >= 3600 else f'{int(s // 60)}:{int(s % 60):02d}'
 
 
+def wwiki(d, txt):
+    """Replace every https://commons.wikimedia.org/?curid=N with its w.wiki short link (Wikimedia's URL shortener, meta API
+    action=shortenurl); links cached in qa/wwiki.json so reruns make no requests. Bare domains, like the other fallbacks."""
+    import urllib.parse, urllib.request
+    from media import UA
+    cache_p = d / 'qa' / 'wwiki.json'
+    cache = json.loads(cache_p.read_text(encoding='utf-8')) if cache_p.exists() else {}
+    for url in sorted(set(re.findall(r'https://commons\.wikimedia\.org/\?curid=\d+', txt))):
+        if url not in cache:
+            body = urllib.parse.urlencode({'action': 'shortenurl', 'url': url, 'format': 'json'}).encode()
+            req = urllib.request.Request('https://meta.wikimedia.org/w/api.php', data=body, headers={'User-Agent': UA})
+            for _try in range(20):  # anonymous clients hit 'urlshortener-ratelimit' after a few links: wait and retry
+                r = json.loads(urllib.request.urlopen(req, timeout=30).read())
+                if 'shortenurl' in r:
+                    break
+                if r.get('error', {}).get('code') != 'urlshortener-ratelimit':
+                    raise SystemExit(f'w.wiki: {r}')
+                print(f'w.wiki rate limit, {len(cache)} cached; waiting 60 s', flush=True); __import__('time').sleep(60)
+            else:
+                raise SystemExit('w.wiki: still rate-limited after 20 minutes')
+            cache[url] = r['shortenurl']['shorturl']
+            cache_p.write_text(json.dumps(cache, indent=1), encoding='utf-8')
+        txt = txt.replace(url, cache[url])
+    return txt.replace('https://', '').replace('(ID = Commons page ID)', '(short link to each file page)')
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('job'); ap.add_argument('--intro', required=True); ap.add_argument('--note'); ap.add_argument('--tags', required=True)
@@ -202,6 +228,11 @@ def main():
         n = len(pd); txt = build(n, True, nosig=True).replace('https://', '')
         while len(txt) > LIMIT and n > 3:
             n -= 3; txt = build(n, True, nosig=True).replace('https://', '')
+    if len(txt) > LIMIT and a.cc_links:  # MiG-25 2026-11-18: 48 CC files still 716 over; Wikimedia's own URL shortener (w.wiki) keeps every file a
+        txt = wwiki(d, build(len(pd), True, nosig=True))  # clickable link at ~15 instead of ~37 characters; cached in qa/wwiki.json
+        n = len(pd)
+        while len(txt) > LIMIT and n > 3:
+            n -= 3; txt = wwiki(d, build(n, True, nosig=True))
     if len(txt) > LIMIT:
         (d / "qa" / "description_too_long.txt").write_text(txt, encoding="utf-8"); sys.exit(f"{len(txt)} characters even with a short author list: shorten the intro or note")
     (d / 'description_youtube.txt').write_text(txt + '\n', encoding='utf-8')

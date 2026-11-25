@@ -1,10 +1,16 @@
-"""Story thumbnail in the channel's style (user reference 2026-11-02, "XÓA SỔ? / BÓNG MA TRƯỜNG SƠN"):
-gritty B&W photo with aged, torn edges; the hero on the right looking at the viewer; two overlay lines on the left in a
-worn military stencil (never the title; GEM brief: one line has a strong verb, 2-4 words each, white/grey, no glow); red hand-drawn notes (circle, arrow, dashed path, short labels).
+"""Story thumbnail: the channel's STYLE on a layout that is new for every story (docs/STORY_MODE.md step 9, user rule
+2026-11-23: all story thumbnails had come out as one picture, hero right + two lines left + red circle and arrow).
+Fixed here: gritty B&W photo with aged, torn edges; overlay text in a worn military stencil, white/grey, no glow; red
+hand-drawn notes (circle, arrow, dashed path, short labels). Free, set per story in the spec: the base image's composition,
+and where each text line sits, its size, alignment and tilt. The text is never the title.
 
   PY scripts/story_thumb.py spec.json out.jpg
 
-spec: {"image": path, "hook": "LỆCH 1 NỐT?", "sub": "NGƯỜI THỢ ĐÀN ĐÀ LẠT", "hook_xy": [70, 330],
+spec: {"image": path,
+       "lines": [{"text": "LỆCH 1 NỐT?", "xy": [640, 40], "h": 150, "align": "center"},
+                 {"text": "ĐÀ LẠT 1969", "xy": [1220, 560], "h": 64, "align": "right", "tone": "grey", "angle": -3}],
+       (lines: xy = top-left / top-centre / top-right of the line by align (left|center|right); h = letter height;
+        tone: white|grey; angle in degrees. Old form, still read: "hook", "sub", "hook_xy", "line1_h", "line2_h")
        "notes": [{"type": "circle", "box": [x0, y0, x1, y1], "label": "BẰNG CHỨNG", "label_xy": [x, y]},
                  {"type": "arrow", "from": [x, y], "to": [x, y], "label": "AN NINH", "label_xy": [x, y]},
                  {"type": "dashed", "points": [[x, y], ...], "label": "...", "label_xy": [x, y]}]}
@@ -50,9 +56,10 @@ def aged(im):
     return im
 
 
-def stencil_line(im, xy, s, height, fill, squeeze=0.84):
-    """One overlay line in the channel's thumbnail font (GEM brief: military stencil, distressed, white/grey, no glow,
-    horizontal): Saira Stencil One, squeezed to a condensed cut, worn with speckled holes. Returns its width."""
+def stencil_line(im, xy, s, height, fill, squeeze=0.84, align='left', angle=0):
+    """One overlay line in the channel's thumbnail font (GEM brief: military stencil, distressed, white/grey, no glow):
+    Saira Stencil One, squeezed to a condensed cut, worn with speckled holes. xy is the line's top-left, top-centre or
+    top-right corner by `align`; `angle` tilts it (degrees, counter-clockwise). Returns its width."""
     f = R.font('stencil', int(height / 0.74))
     tmp = Image.new('L', (W * 2, int(height * 2)), 0); td = ImageDraw.Draw(tmp)
     bb = td.textbbox((0, 0), s, font=f); td.text((-bb[0], -bb[1]), s, font=f, fill=255)
@@ -61,9 +68,14 @@ def stencil_line(im, xy, s, height, fill, squeeze=0.84):
     holes = Image.effect_noise(tmp.size, 70).convert('L').filter(ImageFilter.GaussianBlur(1.1)).point(lambda v: 0 if v > 172 else 255)
     worn = Image.composite(tmp, Image.new('L', tmp.size, 0), holes)
     sh = tmp.filter(ImageFilter.MaxFilter(5)).point(lambda v: int(v * 0.85))   # hard dark shadow (not a glow): legible on bright areas
-    im.paste((0, 0, 0), (int(xy[0]) + 5, int(xy[1]) + 5), sh)
-    im.paste(fill, (int(xy[0]), int(xy[1])), worn)
-    return tmp.width
+    width = tmp.width
+    x = int(xy[0]) - (width // 2 if align == 'center' else width if align == 'right' else 0); y = int(xy[1])
+    if angle:
+        worn = worn.rotate(angle, expand=True, resample=Image.BICUBIC); sh = sh.rotate(angle, expand=True, resample=Image.BICUBIC)
+        x -= (worn.width - width) // 2; y -= (worn.height - tmp.height) // 2
+    im.paste((0, 0, 0), (x + 5, y + 5), sh)
+    im.paste(fill, (x, y), worn)
+    return width
 
 
 def label(d, xy, s, size=34, bg=False):
@@ -102,16 +114,28 @@ def notes(im, spec):
 
 def main():
     spec = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+    rng.seed(spec.get('seed', 7))   # another seed moves the random scratches (e.g. off the hero's face)
     im = photo(spec['image'])
     if spec.get('aged', True):  # off when the base image is already a damaged print (GEM [STYLE] prompt)
         im = aged(im)
-    x, y = spec.get('hook_xy', [56, 300])
-    h1, h2 = spec.get('line1_h', 130), spec.get('line2_h', 70)   # GEM: each line big (15-20 % of the frame for line 1)
-    stencil_line(im, (x, y), spec['hook'], h1, (232, 230, 224))
-    if spec.get('sub'):
-        stencil_line(im, (x + 4, y + h1 * 1.5), spec['sub'], h2, (196, 194, 188))  # room for the next line's accents
+    lines = list(spec.get('lines', []))
+    if spec.get('hook'):  # old two-line form
+        x, y = spec.get('hook_xy', [56, 300])
+        h1, h2 = spec.get('line1_h', 130), spec.get('line2_h', 70)
+        lines.append({'text': spec['hook'], 'xy': [x, y], 'h': h1})
+        if spec.get('sub'):
+            lines.append({'text': spec['sub'], 'xy': [x + 4, y + h1 * 1.5], 'h': h2, 'tone': 'grey'})  # room for the next line's accents
+    if not lines:
+        sys.exit('spec has no text: give "lines" (docs/STORY_MODE.md step 9)')
+    for ln in lines:
+        fill = (196, 194, 188) if ln.get('tone') == 'grey' else (232, 230, 224)   # the two fixed tones of the channel's look
+        stencil_line(im, ln['xy'], ln['text'], ln.get('h', 110), fill, align=ln.get('align', 'left'), angle=ln.get('angle', 0))
     notes(im, spec)
     im.save(sys.argv[2], quality=93)
+    sys.path.insert(0, str(Path(__file__).parent))
+    import thumb
+    if thumb.repeats(sys.argv[2], story=True):
+        sys.exit('REDESIGN: this thumbnail has the layout of a recent story thumbnail (docs/STORY_MODE.md step 9). Do not show it to the user.')
 
 
 if __name__ == '__main__':

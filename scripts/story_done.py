@@ -51,6 +51,7 @@ def main():
     src_script = proj / 'script.txt'
 
     print(f'keep: {keep_script.relative_to(ROOT)} (final script, storycheck corpus) + a row in stories/published/LOG.md')
+    print(f'keep: stories/published/thumbs/{name}.jpg (thumbnail, so the next one is designed differently)')
     print('keep: assets/music, assets/sfx (shared library, reused by /genvideo and /gentruyen)')
     for f in local:
         print(f'move to library: {f.relative_to(ROOT)} -> assets/{f.relative_to(proj).parts[0]}/from-{a.job[:40]}/')
@@ -83,6 +84,10 @@ def main():
     shutil.copy2(src_script, keep_script)
     if (proj / 'STORY.md').exists():  # chapters, characters, frame: what the next story must not repeat
         shutil.copy2(proj / 'STORY.md', keep_script.with_suffix('.story.md'))
+    thumbs = sorted(out.glob('*.jpg')) if out.exists() else []  # the next thumbnail is compared with these (STORY_MODE step 9)
+    if thumbs:
+        td = keep_script.parent / 'thumbs'; td.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(thumbs[0], td / f'{name}.jpg')
     if archival:  # after the script copy (evidence.py moves script.txt), before anything is deleted
         r = __import__('subprocess').run(ev + ['--run'])
         if r.returncode or not (ROOT / 'evidence' / 'stories' / name / 'INDEX.csv').exists():

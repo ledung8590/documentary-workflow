@@ -245,7 +245,7 @@ def preview(c, folder):
         url = c.get('preview') or (None if c.get('kind') == 'video' else c.get('download'))
         if not url and c.get('kind') == 'video' and c.get('download'):  # no poster (NARA): grab a frame over HTTP
             import subprocess
-            subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', '20', '-i', c['download'], '-frames:v', '1',
+            subprocess.run(['ffmpeg', '-v', 'error', '-y', *_ua(c['download']), '-ss', '20', '-i', c['download'], '-frames:v', '1',
                             '-vf', f'scale={PREVIEW_W}:-2', str(p)], check=True, capture_output=True, timeout=120)
             return p
         if not url:
@@ -273,6 +273,16 @@ def fetch_video(c, folder):
     last = None
     for u in video_urls(c['download']):
         try:
+            try:  # multi-GB reels (film 126: 'The Lost Battalion (1919)', 5 GB at ~0.4 MB/s) hung apply for an hour:
+                req = urllib.request.Request(u, method='HEAD', headers={'User-Agent': UA})
+                with urllib.request.urlopen(req, timeout=40) as r:  # stream those like NARA: ffmpeg seeks over HTTP
+                    if int(r.headers.get('Content-Length') or 0) > 800e6:
+                        return u
+            except urllib.error.HTTPError as e:
+                if e.code == 404:
+                    raise
+            except (urllib.error.URLError, OSError, ValueError):
+                pass
             p.write_bytes(_get(u, timeout=300)); return p
         except urllib.error.HTTPError as e:
             last = e
@@ -281,13 +291,19 @@ def fetch_video(c, folder):
     raise last
 
 
+def _ua(src):
+    """ffmpeg reading a reel over HTTP (NARA, multi-GB Commons files) must send our User-Agent: Wikimedia answers ffmpeg's
+    default one with a 4xx (film 126: 12 Lost Battalion cuts came out empty)."""
+    return ['-user_agent', UA] if str(src).startswith('http') else []
+
+
 def clean_in(src, t_in, dur, look=10.0, fps=12):
     """In-point nearest t_in whose [in, in+dur] holds no camera cut, so a picked shot is one take. A cut a fraction
     of a second into a shot reads as a jerk on screen (user review 2026-10-31). Returns (in, cuts found near t_in)."""
     import subprocess
     import numpy as np
     a = max(0.0, t_in - look)
-    raw = subprocess.run(['ffmpeg', '-v', 'error', '-ss', f'{a:.3f}', '-i', str(src), '-t', f'{dur + 2 * look:.3f}', '-an',
+    raw = subprocess.run(['ffmpeg', '-v', 'error', *_ua(src), '-ss', f'{a:.3f}', '-i', str(src), '-t', f'{dur + 2 * look:.3f}', '-an',
                           '-vf', f'fps={fps},scale=160:90,format=gray', '-f', 'rawvideo', '-'], capture_output=True, timeout=600).stdout
     x = np.frombuffer(raw, np.uint8)
     n = len(x) // (160 * 90)
@@ -308,7 +324,7 @@ def clean_in(src, t_in, dur, look=10.0, fps=12):
 def fetch_range(src, start, dur, out):
     """Cut [start, start+dur] of a local video to an H.264/AAC intermediate."""
     import subprocess
-    subprocess.run(['ffmpeg', '-v', 'error', '-y', '-ss', f'{start:.3f}', '-i', str(src), '-t', f'{dur:.3f}',
+    subprocess.run(['ffmpeg', '-v', 'error', '-y', *_ua(src), '-ss', f'{start:.3f}', '-i', str(src), '-t', f'{dur:.3f}',
                     '-vf', 'scale=trunc(iw*sar/2)*2:trunc(ih/2)*2,setsar=1', '-c:v', 'libx264', '-crf', '16', '-preset', 'veryfast', '-pix_fmt', 'yuv420p',  # the renderer ignores SAR: square the pixels (film 92: a 352x480 20:11 film drew as a narrow column)
                     '-c:a', 'aac', '-ar', '48000', '-ac', '2', str(out)], check=True, capture_output=True, timeout=600)
     return out

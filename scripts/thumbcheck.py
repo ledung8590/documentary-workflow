@@ -48,6 +48,7 @@ def main(job, img):
     script = ''.join((d / f).read_text(encoding='utf-8') for f in ('script.txt', 'FACTS.md') if (d / f).exists())
     snum = norm_num(script)
     texts = {k: spec[k] for k in ('tag', 'kicker', 'title', 'title2', 'red', 'date') if spec.get(k)}
+    texts.update({f'line{i + 1}': ln['text'] for i, ln in enumerate(spec.get('lines') or []) if ln.get('text')})  # layout "free" (thumb.py)
     warn = 0
     # 1. numbers and years
     for k, s in texts.items():
@@ -75,7 +76,7 @@ def main(job, img):
         if num and num.group(1) not in cred:
             print(f'!! credit does not name {key} ({r["title"]}): add its archive number'); warn += 1
         au = re.split(r'[,(/]', r.get('artist', ''))[0].strip()
-        if au and not re.search(r'unknown|unbekannt|anonym', au, re.I) and au.split()[-1].lower() not in cred.lower() and au.split()[0].lower() not in cred.lower():
+        if au and not re.search(r'unknown|unbekannt|anonym|missing name', au, re.I) and au.split()[-1].lower() not in cred.lower() and au.split()[0].lower() not in cred.lower():
             print(f'!! credit lacks the author of {key}: "{r["artist"]}"'); warn += 1
     # 3. names / type words vs the photo records
     blob = ' '.join(json.dumps(r, ensure_ascii=False) for r in recs.values()).lower()

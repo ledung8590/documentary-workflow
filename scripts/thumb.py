@@ -160,15 +160,75 @@ def band(s, lang):
     return img
 
 
+COLORS = {'white': (255, 255, 255), 'cream': (238, 236, 230), 'red': RED, 'ink': INK, 'navy': NAVY, 'black': (14, 14, 16), 'paper': (246, 244, 240)}
+
+
+def col(c, default='white'):
+    return tuple(c) if isinstance(c, (list, tuple)) else COLORS.get(c or default, COLORS[default])
+
+
+def free(s, lang):
+    """layout "free" (user 2026-11-24: YouTube judges templates across the channel, and the four fixed layouts made four
+    thumbnails in a row look like one): the style stays (real B/W print, serif/sans house fonts, one red emphasis, a year
+    label, a small credit), every position is designed for this film and differs from the last five (scripts/thumbrepeat.py).
+      "photos": [{"src": path, "box": [x0, y0, x1, y1], "fx": 0.5, "fy": 0.4, "grey": true, "frame": 6}]   (default: "photo" full frame)
+      "shades": [{"box": [x0, y0, x1, y1], "color": "black", "alpha": 215, "fade": "up" | "down" | "left" | "right"}]
+                (fade = the side on which the shade thins out to nothing; none = flat)
+      "lines":  [{"text": "…", "xy": [x, y], "h": 110, "font": "serif" | "sans" | "small", "color": "white" | "cream" | "red" | "ink" | [r, g, b],
+                  "align": "left" | "center" | "right", "stroke": 0, "stroke_color": "ink", "box": "red" (a filled box behind the line), "maxw": 900}]
+      "tag", "tag_xy": [x, y], "tag_anchor": "l" | "r", "tag_bg": "navy" | "black"; "credit"; "photo"/"photo2" (+ "_id") still name the photos for thumbcheck."""
+    img = Image.new('RGBA', (W, H), (16, 16, 18, 255))
+    for p in s.get('photos') or [{'src': s['photo'], 'box': [0, 0, W, H], 'fx': s.get('fx', 0.5), 'fy': s.get('fy', 0.5)}]:
+        x0, y0, x1, y1 = [int(v) for v in p.get('box', [0, 0, W, H])]; fr = int(p.get('frame', 0))
+        if fr:
+            img.paste(Image.new('RGB', (x1 - x0 + 2 * fr, y1 - y0 + 2 * fr), (235, 232, 224)), (x0 - fr, y0 - fr))
+        img.paste(photo(p['src'], x1 - x0, y1 - y0, p.get('fx', 0.5), p.get('fy', 0.5), p.get('grey', True)), (x0, y0))
+    ov = Image.new('RGBA', (W, H)); od = ImageDraw.Draw(ov)
+    for sh in s.get('shades', []):
+        x0, y0, x1, y1 = [int(v) for v in sh['box']]; c = col(sh.get('color'), 'black'); a = int(sh.get('alpha', 215)); fade = sh.get('fade')
+        if not fade:
+            od.rectangle((x0, y0, x1, y1), fill=c + (a,)); continue
+        n = (y1 - y0) if fade in ('up', 'down') else (x1 - x0)
+        for i in range(n):
+            k = i / max(1, n - 1); k = k if fade in ('up', 'left') else 1 - k   # thin on the named side
+            if fade in ('up', 'down'):
+                od.line((x0, y0 + i, x1, y0 + i), fill=c + (int(a * k),))
+            else:
+                od.line((x0 + i, y0, x0 + i, y1), fill=c + (int(a * k),))
+    img = Image.alpha_composite(img, ov); d = ImageDraw.Draw(img)
+    for ln in s.get('lines', []):
+        f = fit(d, ln['text'], ln.get('font', 'sans'), int(ln.get('h', 90)), lang, ln.get('maxw', W - 80)); w = d.textlength(ln['text'], font=f)
+        x, y = ln['xy']; al = ln.get('align', 'left'); x = x - w if al == 'right' else x - w / 2 if al == 'center' else x
+        if ln.get('box'):
+            d.rectangle((x - 20, y - 4, x + w + 20, y + int(f.size * 1.32)), fill=col(ln['box'], 'red'))
+        d.text((x, y), ln['text'], font=f, fill=col(ln.get('color')), stroke_width=int(ln.get('stroke', 0)), stroke_fill=col(ln.get('stroke_color'), 'ink'))
+    if s.get('tag'):
+        tx, ty = s.get('tag_xy', [22, 18]); label(d, tx, ty, s['tag'], lang, s.get('tag_size', 26), bg=col(s.get('tag_bg'), 'navy'), anchor=s.get('tag_anchor', 'l'))
+    credit(d, s.get('credit'), lang)
+    return img
+
+
 def make(spec, out):
     s = json.loads(Path(spec).read_text(encoding='utf-8')) if not isinstance(spec, dict) else spec
     global CREDIT_LEFT; CREDIT_LEFT = bool(s.get("credit_left"))
     lang = s.get('lang', 'en')
-    img = {'panel': panel, 'portrait': portrait, 'question': question, 'band': band}[s.get('layout', 'panel')](s, lang)
+    img = {'panel': panel, 'portrait': portrait, 'question': question, 'band': band, 'free': free}[s.get('layout') or ('free' if s.get('lines') else 'panel')](s, lang)
     img.convert('RGB').save(out, quality=94)
     Path(out).with_suffix('.json').write_text(json.dumps(s, ensure_ascii=False, indent=1), encoding='utf-8')  # for scripts/thumbcheck.py
     return out
 
 
+def repeats(out, story=False):
+    """Layout against the last 5 thumbnails, right when the picture is made (film 126 drew the old
+    portrait layout again because the check only ran at the deliver gate)."""
+    try:
+        import thumbrepeat
+        return [o for o in thumbrepeat.check(out, story) if o[0] == '!!']
+    except Exception as e:   # no earlier thumbnails to read (evidence drive unplugged): the deliver gate still checks
+        print('! thumbrepeat did not run:', e); return []
+
+
 if __name__ == '__main__':
-    print(make(sys.argv[1], sys.argv[2]))
+    out = make(sys.argv[1], sys.argv[2]); print(out)
+    if repeats(out):
+        sys.exit('REDESIGN: this thumbnail has the layout of a recent one. Use "layout": "free" with the subject and every text line somewhere else (docs/WORKFLOW.md, thumbnail). Do not show it to the user.')

@@ -28,7 +28,7 @@ Reference: `Chiến Dịch Điện Biên Phủ 1954.mp4` (154.5 s, 24 fps, −14
 
 ## Rhythm and structure
 - **One idea per shot.** A new picture every 3–6 s; long holds of 6–8 s only on a strong photo, a map build or a quote.
-- **Designed full-screen cards** alternate with footage about every 15–20 s, so the film never runs more than ~25 s of footage without a card.
+- **Keep the picture changing through the narration.** Use full-screen cards for structural turns that need the whole frame. Place most dates, names and conclusions briefly over the image or action that gives them meaning.
 - **Card types:**
   - Cold-open title on black: big off-white date, red letter-spaced subtitle.
   - Rhetorical question in big red caps on black ("VÌ SAO?").
@@ -50,7 +50,7 @@ Reference: `Chiến Dịch Điện Biên Phủ 1954.mp4` (154.5 s, 24 fps, −14
   - Dip-to-black or straight-to-card at section breaks.
   - Overlays animate in after the cut, never with it.
 
-- **Cold open timing** (user review, 2026-10-30): the narration starts only after the title card has gone. Set the voice `lead_in` to at least the title card length plus 0.3 s, and anchor the first footage to the end of the title, not to the first word. Never speak over a full-screen title.
+- **Cold open timing** (user 2026-11-24, replaces the 2026-10-30 rule "narration after the title card"): the film starts on its strongest real picture with the narration inside the first second (`docs/WORKFLOW.md` "The first 15 seconds"). The title comes after the hook, in a pause of the narration or as a title box over the picture. Never speak over a full-screen title.
 
 ## Picture treatment
 - **Archival photos:** full-frame **cover crop** (never letterboxed, never blurred fill), black-and-white with a warm sepia cast, lifted blacks, strong but smooth vignette, film grain, a slow push-in or drift (≈ 4–8 % over the shot).

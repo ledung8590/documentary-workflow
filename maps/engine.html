@@ -46,7 +46,7 @@ window.setup = async (s) => {
   }
   if (LK) {
     RED = LK.accent2; AMBER = LK.name === 'paper' ? LK.accent : LK.highlight; BLUE = hexA(LK.accent, 0.22); WHITE = LK.fg;
-    OVB = 'rgba(18,17,16,0.8)'; OVT = '#EDE7DC';  // reference labels: dark translucent, cream bar and text
+    OVB = 'rgb(28,27,25)'; OVT = '#EDE7DC';  // reference labels: dark, opaque (2026-11-19: lines showed through the text), cream bar and text
     s.camera.forEach(k => { k.pitch = 0; k.bearing = 0; });  // flat sketch map, seen from above
     Object.defineProperty(fx, 'shadowBlur', { get: () => 0, set: () => {}, configurable: true });  // no glow
     // colours written in a map spec (bright house red/blue/amber) are pulled into the look by hue
@@ -249,13 +249,16 @@ function label(e, t) {
   const out = e.until ? clamp(1 - (t - e.until) / 0.5) : 1; if (out <= 0) return;
   const [x, y] = P(e.at), dy = e.dy ?? -70, s = 0.85 + 0.15 * a;
   fx.save(); fx.globalAlpha = a * out;
-  fx.strokeStyle = WHITE; fx.lineWidth = 2; fx.beginPath(); fx.moveTo(x, y); fx.lineTo(x, y + dy + 26); fx.stroke();
-  fx.fillStyle = WHITE; fx.fillRect(x - 6, y - 6, 12, 12);
   const HF = LK ? `700 ${Math.round(40 * s)}px Serif` : `700 ${Math.round(44 * s)}px Oswald`, SF = LK ? `500 ${Math.round(25 * s)}px Serif` : `${Math.round(26 * s)}px BeVN`;
   const TXT = LK ? e.text : e.text.toUpperCase();
   fx.font = HF; const tw = fx.measureText(TXT).width;
   fx.font = SF; const sw = e.sub ? fx.measureText(e.sub).width : 0;
   const bw = Math.max(tw, sw) + 36, bh = e.sub ? 100 : 66, bx = x - bw / 2, by = y + dy - bh + 26;
+  // point marker and leader only when the point sits outside its own box: a dy≈0 tag showed its dot and leader through the text
+  // while fading in (film 126 "Freya Stellung")
+  const outside = y < by - 4 || y > by + bh + 4; if (outside) { fx.fillStyle = WHITE; fx.fillRect(x - 6, y - 6, 12, 12); }
+  // leader from the point to the near edge of the box, never through it (2026-11-19 review: "Linie|vom", "12.|Januar")
+  const ey = dy < 0 ? by + bh : by; if (outside && Math.abs(ey - y) > 8) { fx.strokeStyle = WHITE; fx.lineWidth = 2; fx.beginPath(); fx.moveTo(x, y); fx.lineTo(x, ey); fx.stroke(); }
   fx.fillStyle = OVB; fx.fillRect(bx, by, bw, bh);
   if (LK) { fx.fillStyle = OVT; fx.fillRect(bx, by, 4, bh); } else if (e.accent) { fx.fillStyle = e.accent; fx.fillRect(bx, by, 6, bh); }
   fx.fillStyle = OVT; fx.textAlign = 'center'; fx.textBaseline = 'top';
@@ -405,7 +408,8 @@ window.renderAt = async (t) => {
   await new Promise(r => { if (map.loaded() && map.areTilesLoaded()) { map.once('render', r); map.triggerRepaint(); } else map.once('idle', r); setTimeout(r, 15000); });
   await new Promise(r => { if (map.areTilesLoaded()) { map.once('render', r); map.triggerRepaint(); } else map.once('idle', r); setTimeout(r, 15000); });
   fx.clearRect(0, 0, 1920, 1080);
-  for (const e of scene.layers) if (!GEO.has(e.kind)) DRAW[e.kind]?.(e, t);    // labels, units, fire on the 2D canvas
+  for (const e of scene.layers) if (!GEO.has(e.kind) && e.kind !== 'label') DRAW[e.kind]?.(e, t);    // units, fire, pulses on the 2D canvas
+  for (const e of scene.layers) if (e.kind === 'label') label(e, t);                                // labels last: always on top
   return true;
 };
 </script></body></html>

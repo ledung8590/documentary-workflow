@@ -14,6 +14,11 @@ from elevenlabs import subscription
 
 OUT = ROOT / 'assets' / 'sfx'
 LIB = {  # type -> [(seconds, prompt)]
+    # jet age (MiG-25 film, 2026-11-18): planeflyby is a WWII prop plane
+    'jetflyby': [(4.0, 'Military jet fighter low fly-by passing overhead left to right, loud roaring turbine whine and rumble with doppler, outdoors, no music'),
+                 (4.0, 'Two military jet fighters roaring past fast at low altitude, deep thunderous jet roar with doppler fade, outdoors, no music')],
+    'afterburner': [(5.0, 'Military jet fighter engines spooling up and lighting afterburner, deep crackling roar building, takeoff roll, outdoors, no music')],
+    'jetland': [(4.0, 'Heavy military jet touching down hard on a runway, tyre screech and thump, engines whining down, outdoors, no music')],
     'typewriter': [(4.0, 'Vintage mechanical typewriter typing fast, crisp key strikes, close, dry, no music'),
                    (2.0, 'Old typewriter typing a few slow deliberate keys, close, dry, no music'),
                    (10.0, 'Vintage manual typewriter typing continuously at a steady even pace, loud crisp mechanical key strikes, '

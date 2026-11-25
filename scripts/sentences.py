@@ -68,6 +68,10 @@ def _split_paragraph(text, lang=None):
         if (lang == 'de' and m.group(1) == '.' and word and m.end() < len(text)
                 and re.fullmatch(r'\d{1,2}|[IVXL]{2,}|[VXL]', word[0])):
             continue
+        if (lang == 'de' and m.group(1) == '.' and word and re.fullmatch(r'\d{3}', word[0])
+                and re.match(r'[\w-]*(division|regiment|bataillon|brigade|korps|armee|abteilung|geschwader|kompanie|batterie|gruppe)s?\b',
+                             text[m.end():], re.I)):  # "die 106. Infanteriedivision" (3-digit ordinal before a unit)
+            continue
         nxt = text[m.end():m.end() + 1]
         if m.group(1) == '.' and nxt and nxt.islower():  # "approx. five" / mid-sentence period
             continue

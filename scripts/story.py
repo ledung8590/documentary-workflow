@@ -401,7 +401,7 @@ def build(d, tl, brief, timing, sents, chapters, log=print):
     # music: drum-free beds per section (cold open, title, each chapter), each at most one file pass, 2 s crossfades, measured 9 dB under the voice
     moods = sorted(p.name for p in (ROOT / 'assets' / 'music').iterdir() if p.is_dir() and any(p.glob('*.mp3')))
     music = []
-    if moods and st.get('music', True):
+    if moods and st.get('music', False):  # user 2026-11-22: no background music any more, card and word SFX stay; brief story.music: true brings it back
         bounds = [(0.0, order[0])]
         if title_a:
             bounds.append((T(title_a) - 1.0, None))

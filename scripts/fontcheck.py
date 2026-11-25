@@ -64,6 +64,11 @@ def main(job):
             for c in tr['clips']:
                 for s in strings(c.get('props', {})):
                     note(missing(s, CARD), f'overlay {c["id"]} "{s[:40]}"')
+        else:  # the source label on every photo/film clip (Hailar 2026-11-18: Chinese/Korean Commons authors drew as boxes)
+            for c in tr['clips']:
+                for key in ('credit', 'caption', 'label'):
+                    if isinstance(c.get(key), str):
+                        note(missing(c[key], ('head', 'body')), f'{tr["id"]} {c.get("id", "")} {key} "{c[key][:40]}"')
     sub = (tl.get('subtitle_style') or {}).get('font', 'body')
     srt = d / 'voice' / 'voice.srt'
     if srt.exists():

@@ -24,8 +24,8 @@ board/doll API: comments above `board(` and `doll(` in P/scenes/src/_kit.js.
 - When done, report: sentence range covered, number of shots, seconds of boards / dolls / photos / film / maps, list of scene and map files, anything unresolved.
 
 ## Picture mix for your range (enforced by `plan.py check`)
-- Analysis boards (`scene:bd-X-…`, K.board) 30–50 % of your running time: sentences that analyse, compare, explain cause and effect.
-  One board spans several sentences of one idea (10–30 s); each item on its word: `at: @{S146 "word"}` (built later from starts.json).
+- Start with footage, full-frame exhibits, human action and animated maps. Use analysis boards (`scene:bd-X-…`, K.board) when a comparison or relationship benefits from being seen together.
+  Show the evidence with brief labels, each on its word: `at: @{S146 "word"}` (built later from starts.json).
   Real photos on boards are exhibits (put them in `SCENE.images` as '/projects/<job>/media/<file>' – see below for the file names).
 - Drawn characters (K.doll) 20–30 % of time (doll shots or boards with a doll count by shot; target your share): key human moments
   no photo shows: decisions in the Oval Office/Kremlin/Pentagon, engineers arguing, Korolev in the Gulag, Leonov's spacewalk,
@@ -36,8 +36,8 @@ board/doll API: comments above `board(` and `doll(` in P/scenes/src/_kit.js.
 - Real media only where it proves something: the real rocket, person, place, document. Standalone photos fill the frame;
   `pick:TAG#K+exhibit` mounts one on paper (documents, small portraits). Never 4+ standalone photos in a row.
 - Flat maps for every place, route, range (Natural Earth look, labels in English, book case). Credit is automatic.
-- A new picture every ~3–6 s; never > ~25 s without a map, scene, card or callout; still photos ≤ 7 s; film cuts 2–6 s.
-- **Never the same picture twice in the film, never merge shots to hide a gap** (gap → map, JS scene, board, card).
+- A new picture every ~3–6 s; use footage, maps or animated scenes to bring motion after a run of stills. Still photos ≤ 7 s; film cuts 2–6 s.
+- **Never the same picture twice in the film, never merge shots to hide a gap.** Fill a gap with a map or JS scene that shows the action, place or object under discussion.
 - **Across films:** `plan.py check` (filmrepeat) flags footage earlier films used: `!!` for any repeated film cut and for
   anything in the first 90 s. Earlier films used Operation Dominic/Starfish-era nuclear test film (film 87), Project Pluto,
   Typhoon/Ohio/Akula/Kirov naval film, WWI/WWII film. Grep `evidence/*/project/timeline.json` for a file name before using it.

@@ -11,7 +11,7 @@ copies the music/SFX actually used from assets/ (assets stay in place for later 
 regenerable cache (render/, unused candidates, studio history) and is reported, not deleted here: delete the
 project folder afterwards (user rule 2026-11-03: nothing that is not evidence stays).
 """
-import argparse, csv, json, re, shutil, sys, urllib.parse
+import argparse, csv, json, os, re, shutil, sys, urllib.parse
 from glob import escape as glob_escape
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -83,7 +83,13 @@ def fetch_source(page, dest):
 
 
 def mv(src, dst):
-    """Move; a folder some process still holds open (the studio) is copied and its emptied shell left behind."""
+    """Move; a folder some process still holds open (the studio) is copied and its emptied shell left behind.
+    Windows: long script names push evidence/<name>/video/<name>.jpg past 260 chars (film 126), so use \\\\?\\ paths."""
+    if os.name == 'nt':
+        def lp(x):
+            r = str(Path(x).resolve())  # resolve() through the F: junction already returns \\?\F:\...
+            return Path(r if r.startswith('\\\\?\\') else '\\\\?\\' + r)
+        src, dst = lp(src), lp(dst)
     if src.is_dir():
         shutil.copytree(src, dst, dirs_exist_ok=True); shutil.rmtree(src, ignore_errors=True)
     else:

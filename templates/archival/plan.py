@@ -40,6 +40,7 @@ FLATMAP = {'en': 'Map: Natural Earth (public domain) · Positions, arrows: schem
            'fr': 'Carte : Natural Earth (domaine public) · Positions, flèches : schématiques', 'ja': '地図: Natural Earth（パブリックドメイン）· 位置・矢印は模式図'}
 if LOOK in ('paper', 'dark'):  # looks draw flat Natural Earth maps (maps/engine.html), not satellite imagery
     MAPCREDIT = FLATMAP.get(LANG, FLATMAP['en'])
+MUSIC = bool((read(D / 'brief.json') or {}).get('music', False))  # user 2026-11-22: no background music any more, only SFX; brief "music": true only when the user asks for music on a film
 INTRO_GAIN = -6.0  # opening music intro level (dB, after the bed levelling): about the voice's level before the first word
 SUBS_OVER = set()  # scenes with no text of their own: subtitles stay on. Every other scene hides them (films 74-88; user review)
 VID_ZOOM = {}  # {'v-tag#K': 1.2}: zoom a film in from the bottom-right to crop a logo off its top-left corner
@@ -178,15 +179,15 @@ def check():
             run = run + 1 if s['src'].startswith('pick:') else 0
             if run > worst[0]: worst = (run, s['anchor'])
         bd = sum(s['t1'] - s['t0'] for s in sh if s['src'].startswith('scene:bd-')); tot = sum(s['t1'] - s['t0'] for s in sh) or 1
-        print(f'analysis boards (scene:bd-*): {bd:.0f}s of {tot:.0f}s ({bd / tot:.0%}); target 30-50 %; longest run of standalone photos {worst[0]}')
+        print(f'analysis boards (scene:bd-*): {bd:.0f}s of {tot:.0f}s ({bd / tot:.0%}); longest run of standalone photos {worst[0]}')
         if worst[0] >= 4:
             print(f'!! {worst[0]} standalone photos in a row (ending {worst[1]}): put some on an analysis board with what they prove (K.board, docs/SCENES.md)'); warn += 1
-        if bd / tot < 0.25:
-            print('!! analysis boards under 25 % of the film: analysis, comparison and cause/effect sentences go on K.board boards'); warn += 1
     v0 = S['S001']['start']
     has_intro = any(r[1].startswith('music/') and r[0].split('..')[0].strip().startswith('S001-') for r in lines('sound.txt'))
-    if v0 > 1.0 and not has_intro and not lines('sound.txt'):
+    if MUSIC and v0 > 1.0 and not has_intro and not lines('sound.txt'):
         print(f'!! the voice starts at {v0:.1f} s and sound.txt has no music: the opening is silent (plan.py apply adds the intro once a bed is placed)'); warn += 1
+    if not MUSIC and v0 > 1.0 and not any(not r[1].startswith(('music/', 'dip', 'fx:')) and (float(r[0][6:] or 0) if r[0].startswith('START+') else 0.0 if r[0].startswith('START') else resolve(r[0])) < 0.3 for r in lines('sound.txt') + lines('sound_scenes.txt')):
+        print(f'!! the voice starts at {v0:.1f} s, there is no music, and no SFX starts at 0:00: the opening is silent. Put the opening hit or ambience at START in sound.txt'); warn += 1
     warn += combat_check(sh)
     import reviewcheck  # overlay text inside the frame, typing sound, firing sound (scripts/reviewcheck.py, film 76)
     warn += reviewcheck.check(D, sh)
@@ -408,6 +409,9 @@ def apply(sound_only=False):
     # opening music intro (通史3 opening, user 2026-11-14/15: "câm đầu" twice): before the first word the bed plays alone at about
     # the voice's level, then fades out over ~6 s under the first words, not ducked. Added automatically unless sound.txt has one.
     v0 = S['S001']['start']
+    if not MUSIC and (mus or dips):
+        print(f'no background music (user 2026-11-22): {len(mus)} music line(s) in sound.txt left out; SFX stay')
+        mus, dips = [], []
     if mus and v0 > 0.8 and not any(m['start'] < 0.1 and m.get('duck') is False for m in mus):
         first = min(mus, key=lambda m: m['start'])
         src = pick_intro(first)

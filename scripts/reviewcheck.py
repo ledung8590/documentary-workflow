@@ -138,14 +138,15 @@ def check(d, shots):
     return len(errs)
 
 
-def sheets(d, per=56, cols=7):
-    """Check 4: qa/shots-NN.jpg, the middle frame of every video-track shot from render/picture.mp4."""
+def sheets(d, per=56, cols=7, only=None, name='shots'):
+    """Check 4: qa/shots-NN.jpg, the middle frame of every video-track shot from render/picture.mp4.
+    only = clip ids: sheets of just those shots (gate.py: the shots changed since the last reviewed draft, qa/delta-NN.jpg)."""
     from PIL import Image, ImageDraw
     d = Path(d); pic = d / 'render' / 'picture.mp4'
     if not pic.exists():
         sys.exit('no render/picture.mp4: render the draft first (doc.py build JOB --only picture)')
     tl = json.loads((d / 'timeline.json').read_text(encoding='utf-8'))
-    vids = sorted((c for t in tl['tracks'] if t.get('id') == 'video' for c in t.get('clips', [])), key=lambda c: c['start'])
+    vids = sorted((c for t in tl['tracks'] if t.get('id') == 'video' for c in t.get('clips', []) if only is None or c.get('id') in only), key=lambda c: c['start'])
     tw, th = 320, 180; out = []
     for p in range(0, len(vids), per):
         part = vids[p:p + per]; rows = (len(part) + cols - 1) // cols
@@ -159,7 +160,7 @@ def sheets(d, per=56, cols=7):
                 sheet.paste(Image.frombytes('RGB', (tw, th), raw), (x, y))
             dr.text((x + 3, y + th + 2), f'{c["id"]} {int(t // 60)}:{t % 60:04.1f}', fill=(255, 220, 0))
             dr.text((x + 3, y + th + 15), (c.get('caption') or c.get('need') or '')[:52], fill=(220, 220, 220))
-        f = d / 'qa' / f'shots-{p // per + 1:02d}.jpg'; f.parent.mkdir(exist_ok=True); sheet.save(f, quality=82); out.append(f)
+        f = d / 'qa' / f'{name}-{p // per + 1:02d}.jpg'; f.parent.mkdir(exist_ok=True); sheet.save(f, quality=82); out.append(f)
     print(f'{len(vids)} shots on {len(out)} sheets: ' + ', '.join(str(f.relative_to(d)) for f in out) + ' -> look at every sheet')
     return out
 

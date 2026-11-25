@@ -32,7 +32,7 @@ DEFAULTS = {
     'pacing': {'lead_in': 1.5, 'tail': 2.0, 'beat_snap': True},
     # default voice path: script.txt -> AI84 eleven_v4 per sentence with emotion tags (voice chosen by language)
     'voice': {'provider': 'ai84', 'voice_id': '', 'model': 'eleven_v4', 'language_code': None, 'audio_tags': True,
-              'format': 'mp3_44100_128', 'lead_in': 2.6, 'tail': 2.5, 'settings': {}},  # 2.6 s: archival films open on a music intro (通史3, 2026-11-14); stories raise it for their notice
+              'format': 'mp3_44100_128', 'lead_in': 0.8, 'tail': 2.5, 'settings': {}},  # 0.8 s: the narration starts with the first picture (user 2026-11-24; was 2.6 s for the music intro, music is off since 2026-11-22); stories raise it for their notice
     'video': {'width': 1920, 'height': 1080, 'fps': 24},
     'qa': {'stt_model': 'scribe_v1', 'stt_min_match': 0.97},
 }
@@ -965,7 +965,7 @@ def qa(job, video, stt=False, do_run=False):
     freeze_e = [float(x) for x in re.findall(r'freeze_end: ([\d.]+)', err)]
     cards = [(c['start'], c['end']) for t in tl['tracks'] if t['id'] == 'overlay' for c in t['clips']
              if c.get('type') in ('title_card', 'quote', 'black', 'stat', 'chapter', 'question')]
-    expected = lambda a, b: any(a >= s - 0.2 and b <= e + 0.2 for s, e in cards)
+    expected = lambda a, b: any(a >= s - 0.2 and (tl.get('duration', a) if b is None else b) <= e + 0.2 for s, e in cards)
     report['black'] = [{'start': a, 'end': b, 'expected': expected(a, b)} for a, b in black]
     report['freeze'] = [{'start': a, 'end': b, 'expected': expected(a, b)} for a, b in zip(freeze_s, freeze_e + [None] * 9)]
     lufs = re.findall(r'I:\s+(-?[\d.]+) LUFS', err); peak = re.findall(r'Peak:\s+(-?[\d.]+) dBFS', err)
@@ -1260,6 +1260,8 @@ def main():
     if a.cmd == 'ops':
         return ops(a.job, a.file, a.why)
     if a.cmd == 'studio':  # web studio + review notes (docs/STUDIO.md); the agent side is studio/mcp_server.py
+        import gate  # the review stop opens only on a checked draft (scripts/gate.py; Studio.bat stays free for the user)
+        gate.require(a.job, 'studio')
         return subprocess.call([sys.executable, str(ROOT / 'studio' / 'server.py'), a.job, '--port', a.port] + (['--no-browser'] if a.no_browser else []))
     if a.cmd in PLANNED:
         sys.exit(f'{a.cmd}: not built yet - planned: {PLANNED[a.cmd]}')
