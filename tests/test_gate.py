@@ -358,3 +358,19 @@ def test_voice_cut_slipped_into_the_neighbour():
     assert 'starts with' in V.edges('デ・ロイテルは激しく燃え上がり、やがて動けなくなりました。', '命中します。デロイトルは激しく燃え上がり、やがて動けなくなりました。')
     assert V.edges('500名を超える乗員が、この艦と共に最期を迎えたとされています。', '五百名を超える乗員がこの艦と共に最期を迎えたとされています。') == ''
     assert V.edges('The cruiser turned away.', 'The cruiser turned away.') == ''
+
+
+def test_pace_one_scene_over_a_whole_passage():
+    """Film 183: 77 shots for 54 minutes passed the gate (pacecheck, 2026-11-26)."""
+    import pacecheck as P
+
+    def tl(lengths):
+        t, clips = 0.0, []
+        for i, n in enumerate(lengths):
+            clips.append({'id': f'V{i + 1:03d}', 'start': t, 'end': t + n, 'src': 'media/scene-a.mp4'}); t += n
+        return {'duration': t, 'tracks': [{'id': 'video', 'clips': clips}]}
+
+    ids = [i.split(':')[0] for _, i, _ in P.check('.', tl([35] * 20 + [160]), frames=False)]
+    assert 'pace-slow' in ids and 'shot-long' in ids
+    assert P.check('.', tl([7] * 100), frames=False) == []
+    assert [i for _, i, _ in P.check('.', tl([7] * 100 + [45]), frames=False)] == ['shot-long:V101']

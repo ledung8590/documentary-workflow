@@ -552,6 +552,9 @@ def gate(job, stage, video=None, quiet=False):
             finds += from_tool('fontcheck', code, text) if code else []
         if stage in ('studio', 'export') or (stage == 'plan' and clips(tl, 'video')):
             finds += timeline_checks(d, tl, story)
+            if not story:
+                import pacecheck   # film 183: 77 shots for 54 minutes passed the gate
+                finds += pacecheck.check(d, tl, frames=stage == 'studio')
             finds += short_renders(d, tl)
         if stage == 'export' or (story and stage != 'deliver'):  # archival plan/studio get these through plan.py check
             finds += overlay_text(d)
