@@ -31,7 +31,7 @@
 ## Codex (OpenAI) reads this file too
 Codex loads the same skills from `.agents/skills/` and `AGENTS.md` (verified 2026-11-26: `genvideo`, `gendoc`, `gentruyen`, `kiem-duyet-kich-ban` appear in its skill list for this folder). Differences from the table above:
 - **Invoking:** Codex skills are typed with a dollar sign, `$genvideo <script>`, not a slash (its `/` menu holds only built-in commands). A plain message "/genvideo <script>" works as well: treat it as the skill.
-- **Workers:** where the docs name a subagent or swarm worker, use Codex's own subagent tool when the session has one; otherwise do that step yourself, one after another. A reviewer step still starts from the files and the rule, never from your earlier conclusion.
+- **Workers:** Codex spawns sub-agents only on an explicit request; `AGENTS.md` ("Sub-agents are explicitly requested here") is that request. Where the docs name a subagent or swarm worker, call `spawn_agent` with a self-contained brief (the group template plus paths), collect with `wait_agent`, at most 3–4 at a time; while they work, do the steps that do not depend on them. A reviewer starts from the files and the rule, never from your earlier conclusion.
 - **Models:** leave the model the user picked; there is no Flash tier to choose.
 - **Studio notes:** the `documentary-studio` MCP server is registered in `~/.codex/config.toml` (2026-11-26, absolute paths); restart Codex if its tools are missing, and only then fall back to `PY scripts\doc.py ops JOB ops.json` plus `review_notes` in `timeline.json`.
 - Everything else (gates, the single studio stop, Vietnamese replies, no music, the lessons index) is the same.

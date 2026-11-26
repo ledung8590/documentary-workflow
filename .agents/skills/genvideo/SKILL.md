@@ -13,3 +13,5 @@ Read `GEMINI.md` (how this workspace maps onto Antigravity) and `AGENTS.md`, the
 6. After the user approves in chat: `PY scripts\export.py JOB`, the thumbnail and description (WORKFLOW 13), `PY scripts\gate.py JOB deliver --video FILE` until PASS. Then deliver and ask whether the film is uploaded.
 
 Always reply in Vietnamese; the film's own text follows the script language.
+
+Delegate: this skill explicitly asks for sub-agents and parallel agent work for the steps listed in `AGENTS.md` ("Sub-agents are explicitly requested here"); do not do media search, group editing or reviews alone when an agent tool exists.
