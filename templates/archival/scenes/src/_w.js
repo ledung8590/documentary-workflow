@@ -234,3 +234,9 @@ const wK = {
   // ground band from gy down with a ruled horizon (book style)
   ground(c, L, gy, o = {}) { c.fillStyle = o.col || L.C.bg2; c.fillRect(-100, gy, 2120, 1300 - gy); L.line(c, [[-100, gy], [2020, gy]], 1, { color: L.C.fg, width: 3 }); },
 };
+// wK.blast and the shot helpers call aSmoke; older films defined it in a group helper (_a.js). Fallback so a film without one still renders (film 181).
+if (typeof window !== 'undefined') window.aSmoke = window.aSmoke || function (c, L, x, y, t, t0, o = {}) {
+  const age = t - t0, life = o.life || 3; if (age < 0 || age > life) return; const u = age / life, n = o.n || 10;
+  for (let i = 0; i < n; i++) { const an = (o.a0 ?? Math.PI) + ((o.a1 ?? Math.PI * 2) - (o.a0 ?? Math.PI)) * L.rnd(i, 71), d = (o.r || 200) * L.easeOut(Math.min(1, age / 1.2)) * (0.3 + 0.7 * L.rnd(i, 72));
+    wK.puff(c, L, x + Math.cos(an) * d, y + Math.sin(an) * d * 0.6 - u * (o.rise || 60), (o.size || 40) * (0.6 + u) * (0.7 + 0.6 * L.rnd(i, 73)), (o.alpha ?? 0.8) * (1 - u), true); }
+};
