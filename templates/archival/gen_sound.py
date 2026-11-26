@@ -17,7 +17,7 @@ SUBSCRIBE_AT = ''         # anchor (or list of anchors) of the subscribe click w
 # real film clips whose own picture fires: {'v-tag#K': [(clip seconds, 'cannon/el_01', under dB, dur)]}, measured on the clip
 FIRE = {}
 _KIND = {'artillery': ('artillery/el_01', 4, 2.0), 'shellburst': ('shellburst/el_01', 5, 2.0), 'rifles': ('rifles/el_01', 6, 2.0),
-         'mgburst': ('mgburst/el_01', 6, 1.6), 'mg': ('mgburst/el_01', 6, 1.6), 'cannon': ('cannon/el_01', 5, 2.0)}
+         'mgburst': ('mgburst/el_01', 6, 1.6), 'mg': ('mgburst/el_01', 6, 1.6), 'cannon': ('cannon/el_01', 5, 2.0), 'launch': ('missilelaunch/el_01', 5, 4.0), 'jet': ('jetflyby/el_01', 6, 3.0)}
 for _f in sorted(plan.D.glob('sfx-notes-*.txt')):  # group editors' flash notes: vid:TAG#K@IN | in-clip s | kind
     for _ln in _f.read_text(encoding='utf-8').splitlines():
         _p = [x.strip() for x in _ln.split('|')] if _ln.strip() and not _ln.lstrip().startswith('#') else []

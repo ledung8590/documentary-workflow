@@ -213,7 +213,16 @@ const K = {
   //   general: red/gold collar patches, gold cap cord), o.glasses, o.toothbrush; sides 'sd' (SS/SD/Gestapo officer, grey tunic, black patches,
   //   no runes), 'nsdap' (plain double-breasted grey-brown jacket, tie; Hitler = nsdap + hat 'none' + toothbrush), 'roman' (toga; hat
   //   'laurel'), 'robe' (People's Court judge, hat 'robecap'), 'guardia' (Guardia Civil 1981, hat 'tricornio').
+  //   since 2026-11-25 (Pershing II film): 'bdu' (US Army 1981-2005 woodland camouflage; hat 'pasgt' = Kevlar helmet with camouflage cover and
+  //   swept ear guards, 'bducap' = woodland patrol cap), 'polizei' (West German police 1980s: moss-green jacket, mustard shirt; hat 'polcap').
   //   adds it in THIS function (templates/archival kit), drawn the same way, so every later film has it.
+  // Outdoor and night pictures in the paper look: fade the frame's edge into the paper so the film stays on its ground colour (lookcheck).
+  // Call it last in draw(); keep light text inside x 140-1780, y 150-930.
+  paperEdge(c, L) {
+    const [r, g, b] = L.C.bg.match(/[0-9a-f]{2}/gi).map(x => parseInt(x, 16)), W = 1920, H = 1080, col = a => `rgba(${r},${g},${b},${a})`;
+    [[0, 0, 125, 0, 0, 0, 125, H, 0.5], [W, 0, W - 125, 0, W - 125, 0, 125, H, 0.5], [0, 0, 0, 140, 0, 0, W, 140, 0.55], [0, H, 0, H - 140, 0, H - 140, W, 140, 0.55]].forEach(([x0, y0, x1, y1, x, y, w, h, k]) => {
+      const gr = c.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, col(1)); gr.addColorStop(k, col(1)); gr.addColorStop(1, col(0)); c.fillStyle = gr; c.fillRect(x, y, w, h); });
+  },
   doll(c, L, x, y, h, t, o = {}) {
     const C = ({ pru: ['#141a2b', '#c0282d', '#ece6d8'], aut: ['#ece8dc', o.facing || '#8a1f2a', '#141210'], sax: ['#6b8fbf', '#1c2440', '#141210'], fra: ['#2f5fc4', '#f4f0e6', '#ece6d8'], brit: ['#b52a2c', '#ece6d8', '#22305a'], civ: ['#6a5238', '#d9cfb8', '#3a2e22'], rus: ['#34552f', '#c0282d', '#ece6d8'], dnam: ['#7a1f1a', '#1a1612', '#c9a24a'], quan: ['#1f2a5a', '#c9a24a', '#c9a24a'], dan: ['#3a3128', '#2a221a', '#5a4a38'], mar: ['#1c2440', '#c0282d', '#ece6d8'],
       lycourt: ['#704638', '#d3b89a', '#987755'], trancourt: ['#34465a', '#abbaaf', '#6d5d55'],
@@ -223,8 +232,8 @@ const K = {
       wehr: ['#5b6150', '#3d4a3a', '#1e1c18'], sov: ['#7c7550', '#6e6844', '#4a3424'], us: ['#6b6440', '#5c5636', '#4a4630'], tommy: ['#7a6a48', '#6a5c3e', '#5a4a30'], jap: ['#8a7a4a', '#7a6a40', '#5a4228'],
       navy: ['#1c2440', '#141a30', '#d8b450'], usaf: ['#3a4b6e', '#2c3a58', '#1a1c22'], astro: ['#e8e6e0', '#c9c6be', '#8a8a90'], cosmo: ['#e4e0d6', '#c0282d', '#8a8a90'], lab: ['#ecebe6', '#d8d6cf', '#3a3a40'], suit: ['#23262c', '#1a1c22', '#7a1f1a'], work: ['#4a4a52', '#3a3a40', '#2a2420'],
       union: ['#232c4a', '#1c2440', '#d8b450'], confed: ['#7d796e', '#6a665c', '#d8b450'], iraq: ['#5a5c3c', '#4c4e32', '#3a3424'], rum: ['#6e6244', '#5e5438', '#3a2c1e'],
-      ss: ['#5a5f4c', '#16120f', '#1e1c18'], frau: ['#4e463e', '#3e3832', '#2a2420'], ijn: ['#151a2a', '#0e1220', '#d8b450'], ijnrate: ['#1a2034', '#141a30', '#ece8e0'], kmrate: ['#161c2e', '#10152a', '#ece8e0'], usn: ['#8fa6c4', '#8296b2', '#232a3e'], flight: ['#5f6a4e', '#535d44', '#2a2a24'], kaiser: ['#6a6d58', '#525642', '#1e1c18'], sd: ['#666a66', '#16120f', '#16120f'], nsdap: ['#75705f', '#5e5a4c', '#1e1c18'], roman: ['#ece6d8', '#7a2a4a', '#7a2a4a'], robe: ['#9a2226', '#6a1418', '#6a1418'], guardia: ['#5a6548', '#4a543a', '#1e1c18'], poilu: ['#8296ae', '#6c7f99', '#3a3428'] }[o.side || 'pru']).slice();
-    const MOD = ['wehr', 'sov', 'us', 'tommy', 'jap', 'iraq', 'rum', 'ss', 'kaiser', 'sd', 'guardia'].includes(o.side), NEW = MOD || ['nsdap', 'roman', 'robe', 'frau', 'navy', 'suit', 'work', 'usaf', 'astro', 'cosmo', 'lab', 'union', 'confed', 'ijn', 'ijnrate', 'kmrate', 'usn', 'flight', 'poilu'].includes(o.side);
+      ss: ['#5a5f4c', '#16120f', '#1e1c18'], frau: ['#4e463e', '#3e3832', '#2a2420'], ijn: ['#151a2a', '#0e1220', '#d8b450'], ijnrate: ['#1a2034', '#141a30', '#ece8e0'], kmrate: ['#161c2e', '#10152a', '#ece8e0'], usn: ['#8fa6c4', '#8296b2', '#232a3e'], flight: ['#5f6a4e', '#535d44', '#2a2a24'], kaiser: ['#6a6d58', '#525642', '#1e1c18'], sd: ['#666a66', '#16120f', '#16120f'], nsdap: ['#75705f', '#5e5a4c', '#1e1c18'], roman: ['#ece6d8', '#7a2a4a', '#7a2a4a'], robe: ['#9a2226', '#6a1418', '#6a1418'], guardia: ['#5a6548', '#4a543a', '#1e1c18'], bdu: ['#59603f', '#4a5236', '#26241a'], polizei: ['#46563f', '#3a4835', '#1e1c18'], poilu: ['#8296ae', '#6c7f99', '#3a3428'] }[o.side || 'pru']).slice();
+    const MOD = ['wehr', 'sov', 'us', 'tommy', 'jap', 'iraq', 'rum', 'ss', 'kaiser', 'sd', 'guardia', 'bdu', 'polizei'].includes(o.side), NEW = MOD || ['nsdap', 'roman', 'robe', 'frau', 'navy', 'suit', 'work', 'usaf', 'astro', 'cosmo', 'lab', 'union', 'confed', 'ijn', 'ijnrate', 'kmrate', 'usn', 'flight', 'poilu'].includes(o.side);
     if (o.side === 'flight' && !o.coat) C[0] = { usaf: '#5f6a4e', pvo: '#77745e', iaf: '#6a6c4a', irq: '#646a4c', jasdf: '#5a6450' }[o.air || 'usaf'];
     if (o.whites && (o.side === 'ijn' || o.side === 'usn')) { C[0] = '#eeebe2'; C[1] = '#e2ded4'; }
     if (o.side === 'confed' && o.butternut) C[0] = '#8c7148';
@@ -290,6 +299,8 @@ const K = {
       c.fillStyle = '#141210'; c.fillRect(-160, -84, 320, 18); c.fillStyle = '#d8b450'; c.beginPath(); c.ellipse(0, -75, 26, 14, 0, 0, 7); c.fill();  // belt + plate
       c.fillStyle = '#141210'; c.font = 'bold 15px serif'; c.textAlign = 'center'; c.fillText(U ? 'US' : 'CS', 0, -70);
     } else if (MOD) {  // field tunic: breast pockets with flaps, one button row (sov: short placket), waist belt
+      if (o.side === 'bdu') { [['#3b4a2c', 0], ['#6b5638', 3], ['#1f2018', 7]].forEach(([col, k]) => { c.fillStyle = col; for (let i = 0; i < 9; i++) { const px = -120 + (i % 3) * 92 + (Math.floor(i / 3) % 2) * 34 + k * 8, py = -180 + Math.floor(i / 3) * 62 + (i % 3) * 14 + k * 6; c.beginPath(); c.ellipse(px, py, 24 - k, 9 + (i % 3) * 3, (i + k) * 0.8, 0, 7); c.fill(); } }); }  // woodland blotches: green, brown, black
+      if (o.side === 'polizei') { c.fillStyle = '#c9b582'; c.beginPath(); c.moveTo(-40, -206); c.lineTo(0, -130); c.lineTo(40, -206); c.fill(); c.fillStyle = '#2c3a2a'; c.beginPath(); c.moveTo(-8, -198); c.lineTo(8, -198); c.lineTo(10, -146); c.lineTo(0, -134); c.lineTo(-10, -146); c.fill(); }  // mustard shirt, green tie
       const btn = o.side === 'us' || o.side === 'tommy' || o.side === 'iraq' || o.side === 'rum' ? '#8a7a4a' : o.side === 'jap' ? '#c9a24a' : '#9a9a8a';
       c.fillStyle = 'rgba(0,0,0,0.18)'; [-1, 1].forEach(sd => { c.fillRect(sd * 62 - 30, -170, 60, 54); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(sd * 62 - 32, -172, 64, 14); c.fillStyle = 'rgba(0,0,0,0.18)'; });
       c.fillStyle = btn; const nb = o.side === 'sov' ? 2 : 5; for (let i = 0; i < nb; i++) { c.beginPath(); c.arc(0, -186 + i * 26, 5, 0, 7); c.fill(); }
@@ -552,6 +563,12 @@ const K = {
       c.strokeStyle = 'rgba(255,255,255,0.22)'; c.lineWidth = 6; c.beginPath(); c.arc(-14, -392, 52, Math.PI * 1.15, Math.PI * 1.45); c.stroke();  // highlight
       if (hat === 'm1916') { c.fillStyle = '#3a3e30'; [-1, 1].forEach(sd => { c.beginPath(); c.ellipse(sd * 92, -380, 9, 12, 0, 0, 7); c.fill(); }); }  // ventilation lugs (Stirnpanzer mounts)
       if (hat === 'm1' && o.side === 'us') { c.strokeStyle = 'rgba(40,36,24,0.6)'; c.lineWidth = 3; c.beginPath(); c.moveTo(-100, -352); c.quadraticCurveTo(0, -300, 100, -352); c.stroke(); }  // chinstrap
+    } else if (hat === 'pasgt' || hat === 'bducap') {  // 1980s US Army: PASGT Kevlar helmet (deep brow, swept ear guards, camo cover) / woodland patrol cap
+      const path = () => { c.beginPath(); if (hat === 'pasgt') { c.moveTo(-84, -352); c.quadraticCurveTo(-92, -312, -118, -300); c.quadraticCurveTo(-136, -302, -124, -372); c.bezierCurveTo(-120, -492, 120, -492, 124, -372); c.quadraticCurveTo(136, -302, 118, -300); c.quadraticCurveTo(92, -312, 84, -352); c.quadraticCurveTo(0, -340, -84, -352); } else { c.moveTo(-98, -374); c.lineTo(-92, -448); c.quadraticCurveTo(0, -470, 92, -448); c.lineTo(98, -374); c.quadraticCurveTo(0, -356, -98, -374); } c.closePath(); };
+      path(); c.fillStyle = o.helmCol || '#59603f'; c.fill(); c.save(); path(); c.clip();
+      [['#3b4a2c', 0], ['#6b5638', 3], ['#1f2018', 7]].forEach(([col, k]) => { c.fillStyle = col; for (let i = 0; i < 6; i++) { c.beginPath(); c.ellipse(-120 + ((i * 71 + k * 37) % 240), -330 - ((i * 47 + k * 23) % 130), 22, 9, (i + k) * 0.7, 0, 7); c.fill(); } });
+      c.restore(); path(); rim();
+      if (hat === 'pasgt') { c.strokeStyle = '#2c2c20'; c.lineWidth = 8; c.beginPath(); c.moveTo(-122, -392); c.quadraticCurveTo(0, -376, 122, -392); c.stroke(); } else { c.fillStyle = '#4a5236'; c.beginPath(); c.ellipse(0, -370, 96, 20, 0, 0, Math.PI); c.fill(); }
     } else if (hat === 'kopftuch') {  // headscarf over the hair, knotted under the chin
       c.fillStyle = o.capCol || '#6a5a4a'; c.beginPath(); c.moveTo(-112, -250); c.bezierCurveTo(-130, -470, 130, -470, 112, -250); c.quadraticCurveTo(96, -330, 0, -352); c.quadraticCurveTo(-96, -330, -112, -250); c.closePath(); c.fill(); rim();
       c.beginPath(); c.moveTo(-20, -214); c.lineTo(-44, -176); c.lineTo(-8, -196); c.lineTo(20, -176); c.lineTo(10, -214); c.closePath(); c.fill();
@@ -571,12 +588,13 @@ const K = {
       if (o.flaps) { c.fillStyle = '#b8a878'; [-1, 1].forEach(sd => { c.beginPath(); c.moveTo(sd * 96, -380); c.lineTo(sd * 128, -276); c.lineTo(sd * 70, -300); c.closePath(); c.fill(); }); }
       c.fillStyle = '#8a7a4a'; c.beginPath(); c.ellipse(0, -398, 98, 52, 0, Math.PI, 0); c.lineTo(98, -372); c.lineTo(-98, -372); c.fill(); rim();
       c.fillStyle = '#4a3a24'; c.beginPath(); c.ellipse(0, -368, 94, 14, 0, 0, Math.PI); c.fill(); star(0, -404, 15, '#e0bd5a');
-    } else if (hat === 'peaked') {  // officer's peaked cap: band colour + badge by side
-      const top = o.capCol || (o.whites && (o.side === 'ijn' || o.side === 'navy') ? '#eeebe2' : null) || { ijn: '#151a2a', usaf: '#3a4b6e', wehr: '#5b6150', sd: '#666a66', nsdap: '#75705f', sov: '#6e6844', us: '#6b6440', navy: '#ece8e0', jap: '#8a7a4a', tommy: '#7a6a48', rum: '#6e6244', kaiser: '#6a6d58', poilu: '#7d90aa' }[o.side] || '#2a2a2e';
+    } else if (hat === 'peaked' || hat === 'polcap') {  // officer's peaked cap: band colour + badge by side
+      const top = o.capCol || (o.whites && (o.side === 'ijn' || o.side === 'navy') ? '#eeebe2' : null) || { ijn: '#151a2a', usaf: '#3a4b6e', wehr: '#5b6150', sd: '#666a66', nsdap: '#75705f', sov: '#6e6844', us: '#6b6440', navy: '#ece8e0', jap: '#8a7a4a', tommy: '#7a6a48', rum: '#6e6244', kaiser: '#6a6d58', poilu: '#7d90aa', polizei: '#46563f' }[o.side] || '#2a2a2e';
       const band = { ijn: '#0a0a0c', usaf: '#16120f', wehr: '#3d4a3a', sd: '#16120f', nsdap: '#4a3a2a', sov: '#c0282d', navy: '#16120f', jap: '#c0282d', tommy: '#5a4a30', rum: '#3a2c1e', kaiser: '#b0302a', poilu: '#2a3450' }[o.side] || '#3a3a30';
       c.fillStyle = band; c.fillRect(-88, -420, 176, 52); c.fillStyle = top; c.beginPath(); c.moveTo(-88, -418); c.quadraticCurveTo(-150, -470, -60, -476); c.quadraticCurveTo(0, -470, 60, -476); c.quadraticCurveTo(150, -470, 88, -418); c.closePath(); c.fill(); rim();
       c.fillStyle = '#16120f'; c.beginPath(); c.ellipse(0, -366, 100, 18, 0, 0, Math.PI); c.fill();
       if (o.side === 'sov') { c.fillStyle = '#d8b450'; c.beginPath(); c.arc(0, -398, 19, 0, 7); c.fill(); star(0, -398, 14, '#c0282d'); } else if (o.side === 'wehr') { c.fillStyle = '#c9ccc0'; c.beginPath(); c.moveTo(-34, -440); c.lineTo(0, -428); c.lineTo(34, -440); c.lineTo(0, -420); c.closePath(); c.fill(); c.beginPath(); c.arc(0, -396, 9, 0, 7); c.fill(); }
+      else if (o.side === 'polizei') { star(0, -396, 16, '#c9ccc0'); }
       else if (o.side === 'ijn') {  // IJN cap badge: gold anchor inside a ring of cherry-blossom leaves
         c.fillStyle = '#d8b450'; for (let k = 0; k < 7; k++) { const a = Math.PI * (0.15 + k * 0.7 / 6) * 2 - Math.PI * 0.2; c.beginPath(); c.ellipse(Math.cos(a + Math.PI / 2) * 20, -396 + Math.sin(a + Math.PI / 2) * 20, 6, 4, a, 0, 7); c.fill(); }
         c.beginPath(); c.arc(0, -418, 7, 0, 7); c.fill(); c.strokeStyle = '#d8b450'; c.lineWidth = 4; c.beginPath(); c.moveTo(0, -410); c.lineTo(0, -386); c.moveTo(-9, -404); c.lineTo(9, -404); c.stroke(); c.beginPath(); c.arc(0, -394, 10, 0.3, Math.PI - 0.3); c.stroke();

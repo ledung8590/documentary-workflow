@@ -76,6 +76,7 @@ def clean_author(a, page):
     m = re.search(r'Bundesarchiv[_ ]((?:B[_ ]\d+[_ ])?Bild[_ -][\w-]+)', page or '')
     if m:  # Bundesarchiv CC BY-SA 3.0 DE requires "Bundesarchiv, Bild <signature>" (also "B 145 Bild-F…")
         return 'Bundesarchiv, ' + m.group(1).replace('_', ' ')
+    a = re.sub(r'\s+\d\d:\d\d, \d{1,2}\.? \w+\.? \d{4} \((?:UTC|CET|CEST)\)|\s*\(\* ?\d{4}\)|\s*\[\d+\]|\s+This file was uploaded.*$', '', a).strip(' -,')  # signature stamps and upload notes in author fields (film 116)
     return (a or 'unknown author')[:70]
 
 
@@ -139,7 +140,7 @@ def main():
         lic, au = r['licence'], clean_author(r['author'], r['page'])
         m = re.search(r'commons-(\d+)\.', r['file'])
         if re.search(r'\bCC BY', lic):
-            if au.startswith('Bundesarchiv, Bild '):  # all Bundesarchiv files on one line: "Bundesarchiv, Bild A, Bild B …"
+            if re.match(r'Bundesarchiv, (?:B \d+ )?Bild', au):  # all Bundesarchiv files on one line: "Bundesarchiv, Bild A, Bild B …" (also "B 145 Bild-F…", film 116)
                 cc.setdefault(('Bundesarchiv', lic), []).append(au.split(', ', 1)[1] + (f' (ID {m.group(1)})' if m else ''))
             else:
                 cc.setdefault((au, lic), []).append('ID ' + m.group(1) if m else r['page'])  # one line per author + licence
@@ -171,8 +172,8 @@ def main():
             for cj in (d / 'media' / 'candidates').glob('*/candidates.json'):
                 for c_ in json.loads(cj.read_text(encoding='utf-8'))['candidates']:
                     if c_.get('source') == 'commons' and str(c_.get('id', '')).isdigit(): curid[c_['page']] = c_['id']
-            ba_ = lambda i: re.sub(r'^(Bild .+?) \(ID (\d+)\)$', r'https://commons.wikimedia.org/?curid=\2' if nosig else r'\1 https://commons.wikimedia.org/?curid=\2', i)  # Bundesarchiv: signature + its file link (link only when too long)
-            ids_ = lambda v: sorted({ba_(i) if re.match(r'Bild .+ \(ID \d+\)$', i) else('https://commons.wikimedia.org/?curid=' + (i[3:] if i.startswith('ID ') else curid[i])) if (i.startswith('ID ') or i in curid) else i for i in v})
+            ba_ = lambda i: re.sub(r'^((?:B \d+ )?Bild.+?) \(ID (\d+)\)$', r'https://commons.wikimedia.org/?curid=\2' if nosig else r'\1 https://commons.wikimedia.org/?curid=\2', i)  # Bundesarchiv: signature + its file link (link only when too long)
+            ids_ = lambda v: sorted({ba_(i) if re.match(r'(?:B \d+ )?Bild.+ \(ID \d+\)$', i) else('https://commons.wikimedia.org/?curid=' + (i[3:] if i.startswith('ID ') else curid[i])) if (i.startswith('ID ') or i in curid) else i for i in v})
             short = lambda au: re.sub(r'\s+from\s+[^,]*', '', re.sub(r';.*$', '', au)).strip()[:48]
             out += [L['cc']] + [f'- {short(au)}, {lic}: ' + ' '.join(ids_(ids))
                                 for (au, lic), ids in sorted(cc.items(), key=lambda x: x[0][0].lower())]

@@ -217,6 +217,11 @@ def test_short_render_is_flagged(tmp_path):
     assert G.short_renders(d, tl) == []
 
 
+def test_unreadable_film_cut_is_flagged(tmp_path):
+    d = tmp_path / 'p'; d.mkdir(); (d / 'V1.mp4').write_bytes(b'')
+    assert [f[1] for f in G.short_renders(d, tl_of([v(1, 0, 2, 'V1.mp4')]))] == ['bad-media:V1.mp4']
+
+
 def test_only_changed_shots_are_reviewed_again(tmp_path, monkeypatch):
     import types
     made = []

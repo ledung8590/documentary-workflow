@@ -483,7 +483,7 @@ def short_renders(d, tl):
     need = {}
     for c in clips(tl, 'video'):
         s = c.get('src') or ''
-        if is_scene(s) and s.lower().endswith(('.mp4', '.mov', '.webm')):
+        if s.lower().endswith(('.mp4', '.mov', '.webm')):
             need[s] = max(need.get(s, 0.0), float(c.get('in') or 0) + (c['end'] - c['start']) * float(c.get('speed') or 1.0))
     out = []
     for s, n in sorted(need.items()):
@@ -494,9 +494,12 @@ def short_renders(d, tl):
             r = subprocess.run(['ffprobe', '-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', str(f)],
                                capture_output=True, text=True, timeout=60)
             have = float(r.stdout.strip())
-        except (ValueError, OSError, subprocess.TimeoutExpired):
+        except ValueError:  # film 116, 2026-11-26: an empty film cut (interrupted download) killed the draft render after 34 minutes
+            out.append(('!!', f'bad-media:{s}', f'{base(s)} has no readable video: pick or render it again'))
             continue
-        if have + 0.25 < n:
+        except (OSError, subprocess.TimeoutExpired):
+            continue
+        if have + 0.25 < n and is_scene(s):
             out.append(('!!', f'short-render:{s}', f'{base(s)} is {have:.2f} s but the timeline needs {n:.2f} s: it freezes; '
                         'run plan.py durations (after write_maps.py), then re-render it'))
     return out
