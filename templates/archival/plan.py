@@ -188,7 +188,7 @@ def check():
     if MUSIC and v0 > 1.0 and not has_intro and not lines('sound.txt'):
         print(f'!! the voice starts at {v0:.1f} s and sound.txt has no music: the opening is silent (plan.py apply adds the intro once a bed is placed)'); warn += 1
     if not MUSIC and v0 > 1.0 and not any(not r[1].startswith(('music/', 'dip', 'fx:')) and (float(r[0][6:] or 0) if r[0].startswith('START+') else 0.0 if r[0].startswith('START') else resolve(r[0])) < 0.3 for r in lines('sound.txt') + lines('sound_scenes.txt')):
-        print(f'!! the voice starts at {v0:.1f} s, there is no music, and no SFX starts at 0:00: the opening is silent. Put the opening hit or ambience at START in sound.txt'); warn += 1
+        print(f'!! the voice starts at {v0:.1f} s, there is no music, and no SFX starts at 0:00: the opening is silent. Put the opening ambience at START in sound.txt (wind, engine, room, distant rumble; never a blast or gunfire in the first 5 s)'); warn += 1
     warn += combat_check(sh)
     import reviewcheck  # overlay text inside the frame, typing sound, firing sound (scripts/reviewcheck.py, film 76)
     warn += reviewcheck.check(D, sh)

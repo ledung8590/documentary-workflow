@@ -32,6 +32,8 @@ IMG = ('.jpg', '.jpeg', '.png', '.webp', '.gif', '.tif', '.tiff')
 EPS = 0.06            # under two frames at 24 fps
 RETURN_GAP = 10.0     # a scene/map back after more than this is a repeat for the viewer (user 2026-11-19)
 OPEN_FIRST, OPEN_SPAN, OPEN_SHOTS, OPEN_VOICE = 3.0, 15.0, 4, 1.0  # archival opening: first shot <= 3 s, >= 4 shots in 15 s, voice within 1 s
+OPEN_CALM = 5.0       # no blast, gunfire or launch SFX before this: the first sound must not startle (user 2026-11-26)
+LOUD = re.compile(r'(?:^|[\\/])(artillery|boom|cannon\d*|shellburst|navalblast|impact|gunshot|mg50|mgburst|gau8|rifles|musket|missilelaunch|sublaunch|torpedolaunch|thunder|spearvolley|blast|explosion)', re.I)
 STORY_STILL = 8.05   # story images longer than 8 s risk YouTube's "static image" demonetization
 SOURCED = re.compile(r'(commons|dvids|nara|openverse)-[\w-]+\.\w+$')
 SUBSCRIBE = re.compile(r"subscrib|đăng ký kênh|abonnier|suscr[ií]b|s'abonn|チャンネル登録", re.I)
@@ -191,6 +193,10 @@ def timeline_checks(d, tl, story):
     audio = [c for tid in ('music', 'sfx', 'original') for c in clips(tl, tid) if not c.get('mute')]
     if dur and not any(c['start'] <= 0.15 for c in audio):
         add('!!', 'silent-open', 'nothing sounds at 0:00 (no music, SFX or field sound starts there): the film opens silent')
+    for c in clips(tl, 'sfx'):
+        if c['start'] < OPEN_CALM - EPS and not c.get('mute') and LOUD.search(c.get('src', '')):
+            add('!!', f'open-blast:{c.get("id")}', f'{LOUD.search(c["src"]).group(1)} SFX at {tc(c["start"])}: no blast, gunfire or launch in the first '
+                f'{OPEN_CALM:.0f} s, it startles the viewer. Open on ambience (wind, engine, room, distant rumble) that fades in; the first hit comes under the voice, later')
     if not story:
         for c in vid:
             if c['start'] < 12.0 and not c['src'].lower().endswith(IMG) and not is_scene(c['src']) and not c.get('uses'):

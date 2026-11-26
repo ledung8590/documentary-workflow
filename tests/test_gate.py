@@ -316,3 +316,15 @@ def test_evidence_cleanup_only_when_whole(tmp_path, monkeypatch):
     (dst / 'media' / 'a.jpg').write_text('x')
     E.cleanup(proj, dst, index, 1)
     assert not proj.exists() and (dst / 'project' / 'thumb' / 'src.jpg').exists()
+
+
+def test_no_blast_in_the_first_seconds(tmp_path):
+    files = ('a.jpg', 'b.jpg', 'wind_01.mp3', 'shellburst_02.mp3', 'hit.mp3')
+    vid = [v(1, 0, 15, 'a.jpg'), v(2, 15, 30, 'b.jpg')]
+    calm = [{'id': 'X1', 'start': 0.0, 'end': 6.0, 'src': 'wind_01.mp3'}, {'id': 'X2', 'start': 7.0, 'end': 9.0, 'src': 'shellburst_02.mp3'}]
+    tl = tl_of(vid, sfx=calm, silent=True); d = project(tmp_path, tl, files=files)
+    assert ids(d, tl) == {}
+    loud = [{'id': 'X1', 'start': 0.1, 'end': 2.0, 'src': 'shellburst_02.mp3'}]
+    assert ids(d, tl_of(vid, sfx=loud, silent=True)) == {'open-blast:X1': '!!'}
+    path = [{'id': 'X1', 'start': 1.3, 'end': 3.0, 'src': '../../assets/sfx/boom/el_01.wav'}]
+    assert 'open-blast:X1' in ids(d, tl_of(vid, sfx=path))
