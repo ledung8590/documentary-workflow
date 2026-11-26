@@ -15,7 +15,7 @@
 
 ## Models (user 2026-11-21: fit the work to the models available here)
 - Do not hard-code a model name; `swarm{action:"models"}` lists what this account can run.
-- **Main agent, and every worker that judges or creates** (script fact check, shot lists, JS scenes, maps, frame and thumbnail review, review-note fixes): the model the user chose for the conversation. Leave `model` off.
+- **Main agent, and every worker that judges or creates** (script review, shot lists, JS scenes, maps, frame and thumbnail review, review-note fixes): the model the user chose for the conversation. Leave `model` off.
 - **Workers that only search or read in bulk** (media search with `doc.py media JOB search`, reading a whole script to mark suspicious passages): the cheapest Flash tier in the list is enough. Their output is always checked by a main-model step, never trusted alone.
 - When a model runs out of quota, switch that worker (`swarm{action:"model"}`) and keep the job; never drop a check to save quota.
 - At most 3–4 workers at a time. Parallel media-search workers each write their own tag, never the same `candidates.json` tag.
