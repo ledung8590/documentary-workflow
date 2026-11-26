@@ -488,6 +488,17 @@ def tts(job, do_run=False, mock=False, only=None):
     want = set(only.split(',')) if only else None
     cur = {s['id']: current_clip(d, s, voice) for s in sents}  # missing, or only a mock where a real clip is wanted
     todo = [s for s in sents if (not want or s['id'] in want) and (not cur[s['id']] or (not mock and read(cur[s['id']][1]).get('mock')))]
+    if want and not mock:
+        # --only is a redo: voice those sentences again even though a clip exists (it said "0 sentences" on film 183), each as
+        # its own AI84 job; the old clip moves to voice/clips/old/ so the new one is the current clip
+        todo = [s for s in sents if s['id'] in want]
+        missing = want - {s['id'] for s in sents}
+        if missing:
+            sys.exit(f'--only: no such sentence: {", ".join(sorted(missing))}')
+        if do_run:
+            for s in todo:
+                for f in (cur[s['id']] or ()):
+                    (f.parent / 'old').mkdir(exist_ok=True); f.replace(f.parent / 'old' / f.name)
     if mock:
         for s in todo:
             mock_clip(s, *clip_paths(d, s, voice, True))
@@ -496,7 +507,7 @@ def tts(job, do_run=False, mock=False, only=None):
     if voice.get('provider') == 'minimax':  # always whole chunks (max 10,000 chars per MiniMax job)
         return tts_ai84_chunked(d, cfg, voice, data, todo, do_run)
     if voice.get('provider') == 'ai84':
-        if voice.get('chunked', False):
+        if voice.get('chunked', False) and not want:
             return tts_ai84_chunked(d, cfg, voice, data, todo, do_run)
         return tts_ai84(d, cfg, voice, sents, todo, do_run)
     cost = sum(credits(s['text'], voice['model']) for s in todo)

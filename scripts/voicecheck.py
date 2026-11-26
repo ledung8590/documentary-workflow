@@ -8,8 +8,9 @@ shot after it, so misread sentences are found and redone while the timeline is s
                                                the agent's verdict after reading what Scribe heard (reason >= 15 characters)
 
 Verdicts go to voice/checked.json, tied to the clip file: a sentence voiced again must be checked again.
-`redo` sentences: set `say` in sentences.json (kana for names and codes, numbers spelled out), brief voice.chunked false,
-`doc.py tts JOB --only S012,S040 --run`, chunked back to true, `doc.py assemble JOB`, then this script again.
+`redo` sentences: set `say` in sentences.json where the reading was wrong (kana for names and codes, numbers spelled out), then
+`doc.py tts JOB --only S012,S040 --run` (each sentence as its own job; no need to touch voice.chunked), `doc.py assemble JOB`,
+then this script again.
 The plan and studio gates fail while a poorly heard sentence has no `ok` for its current clip (gate id voice-unchecked).
 """
 import difflib, re, sys
@@ -120,7 +121,7 @@ def main():
             print(f'!! {s["id"]} Whisper {meta.get("heard_ratio", 0):.0%}, not checked: {s["text"][:90]}')
     if todo:
         print('\nFor each: the same words in another script (kanji/kana, digits) = `--ok IDS "reason"`; a wrong, missing or cut reading = set `say`, redo '
-              'with `tts --only` (voice.chunked false), `assemble`, run this again. Do it now, before shots are planned.' if any(r[3] for r in todo)
+              'with `doc.py tts JOB --only IDS --run`, `assemble`, run this again. Do it now, before shots are planned.' if any(r[3] for r in todo)
               else '\nrun with --run (ElevenLabs Scribe, a few credits) before planning any picture')
     sys.exit(1 if todo else 0)
 
