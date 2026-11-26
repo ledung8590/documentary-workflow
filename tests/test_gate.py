@@ -350,3 +350,11 @@ def test_voice_unchecked(tmp_path, monkeypatch):
     assert V.open_items(d) == ['S002']
     (d / 'voice' / 'checked.json').write_text(json.dumps({'S002': {'clip': 'S002-c-aa.wav', 'verdict': 'ok'}}), encoding='utf-8')
     assert V.open_items(d) == [] and G.voice_unchecked(d) == []
+
+
+def test_voice_cut_slipped_into_the_neighbour():
+    import voicecheck as V
+    assert 'ends before' in V.edges('数分後、旗艦デ・ロイテルにも魚雷が命中します。', '数分後、旗艦デロイトルにも魚雷が命中。')
+    assert 'starts with' in V.edges('デ・ロイテルは激しく燃え上がり、やがて動けなくなりました。', '命中します。デロイトルは激しく燃え上がり、やがて動けなくなりました。')
+    assert V.edges('500名を超える乗員が、この艦と共に最期を迎えたとされています。', '五百名を超える乗員がこの艦と共に最期を迎えたとされています。') == ''
+    assert V.edges('The cruiser turned away.', 'The cruiser turned away.') == ''

@@ -29,6 +29,28 @@ def norm(t):
     return re.sub(r'[\W_]+', '', (t or '').lower())
 
 
+def edges(text, heard):
+    """A cut that slipped into the neighbour sentence (film 183: S311 ended on "命中", S312 began with "命中します"):
+    words at the start of the clip that the text does not have, or the end of the text missing from the clip."""
+    a, b = norm(text), norm(heard)
+    blocks = [m for m in difflib.SequenceMatcher(None, a, b, autojunk=False).get_matching_blocks() if m.size]
+    if not blocks:
+        return 'nothing of the text is heard'
+    first, last = blocks[0], blocks[-1]
+    if first.a == 0 and first.b >= 3:
+        return f'the clip starts with "{b[:first.b]}", which is not in this sentence (cut slipped: redo this sentence and the one before)'
+    if last.b + last.size == len(b) and len(a) - (last.a + last.size) >= 2:
+        return f'the clip ends before "{a[last.a + last.size:]}" (cut slipped: redo this sentence and the next)'
+    return ''
+
+
+def judge(s, meta, heard):
+    want = meta.get('spoken') or s['text']
+    r = max(difflib.SequenceMatcher(None, norm(t), norm(heard), autojunk=False).ratio() for t in (want, s['text']))
+    edge = edges(want, heard)
+    return {'verdict': 'ok' if r >= AUTO_OK and not edge else 'redo', 'by': 'scribe', 'scribe_ratio': round(r, 3), 'heard': heard, **({'edge': edge} if edge else {})}
+
+
 def state(d):
     """[(sentence, clip audio path, meta dict, entry or None, needs)] for every sentence that needs a verdict."""
     import doc
@@ -83,15 +105,17 @@ def main():
             if e and e.get('heard') is not None:
                 continue   # Scribe already heard this clip: it waits for a redo or the agent's verdict
             heard = (elevenlabs.stt(clip, language_code=lang) or {}).get('text', '')
-            want = norm(meta.get('spoken') or s['text'])
-            r = max(difflib.SequenceMatcher(None, norm(t), norm(heard), autojunk=False).ratio() for t in (want, s['text']))
-            checked[s['id']] = {'clip': clip.name, 'verdict': 'ok' if r >= AUTO_OK else 'redo', 'by': 'scribe', 'scribe_ratio': round(r, 3), 'heard': heard}
+            checked[s['id']] = {'clip': clip.name, **judge(s, meta, heard)}
             write(d / 'voice' / 'checked.json', checked)
+        for s, clip, meta, e, _ in rows:   # verdicts Scribe gave earlier are judged again by the current rules (no credits)
+            if e and e.get('by') == 'scribe' and e.get('heard') is not None:
+                checked[s['id']] = {'clip': clip.name, **judge(s, meta, e['heard'])}
+        write(d / 'voice' / 'checked.json', checked)
         rows, checked = state(d); todo = [r for r in rows if r[4]]
     print(f'{len(rows)} sentences on the list, {len(rows) - len(todo)} ok, {len(todo)} open')
     for s, clip, meta, e, _ in todo:
         if e:
-            print(f'!! {s["id"]} Scribe {e.get("scribe_ratio", 0):.0%}\n     text:  {s["text"][:110]}\n     heard: {(e.get("heard") or "(nothing)")[:110]}')
+            print(f'!! {s["id"]} Scribe {e.get("scribe_ratio", 0):.0%}' + (f'  CUT: {e["edge"]}' if e.get('edge') else '') + f'\n     text:  {s["text"][:110]}\n     heard: {(e.get("heard") or "(nothing)")[:110]}')
         else:
             print(f'!! {s["id"]} Whisper {meta.get("heard_ratio", 0):.0%}, not checked: {s["text"][:90]}')
     if todo:
