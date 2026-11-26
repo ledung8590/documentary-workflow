@@ -103,8 +103,11 @@ def doctor():
     sub = subscription()
     if sub:
         print(f'{"11labs plan":10s} {sub}')
-        print('           (the direct ElevenLabs account: SFX and speech-to-text only. The narration voice is paid from the AI84 balance, '
-              'a separate account not shown here: this number never limits `tts --run`)')
+        print('           (the direct ElevenLabs account: SFX and speech-to-text only; it never limits `tts --run`)')
+    import ai84
+    left = ai84.credits()
+    print(f'{"AI84 voice":10s} ' + (f'{left:,} credits left (the narration voice is paid from this balance; 1 character is about 1 credit)'
+                                    if left is not None else 'balance not readable now: run `tts --run` anyway, AI84 itself refuses a job it cannot pay'))
     sys.exit(0 if ok else 1)
 
 
@@ -665,6 +668,10 @@ def tts_ai84_chunked(d, cfg, voice, data, todo, do_run):
     for r in reqs[:3]:
         print(f'  {r["sents"][0]["id"]}..{r["sents"][-1]["id"]} ({len(r["tagged"])} chars): {r["tagged"][:110]}...')
     if not do_run:
+        import ai84
+        left = ai84.credits()
+        if left is not None:
+            print(f'AI84 balance: {left:,} credits ' + ('(enough: run it)' if left >= sum(len(r["tagged"]) for r in reqs) else '(NOT enough for this film: tell the user to top up AI84)'))
         print('dry run: add --run (Whisper medium loads first, then the AI84 jobs go out)'); return
     mm = voice.get('provider') == 'minimax'
     if mm and not voice.get('voice_id'):  # cloned voice looked up by its AI84 name once, then kept in brief.json

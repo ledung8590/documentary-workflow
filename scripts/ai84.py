@@ -52,6 +52,14 @@ def _req(method, path, body=None, timeout=60):
     raise RuntimeError('AI84: too many retries')
 
 
+def credits():
+    """Remaining AI84 credits (the balance the narration voice is paid from), or None when it cannot be read."""
+    try:
+        return int(_req('GET', '/v1/credits', timeout=20).get('credits'))
+    except Exception:
+        return None
+
+
 def voices(search, page_size=20):
     q = urllib.parse.urlencode({'search': search, 'page_size': page_size, 'page': 0})
     return _req('GET', f'/v1/shared-voices?{q}')
