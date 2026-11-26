@@ -53,3 +53,27 @@ def test_even_spread_is_strictly_increasing():
     timing = timing_of('a b\nc d e\nf')
     vt, starts = ST.image_starts(5, timing)
     assert starts == sorted(set(starts)) and len(starts) == 5
+
+
+def test_same_skeleton_as_earlier_stories(tmp_path, capsys):
+    """A new script on the frame of the published ones is blocked; another frame passes (storycheck SKELETON, 2026-11-26)."""
+    import storycheck as SC
+
+    def diary(hero, pal, town):
+        days = '\n'.join(f'January {d}, 1945.\nWe moved again toward {town}. {pal} is tired and so am I, and nobody talks about tomorrow anymore.' for d in range(3, 12))
+        return (f'Welcome. Tonight the diary of {hero}.\n{pal} worked as a cooper before the war. Another man had been a glazier. A third was the son of a miller.\n{days}\n'
+                f'{pal} is dead.\nI am writing that down honestly.\n' + 'Nothing happened on the road that day worth the pencil. ' * 40 +
+                f'\n{hero} was captured by Soviet troops and held in a camp in the Urals. {pal} died of dysentery in the camp. One man was released in 1948. '
+                f'Another came home in 1949. A third was listed as missing. {hero} returned to {town} and died in 1991 at the age of seventy-four. Thanks for listening, see you next time.')
+
+    old = [tmp_path / f'old{i}.txt' for i in range(5)]
+    for i, p in enumerate(old):
+        p.write_text(diary(f'Hero{"abcde"[i]}x', f'Pal{"abcde"[i]}x', f'Town{"abcde"[i]}x'), encoding='utf-8')
+    same = tmp_path / 'new.txt'; same.write_text(diary('Zorwin', 'Quellmar', 'Ysenburg'), encoding='utf-8')
+    assert len(SC.skeleton(same.read_text(encoding='utf-8'))) >= 7
+    assert SC.check(same, old) >= 1 and 'same skeleton' in capsys.readouterr().out
+    other = tmp_path / 'memoir.txt'
+    other.write_text('Good evening. This is the memoir of an old ferryman.\n' + 'In the second week of that winter we carried the wounded over the river and I learned what I owed him. ' * 60
+                     + '\nHe reached the British lines in May and was home by autumn. Thanks for listening, see you next time.', encoding='utf-8')
+    assert SC.skeleton(other.read_text(encoding='utf-8')) == set()
+    SC.check(other, old); assert 'same skeleton' not in capsys.readouterr().out

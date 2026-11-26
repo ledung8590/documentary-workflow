@@ -62,6 +62,35 @@ CAST = re.compile(r"\b(son of an?|daughter of an?|worked as|had been an?|apprent
                   r"his father (?:was|is|had|ran|kept)|von beruf|lehrling|auswendig|vor dem krieg|con trai (?:của )?(?:một|ông)|vốn là|thuộc lòng)\b", re.I)
 
 
+# 9. skeleton: new names, trades and props on the same frame are still the same video. Read 2026-11-26 after YouTube's
+# "highly similar storyline template" wording: all 14 published soldier stories were dated diaries that open with a roll call of
+# trades, end with the narrator in Soviet captivity, released in 1949, and close with an epilogue listing every man's fate
+# (a comrade dead of dysentery, the narrator's age at death). Each mark = one test on the text; a new script that carries most
+# of the marks most earlier stories carry is the same frame again.
+MONTHS = r'(?:January|February|March|April|May|June|July|August|September|October|November|December)'
+FATES = re.compile(r'died (?:of|in|at)|was released|released in|came home|returned (?:home|to)|survived the|was (?:listed|reported) (?:as )?missing|'
+                   r'never (?:learned|found out|traced)|fate (?:is|was|remains) unknown|went back to|reopened|became an? ', re.I)
+SKELETON = {
+    'a diary in dated entries': lambda t, head, tail: len(re.findall(rf'^{MONTHS} \d{{1,2}}, 19\d\d\.?\s*$', t, re.M)) >= 6,
+    'a roll call of comrades by pre-war trade near the start': lambda t, head, tail: len(CAST.findall(head)) >= 3,
+    'the narrator ends in Soviet captivity': lambda t, head, tail: bool(re.search(r'prisoner|captiv|\bcamps?\b|captured', tail, re.I)
+                                                                         and re.search(r'soviet|russian|siberia|urals|kazakh', tail, re.I)),
+    'an epilogue that lists what became of each person': lambda t, head, tail: len(FATES.findall(tail)) >= 4,
+    'released / home in 1949': lambda t, head, tail: '1949' in tail,
+    'a comrade dead of dysentery in a camp': lambda t, head, tail: 'dysentery' in tail.lower(),
+    "the narrator's year and age of death": lambda t, head, tail: bool(re.search(r'died in (?:19|20)\d\d|at the age of|aged? (?:sixty|seventy|eighty)', tail, re.I)),
+    'passages that open with "X is dead."': lambda t, head, tail: bool(re.search(r'^[A-ZÄÖÜ][a-zäöüß]+ is dead\.', t, re.M)),
+    'the narrator swears he writes it down honestly': lambda t, head, tail: bool(re.search(r"writ(?:e|ing) (?:that|this|it|both things) down (?:honestly|because both)|"
+                                                                                           r"(?:put|write) down only what i (?:know|saw)", t, re.I)),
+}
+
+
+def skeleton(t):
+    """The marks of the worn frame this text carries (English stories)."""
+    head, tail = t[:int(len(t) * 0.15)], t[-3500:]
+    return {k for k, f in SKELETON.items() if f(t, head, tail)}
+
+
 def motifs():
     m = dict(MOTIFS)
     p = ROOT / 'stories' / 'motifs.txt'
@@ -236,6 +265,19 @@ def check(path, corpus):
             err.append(f'motif used before, x{len(hits)} here ({", ".join(sorted(set(h.lower() for h in hits))[:5])}): {k}; already in {len(used[k])} '
                        f'earlier stories ({"; ".join(used[k][:4])}). Viewers: "Railway timetable again, seriously?" Replace this character\'s trade, '
                        'quirk and running gag with ones no earlier story has, then add the new family to stories/motifs.txt')
+    # 9. skeleton: marks of the frame that most earlier stories share
+    if lang == 'en':
+        others = [skeleton(norm(o.read_text(encoding='utf-8'))) for o in corpus if o.resolve() != path.resolve() and lang_of(o.read_text(encoding='utf-8')) == 'en']
+        mine = skeleton(t)
+        worn = sorted(k for k in mine if sum(k in o for o in others) >= max(4, len(others) // 2))
+        msg = (f'same skeleton as the earlier stories, {len(worn)} of {len(SKELETON)} marks: ' + '; '.join(f'{k} (in {sum(k in o for o in others)} of {len(others)})' for k in worn)
+               + '. YouTube: "highly similar storyline template across multiple videos" = no monetization. Change the frame, not the props: another form '
+                 '(memoir, letters, a diary with gaps), another fate for the narrator, people who enter by what they do, an outro without the roll call. '
+                 'docs/STORY_WRITING.md "A new frame every story"')
+        if len(worn) >= 4:
+            err.append(msg)
+        elif len(worn) == 3:
+            warn.append(msg)
     cast = [s2 for s2 in ss if CAST.search(s2)]
     if cast:
         warn.append(f'{len(cast)} cast introductions; compare each trade/quirk with the "Cast" column of stories/published/LOG.md (no type twice):\n     - '

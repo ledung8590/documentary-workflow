@@ -78,3 +78,26 @@ shows in his body" as the hero's flaw in 3; every crew was the same set of one-q
   Fix by rewriting that character's trade, habit and every scene of the gag, not by deleting the word.
 - **At delivery** (STORY_MODE step 10) add the story's cast to the LOG list and every new type to `stories/motifs.txt`, so the
   next script is checked against it.
+
+
+## A new frame every story (YouTube "highly similar storyline template", 2026-11-26)
+YouTube's monetization policy names "videos where characters are put in the same situation over and over again with the same
+outcome (a highly similar storyline template across multiple videos)". Read in full on 2026-11-26, the 14 published soldier
+stories had new names, trades and props but one frame: a diary in dated entries; a roll call of comrades by pre-war trade and one
+habit near the start; the comrades die one by one with the habit echoed in the death scene; the narrator ends in Soviet captivity
+(13 of 14) and is released in 1949 (12 of 14); an epilogue lists what became of every man, one dead of dysentery in a camp, the
+narrator's year and age of death; a tool of his trade is spent or left behind near the end. Two Königsberg stories shared the tank
+number, the zoo hippo and the calendar. New props on that frame are still the same video.
+
+- **The frame changes, not only the props.** Against the last stories a new one differs in at least three of: the form (dated
+  diary, diary kept in bursts with gaps, memoir told years later, letters to one person), how it opens (quiet day, cold open,
+  the end stated first, in the middle of a job), who it is about (a fixed group, two people, changing company, an outsider, the
+  chain of command), how it ends for the narrator, and the outro (no roll call of fates).
+- **A title that says "Memoirs" or "Remembers" is a memoir**, not a dated diary.
+- **Soviet captivity at most once in four stories**, and never with the "1949 / dysentery / died in 19xx aged" epilogue.
+- **One question carries the story** (a person, a decision, a debt, a search, a job to finish), not "do they survive the retreat"
+  and not an object from the hero's trade.
+- **People enter by what they do.** No roll call; a pre-war trade is mentioned for at most two people.
+- The story app (`Bienkich_gemini`, `src/services/diaryShape.ts`) picks the frame in code for each new script and records it in
+  its memory. `storycheck.py` is the second gate: it counts the marks of the old frame (`SKELETON`) and prints `!!` when a new
+  English script carries four or more marks that most earlier stories carry: rewrite the frame before tts.
