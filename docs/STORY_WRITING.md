@@ -101,3 +101,8 @@ number, the zoo hippo and the calendar. New props on that frame are still the sa
 - The story app (`Bienkich_gemini`, `src/services/diaryShape.ts`) picks the frame in code for each new script and records it in
   its memory. `storycheck.py` is the second gate: it counts the marks of the old frame (`SKELETON`) and prints `!!` when a new
   English script carries four or more marks that most earlier stories carry: rewrite the frame before tts.
+- **When `storycheck.py` prints the `same skeleton` finding:** a script written before 2026-11-26 is not patched by hand: tell
+  the user to write that title again in the story app (it now picks a new frame) and stop there. A script from the app after
+  that date: rewrite the opening passage (people enter by what they do, no roll call) and the outro (only the narrator's fate,
+  no "1949 / dysentery / died in 19xx aged"), remove the stock lines, run the check again, continue, and report which marks
+  were found so the app's prompt can be corrected.
