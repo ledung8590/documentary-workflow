@@ -27,3 +27,11 @@
 - Paying commands dry-run first, then `--run` (AI84 / ElevenLabs spend is pre-authorized). Never print keys.
 - Long commands run in the background with a progress check within 5 minutes; never wait without a limit. Stop only processes whose command line belongs to this project, never by name.
 - Do not edit `scripts/`, `studio/` or `templates/` in the middle of a film unless a check or tool is wrong; after such an edit `PY -m pytest tests -q` must pass (the gate runs it).
+
+## Codex (OpenAI) reads this file too
+Codex loads the same skills from `.agents/skills/` and `AGENTS.md` (verified 2026-11-26: `genvideo`, `gendoc`, `gentruyen`, `kiem-duyet-kich-ban` appear in its skill list for this folder). Differences from the table above:
+- **Invoking:** Codex skills are typed with a dollar sign, `$genvideo <script>`, not a slash (its `/` menu holds only built-in commands). A plain message "/genvideo <script>" works as well: treat it as the skill.
+- **Workers:** where the docs name a subagent or swarm worker, use Codex's own subagent tool when the session has one; otherwise do that step yourself, one after another. A reviewer step still starts from the files and the rule, never from your earlier conclusion.
+- **Models:** leave the model the user picked; there is no Flash tier to choose.
+- **Studio notes:** if the `documentary-studio` MCP server is not registered in `~/.codex/config.toml`, use `PY scripts\doc.py ops JOB ops.json` and read `review_notes` in `timeline.json`.
+- Everything else (gates, the single studio stop, Vietnamese replies, no music, the lessons index) is the same.
