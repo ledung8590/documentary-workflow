@@ -103,6 +103,8 @@ def doctor():
     sub = subscription()
     if sub:
         print(f'{"11labs plan":10s} {sub}')
+        print('           (the direct ElevenLabs account: SFX and speech-to-text only. The narration voice is paid from the AI84 balance, '
+              'a separate account not shown here: this number never limits `tts --run`)')
     sys.exit(0 if ok else 1)
 
 
