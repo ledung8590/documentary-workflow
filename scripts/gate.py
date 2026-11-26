@@ -256,6 +256,19 @@ def from_tool(name, code, text, bang_only=False):
     return out
 
 
+def voice_unchecked(d):
+    """Poorly heard sentences must be settled while the timeline is only the voice: a sentence voiced again later has
+    another length and moves every shot after it (user 2026-11-26)."""
+    if not (d / 'sentences.json').exists() or not (d / 'voice' / 'clips').exists():
+        return []
+    import voicecheck
+    ids = voicecheck.open_items(d)
+    if not ids:
+        return []
+    return [('!!', 'voice-unchecked', f'{len(ids)} sentence(s) Whisper heard poorly have no verdict for their current clip ({", ".join(ids[:8])}'
+             f'{" ..." if len(ids) > 8 else ""}): PY scripts/voicecheck.py {d.name} --run, redo the misread ones now, before more picture work')]
+
+
 def template_drift(d):
     out = []
     for name, tokens in TEMPLATE_TOKENS.items():
@@ -524,6 +537,8 @@ def gate(job, stage, video=None, quiet=False):
     if tl is None:
         finds.append(('!!', 'no-timeline', 'no timeline.json (run assemble first)'))
     else:
+        if stage in ('plan', 'studio'):
+            finds += voice_unchecked(d)
         if stage in ('plan', 'studio') and not story:
             finds += template_drift(d)
             finds += scene_labels(d)

@@ -328,3 +328,25 @@ def test_no_blast_in_the_first_seconds(tmp_path):
     assert ids(d, tl_of(vid, sfx=loud, silent=True)) == {'open-blast:X1': '!!'}
     path = [{'id': 'X1', 'start': 1.3, 'end': 3.0, 'src': '../../assets/sfx/boom/el_01.wav'}]
     assert 'open-blast:X1' in ids(d, tl_of(vid, sfx=path))
+
+
+def test_voice_unchecked(tmp_path, monkeypatch):
+    import json
+    import voicecheck as V
+    import doc
+    d = tmp_path / 'j'; (d / 'voice' / 'clips').mkdir(parents=True)
+    sents = [{'id': 'S001', 'text': 'The cruiser turned away from the line.'}, {'id': 'S002', 'text': 'Nobody followed the flagship that night.'}]
+    (d / 'sentences.json').write_text(json.dumps({'sentences': sents}), encoding='utf-8')
+    (d / 'brief.json').write_text(json.dumps({'voice': {}}), encoding='utf-8')
+    for s, r in zip(sents, (0.9, 0.2)):
+        (d / 'voice' / 'clips' / f'{s["id"]}-c-aa.wav').write_bytes(b'x')
+        (d / 'voice' / 'clips' / f'{s["id"]}-c-aa.json').write_text(json.dumps({'heard_ratio': r}), encoding='utf-8')
+    monkeypatch.setattr(doc, 'current_clip', lambda d, s, v: (d / 'voice' / 'clips' / f'{s["id"]}-c-aa.wav', d / 'voice' / 'clips' / f'{s["id"]}-c-aa.json'))
+    assert V.open_items(d) == ['S002']
+    assert [f[1] for f in G.voice_unchecked(d)] == ['voice-unchecked']
+    (d / 'voice' / 'checked.json').write_text(json.dumps({'S002': {'clip': 'S002-c-old.wav', 'verdict': 'ok'}}), encoding='utf-8')
+    assert V.open_items(d) == ['S002']                      # the verdict belongs to an older clip
+    (d / 'voice' / 'checked.json').write_text(json.dumps({'S002': {'clip': 'S002-c-aa.wav', 'verdict': 'redo'}}), encoding='utf-8')
+    assert V.open_items(d) == ['S002']
+    (d / 'voice' / 'checked.json').write_text(json.dumps({'S002': {'clip': 'S002-c-aa.wav', 'verdict': 'ok'}}), encoding='utf-8')
+    assert V.open_items(d) == [] and G.voice_unchecked(d) == []
