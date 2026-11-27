@@ -1,4 +1,4 @@
-"""Archival thumbnail from real photos, in the four layouts of the reference channel's best thumbnails (user 2026-11-14,
+"""Archival thumbnail from real photos (Japanese films: "font": "stencil" lines, see stencil()), in the four layouts of the reference channel's best thumbnails (user 2026-11-14,
 C:/Users/<user>/Downloads/thum: 164k/97k/52k/41k views). Every layout carries a YEAR/DATE LABEL (the user noticed the
 high-view ones all show one), one real archival photo filling the frame, a few big words, ONE red emphasis and a tiny
 photo credit.
@@ -160,7 +160,38 @@ def band(s, lang):
     return img
 
 
-COLORS = {'white': (255, 255, 255), 'cream': (238, 236, 230), 'red': RED, 'ink': INK, 'navy': NAVY, 'black': (14, 14, 16), 'paper': (246, 244, 240)}
+COLORS = {'white': (255, 255, 255), 'cream': (238, 236, 230), 'red': RED, 'ink': INK, 'navy': NAVY, 'black': (14, 14, 16), 'paper': (246, 244, 240), 'offwhite': (240, 238, 230)}
+
+
+def stencil(img, ln, lang):
+    """One line in the channel's military stencil lettering (the Japanese channel's brief, G:/YOUTUBE/LS_NHAT/MO_TA.txt, user
+    2026-11-28: "white or off-white bold distressed military stencil font, thick black outline, never black letters, each
+    line at least 15-20 % of the thumbnail height"). Japanese: M PLUS 1p Black (the house stencil fonts have no kanji; Dela Gothic One was tried and its kanji clog), no bridges
+    (a slit through 襲 or 艦 makes it unreadable at 320 px); other languages: Saira Stencil One. Worn with speckled holes, off-white on a
+    thick black outline. "h" is the height of the letters themselves. Returns (x0, y0, x1, y1)."""
+    from PIL import ImageFont
+    ja = lang == 'ja'; h = int(ln.get('h', 120)); text = ln['text']
+    path = F / ('MPLUS1p-Black.ttf' if ja else 'SairaStencilOne-Regular.ttf')
+    size = int(h / (0.92 if ja else 0.74))
+    while True:
+        f = ImageFont.truetype(str(path), size)
+        tmp = Image.new('L', (W * 3, size * 2), 0); td = ImageDraw.Draw(tmp)
+        bb = td.textbbox((0, 0), text, font=f)
+        if bb[2] - bb[0] <= ln.get('maxw', W - 80) or size <= 30:
+            break
+        size -= 4
+    td.text((-bb[0], -bb[1]), text, font=f, fill=255)
+    tmp = tmp.crop((0, 0, bb[2] - bb[0], bb[3] - bb[1]))
+    holes = Image.effect_noise(tmp.size, 70).convert('L').filter(ImageFilter.GaussianBlur(1.2)).point(lambda v: 0 if v > 168 else 255)
+    worn = Image.composite(tmp, Image.new('L', tmp.size, 0), holes)
+    sw = int(ln.get('stroke', max(7, h // 13))); pad = sw + 2
+    edge = Image.new('L', (tmp.width + 2 * pad, tmp.height + 2 * pad), 0); edge.paste(tmp, (pad, pad))
+    edge = edge.filter(ImageFilter.MaxFilter(2 * sw + 1))
+    al = ln.get('align', 'left'); x, y = ln['xy']
+    x = int(x - tmp.width if al == 'right' else x - tmp.width / 2 if al == 'center' else x); y = int(y)
+    img.paste((8, 8, 10, 255), (x - pad, y - pad), edge)
+    img.paste(tuple(col(ln.get('color'), 'offwhite')) + (255,), (x, y), worn)
+    return x, y, x + tmp.width, y + tmp.height
 
 
 def col(c, default='white'):
@@ -174,7 +205,7 @@ def free(s, lang):
       "photos": [{"src": path, "box": [x0, y0, x1, y1], "fx": 0.5, "fy": 0.4, "grey": true, "frame": 6}]   (default: "photo" full frame)
       "shades": [{"box": [x0, y0, x1, y1], "color": "black", "alpha": 215, "fade": "up" | "down" | "left" | "right"}]
                 (fade = the side on which the shade thins out to nothing; none = flat)
-      "lines":  [{"text": "…", "xy": [x, y], "h": 110, "font": "serif" | "sans" | "small", "color": "white" | "cream" | "red" | "ink" | [r, g, b],
+      "lines":  [{"text": "…", "xy": [x, y], "h": 110, "font": "serif" | "sans" | "small" | "stencil" (Japanese films: always), "color": "white" | "cream" | "red" | "ink" | [r, g, b],
                   "align": "left" | "center" | "right", "stroke": 0, "stroke_color": "ink", "box": "red" (a filled box behind the line), "maxw": 900}]
       "tag", "tag_xy": [x, y], "tag_anchor": "l" | "r", "tag_bg": "navy" | "black"; "credit"; "photo"/"photo2" (+ "_id") still name the photos for thumbcheck."""
     img = Image.new('RGBA', (W, H), (16, 16, 18, 255))
@@ -197,6 +228,8 @@ def free(s, lang):
                 od.line((x0 + i, y0, x0 + i, y1), fill=c + (int(a * k),))
     img = Image.alpha_composite(img, ov); d = ImageDraw.Draw(img)
     for ln in s.get('lines', []):
+        if ln.get('font') == 'stencil':
+            stencil(img, ln, lang); d = ImageDraw.Draw(img); continue
         f = fit(d, ln['text'], ln.get('font', 'sans'), int(ln.get('h', 90)), lang, ln.get('maxw', W - 80)); w = d.textlength(ln['text'], font=f)
         x, y = ln['xy']; al = ln.get('align', 'left'); x = x - w if al == 'right' else x - w / 2 if al == 'center' else x
         if ln.get('box'):

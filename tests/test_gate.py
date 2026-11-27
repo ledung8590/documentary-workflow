@@ -283,6 +283,21 @@ def test_thumbnail_layout_repeat(tmp_path):
     assert other < T.SOFT and red_other < 0.2
 
 
+def test_japanese_thumbnail_stencil_lettering(tmp_path):
+    from PIL import Image
+    import thumb, thumbcheck
+    Image.new('RGB', (1600, 900), (90, 90, 90)).save(tmp_path / 'p.jpg')
+    spec = {'layout': 'free', 'lang': 'ja', 'photo': str(tmp_path / 'p.jpg'), 'tag': '1942年4月9日', 'tag_xy': [1250, 650], 'tag_anchor': 'r',
+            'lines': [{'text': '空母5隻', 'xy': [44, 40], 'h': 120, 'font': 'stencil', 'maxw': 470}, {'text': '来襲', 'xy': [44, 202], 'h': 120, 'font': 'stencil'}]}
+    im = Image.open(thumb.make(dict(spec), tmp_path / 't.jpg'))
+    px = list(im.crop((44, 40, 470, 160)).convert('L').getdata())
+    assert sum(v > 215 for v in px) > 0.12 * len(px) and sum(v < 30 for v in px) > 0.12 * len(px)   # off-white letters on a black outline
+    assert thumbcheck.lettering(spec) == []
+    bad = dict(spec, lines=[dict(spec['lines'][0], color='red'), dict(spec['lines'][1], font='sans'), {'text': '退却', 'xy': [0, 0], 'h': 72, 'font': 'stencil'}])
+    assert len(thumbcheck.lettering(bad)) == 3
+    assert thumbcheck.lettering(dict(bad, lang='de')) == []
+
+
 def test_free_thumbnail_layout(tmp_path):
     from PIL import Image
     import thumb
