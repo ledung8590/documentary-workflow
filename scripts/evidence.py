@@ -68,13 +68,17 @@ def fetch_source(page, dest):
             q = urllib.parse.urlencode({'action': 'query', 'titles': title, 'prop': 'imageinfo', 'format': 'json',
                                         'iiprop': 'url|user|timestamp|extmetadata'})
             out['record'] = json.loads(M._get(f'https://commons.wikimedia.org/w/api.php?{q}'))
-            dest.with_suffix('.html').write_bytes(M._get(page))
+            url = urllib.parse.urlsplit(page)
+            path = urllib.parse.quote(url.path, safe="/%:@!$&'()*+,;=")
+            dest.with_suffix('.html').write_bytes(M._get(url._replace(path=path).geturl()))
         elif 'dvidshub.net' in page:
             vid = re.search(r'/(video|image)/(\d+)', page)
             key = M._key('DVIDS_API_KEY')
             if vid and key:
                 a = M._get('https://api.dvidshub.net/asset?' + urllib.parse.urlencode({'id': f'{vid.group(1)}:{vid.group(2)}', 'api_key': key}))
                 out['record'] = json.loads(a.decode('utf-8', 'replace').replace(key, '<key>'))
+            dest.with_suffix('.html').write_bytes(M._get(page))
+        else:
             dest.with_suffix('.html').write_bytes(M._get(page))
     except Exception as e:  # noqa: BLE001 - a dead page is itself worth recording
         out['error'] = f'{type(e).__name__}: {e}'
@@ -151,8 +155,10 @@ def main():
         import hashlib  # short names: the pack folder is long and Windows paths stop at 260 chars
         slug = re.sub(r'[^A-Za-z0-9._-]+', '_', re.sub(r'^https?://(www\.)?', '', p))[:60] + '-' + hashlib.md5(p.encode()).hexdigest()[:8]
         f = dst / 'sources' / f'{slug}.json'; rec[p] = f'sources/{slug}.json'
-        if f.exists() and 'error' not in json.loads(f.read_text(encoding='utf-8')):
-            return True  # rerun: already fetched
+        if f.exists():
+            saved = json.loads(f.read_text(encoding='utf-8'))
+            if 'error' not in saved and (saved.get('record') or f.with_suffix('.html').is_file()):
+                return True  # rerun: already fetched
         return fetch_source(p, f)
     with ThreadPoolExecutor(6) as ex:
         ok = sum(ex.map(one, pages))
