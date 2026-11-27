@@ -374,3 +374,32 @@ def test_pace_one_scene_over_a_whole_passage():
     assert 'pace-slow' in ids and 'shot-long' in ids
     assert P.check('.', tl([7] * 100), frames=False) == []
     assert [i for _, i, _ in P.check('.', tl([7] * 100 + [45]), frames=False)] == ['shot-long:V101']
+
+
+def test_scene_moulds_and_placeholders(tmp_path):
+    """Film 183, second draft: the pace was met with one diagram repeated 20 times and "S018 moment" placeholders (templatecheck, 2026-11-27)."""
+    import templatecheck as T
+    src = tmp_path / 'scenes' / 'src'; src.mkdir(parents=True)
+    clips, t = [], 0.0
+
+    def add(name, code=None):
+        nonlocal t
+        if code is not None:
+            (src / f'{name}.js').write_text(code, encoding='utf-8')
+        clips.append({'id': f'V{len(clips) + 1:03d}', 'start': t, 'end': t + 6, 'src': f'media/{"scene-" if code is not None else ""}{name}.mp4'}); t += 6
+
+    for i in range(12):   # one mould, other words
+        add(f'cut-{i}', f'window.SCENE={{duration:{6 + i},draw(c,t,L){{AE.draw(c,t,L,{{"title":"Range {i}","kind":"range"}});}}}};')
+    add('real-1')
+    add('hold', 'window.SCENE={duration:7,draw(c,t,L){AE.draw(c,t,L,{"title":"S018 時点","labels":["a","b"]});}};')
+    for i in range(5):    # own drawings
+        add(f'own-{i}', 'window.SCENE={duration:8,draw(c,t,L){' + 'c.fillRect(1,2,3,4);' * (i + 1) + '}};')
+    tl = {'duration': t, 'tracks': [{'id': 'video', 'clips': clips}]}
+    ids = [i for _, i, _ in T.check(tmp_path, tl)]
+    assert ids == ['scene-placeholder:V014', 'scene-mould:V001']
+    for i in range(30):   # 30 different drawings in a row and no real picture
+        add(f'row-{i}', 'window.SCENE={duration:8,draw(c,t,L){' + 'c.lineTo(1,2);' * (i + 1) + '}};')
+    assert 'drawn-run:V014' in [i for _, i, _ in T.check(tmp_path, {'duration': t, 'tracks': [{'id': 'video', 'clips': clips}]})]
+    # a timing anchor is not a placeholder; a scene that frames a picture file is not a mould
+    (src / 'own-0.js').write_text("window.SCENE={draw(c,t,L){K.at('S311+0'); K.print(c,'media/print-1.jpg');}};", encoding='utf-8')
+    assert not [i for _, i, _ in T.check(tmp_path, {'duration': 90, 'tracks': [{'id': 'video', 'clips': clips[14:16]}]})]

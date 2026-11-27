@@ -555,6 +555,8 @@ def gate(job, stage, video=None, quiet=False):
             if not story:
                 import pacecheck   # film 183: 77 shots for 54 minutes passed the gate
                 finds += pacecheck.check(d, tl, frames=stage == 'studio')
+                import templatecheck   # film 183, second draft: 99 scenes cast from a few moulds, 26 placeholders, 60 diagrams in a row passed
+                finds += templatecheck.check(d, tl)
             finds += short_renders(d, tl)
         if stage == 'export' or (story and stage != 'deliver'):  # archival plan/studio get these through plan.py check
             finds += overlay_text(d)
