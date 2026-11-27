@@ -29,7 +29,8 @@ MAX_RUN = 25     # drawn shots in a row; finished films: at most 18; film 183 ha
 STRING = re.compile(r"'[^'\n]*'|\"[^\"\n]*\"|`[^`]*`")
 PICTURE = re.compile(r"['\"`][^'\"`\n]*\.(jpe?g|png|webp|mp4|mov)['\"`]", re.I)
 # a title made of a sentence id and "moment" ('S311+0', 'S228 eighty' are timing anchors, not text on screen)
-PLACEHOLDER = re.compile(r"['\"`]\s*S\d{3}\s*(の?時点|moment|point|Zeitpunkt|thời điểm)\s*['\"`]", re.I)
+# or any title that begins with a sentence id ("S044 図解切替" = "diagram switch", "S147 要点": 16 were left after the first fix)
+PLACEHOLDER = re.compile(r"['\"`]\s*S\d{3}\s*(の?時点|moment|point|Zeitpunkt|thời điểm)\s*['\"`]|\b(title|heading|label)[\"']?\s*:\s*['\"`]\s*S\d{3}\b[^'\"`\n]*['\"`]", re.I)
 
 
 def video(tl):
