@@ -43,22 +43,21 @@ def norm_num(s):
 
 
 def lettering(spec):
-    """Japanese films: the hook is set in the channel's stencil lettering (user 2026-11-28, the channel brief
-    G:/YOUTUBE/LS_NHAT/MO_TA.txt: off-white distressed stencil, thick black outline, no red or yellow on the text, every
-    line 15-20 % of the height). Film 185 came with a thin serif line and a red line at 10 % and 13 %. Returns messages."""
-    if spec.get('lang') != 'ja':
-        return []
+    """Every archival thumbnail sets its hook in the channel's stencil lettering (user 2026-11-28: first for the Japanese
+    channel, from its brief G:/YOUTUBE/LS_NHAT/MO_TA.txt, then "kiểu chữ này dành mọi phim các nước mà genvideo làm"):
+    off-white distressed stencil, thick black outline, no red or yellow on the text, every line 15-20 % of the height.
+    Film 185 came with a thin serif line and a red line at 10 % and 13 %. Returns messages."""
     lines = [ln for ln in spec.get('lines') or [] if ln.get('text')]
     out = []
     if not lines:
-        return ['!! a Japanese thumbnail is built with "layout": "free" and "lines" in "font": "stencil" (scripts/thumb.py)']
+        return ['!! build the thumbnail with "layout": "free" and "lines" in "font": "stencil" (scripts/thumb.py): the fixed layouts carry the old lettering']
     for ln in lines:
         if ln.get('font') != 'stencil':
             out.append(f'!! "{ln["text"]}": set "font": "stencil" (off-white worn stencil lettering with a thick black outline)')
         elif ln.get('color') not in (None, 'white', 'offwhite', 'cream'):
             out.append(f'!! "{ln["text"]}": the lettering is white or off-white only, no red or yellow on the text')
         elif int(ln.get('h', 120)) < 100:
-            out.append(f'!! "{ln["text"]}": letters {ln.get("h")} px high: at least 100 px (15-20 % of the height), 2-4 characters per row, up to 4 rows')
+            out.append(f'!! "{ln["text"]}": letters {ln.get("h")} px high: at least 100 px (15-20 % of the height); short rows (1-3 words, 2-4 Japanese characters), up to 4 rows')
     return out
 
 
@@ -124,7 +123,7 @@ def main(job, img):
     if re.search(r'Foto|Photo|写真|Ảnh', spec.get('tag', '')) and re.search(MONTHS, spec.get('tag', '')) and recs.get('photo') \
             and not re.search(r'\d{4}-(?:0[1-9]|1[0-2])-|' + MONTHS, recs['photo']['date'] + ' ' + recs['photo']['title']):
         print(f'!! tag gives the photo a month, its record only says "{recs["photo"]["date"][:40]}": drop the month or name the event instead'); warn += 1
-    # 5. the Japanese channel's lettering
+    # 5. the channel's lettering
     for m in lettering(spec):
         print(m); warn += 1
     print('\n== review sheet (give it, with the image, to a fresh reviewer) ==')
