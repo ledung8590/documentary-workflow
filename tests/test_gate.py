@@ -403,3 +403,20 @@ def test_scene_moulds_and_placeholders(tmp_path):
     # a timing anchor is not a placeholder; a scene that frames a picture file is not a mould
     (src / 'own-0.js').write_text("window.SCENE={draw(c,t,L){K.at('S311+0'); K.print(c,'media/print-1.jpg');}};", encoding='utf-8')
     assert not [i for _, i, _ in T.check(tmp_path, {'duration': 90, 'tracks': [{'id': 'video', 'clips': clips[14:16]}]})]
+
+
+def test_scenes_that_are_an_almost_blank_page(tmp_path, monkeypatch):
+    """Film 183, third draft: the mould check passed on code that differed in spelling only, 134 of 351 drawn scenes were dots on a line (2026-11-27)."""
+    import templatecheck as T
+    (tmp_path / 'media').mkdir()
+    clips = []
+    for i in range(40):
+        name = f'scene-{"bare" if i < 10 else "full"}-{i}.mp4'
+        (tmp_path / 'media' / name).write_bytes(b'x')
+        clips.append({'id': f'V{i + 1:03d}', 'start': i * 6.0, 'end': i * 6.0 + 6, 'src': f'media/{name}'})
+    monkeypatch.setattr(T, 'ink', lambda p, at: 0.012 if 'bare' in str(p) else 0.18)
+    assert [i for _, i, _ in T.empty(tmp_path, clips)] == ['scene-empty:V001']      # 10 of 40 = 25 %
+    assert not T.empty(tmp_path, clips[5:])                                           # 5 of 35 = 14 %
+    monkeypatch.setattr(T, 'ink', lambda p, at: None)                                 # frames unreadable: no finding, no crash
+    (tmp_path / 'qa' / 'ink.json').unlink()
+    assert not T.empty(tmp_path, clips)
