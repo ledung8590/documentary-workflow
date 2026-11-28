@@ -17,7 +17,8 @@ Measure: CLIP image embedding (openai/clip-vit-base-patch32), cosine similarity.
 Needs a Python with torch and transformers (the one Whisper uses); the script starts itself there. The index
 (stories/image-index/) is filled once (about 4 minutes for 33,000 pictures) and then only gets the new files.
 
-Remedy for a !!: remake that beat as another picture, not another seed of the same prompt: take the one thing in the
+Remedy for a !!: remake that beat as another picture OF THE SAME SENTENCE, not another seed of the same prompt and not
+another subject (story 14: the first remakes fled to unrelated pictures, an alley for an explosion, a barn for squealing tracks): take the one thing in the
 narration that only this moment has (a named man doing something, an object, a particular place) and make it the subject
 in the foreground; change shot size and angle. A stock wide shot of "soldiers / tanks / a bridge in snow" is what repeats.
 """
@@ -93,7 +94,7 @@ def judge(names, best, own):
     near = [n for n in names if NEAR <= best.get(n, (0, ''))[0] < SAME]
     twins = [(a, b) for v, a, b in own if v >= SAME]
     out = []
-    how = ('remake each as ANOTHER picture (not another seed of the same prompt): put the one thing only this moment has in the foreground, change shot size and angle; '
+    how = ('remake each as ANOTHER picture (not another seed of the same prompt): it must still show what the sentence of that beat SAYS (story 14: the remake of "a great flash and a crack" became a quiet lamp-lit alley), seen another way: the thing the sentence names in the foreground, another shot size and angle; '
            'then run scripts/imagerepeat.py again. qa/imagerepeat-*.jpg shows every pair')
     if again:
         out.append(('!!', f'image-repeat:{again[0]}', f'{len(again)} picture(s) are the same picture as one of an earlier story (similarity >= {SAME}): '
