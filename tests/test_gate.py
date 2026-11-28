@@ -443,6 +443,7 @@ def test_scenes_that_are_an_almost_blank_page(tmp_path, monkeypatch):
 def test_story_core_needs_a_verdict_for_the_current_script(tmp_path, monkeypatch):
     import json, storycore as C
     monkeypatch.setattr(C, 'CORES', tmp_path / 'cores.json'); monkeypatch.setattr(C, 'LOG', tmp_path / 'LOG.md')
+    monkeypatch.setattr(C, 'PROJECTS', False)
     rows = ['| # | Title | Opening | Hero | Prop | Twist |', '|---|---|---|---|---|---|', '| 1 | Old Story | a | b | a slip of paper | a bridge blown two hours early |']
     (tmp_path / 'LOG.md').write_text(chr(10).join(rows), encoding='utf-8')
     d = tmp_path / 'p'; (d / 'qa').mkdir(parents=True); (d / 'script.txt').write_text('A story.', encoding='utf-8')

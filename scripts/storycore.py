@@ -31,6 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 CORES = ROOT / 'stories' / 'published' / 'cores.json'
 LOG = ROOT / 'stories' / 'published' / 'LOG.md'
+PROJECTS = True   # tests switch the scan of projects/*/qa/core.json off
 
 
 def digest(d):
@@ -38,7 +39,7 @@ def digest(d):
     return hashlib.md5(' '.join(p.read_text(encoding='utf-8', errors='replace').split()).encode()).hexdigest()[:10] if p.exists() else ''
 
 
-def earlier():
+def earlier(skip=None):
     """[(title, what it turned on)]: cores.json first, then the 'Twist / turn type' column of LOG.md for stories without one."""
     out = {}
     try:
@@ -53,6 +54,16 @@ def earlier():
                 out.setdefault(c[1][:90], '; '.join(x for x in (c[5], c[4]) if x)[:420])
     except OSError:
         pass
+    # stories still in work (same batch, not published yet): their cores count too
+    for f in sorted((ROOT / 'projects').glob('*/qa/core.json')) if PROJECTS else []:
+        if skip and f.parent.parent.resolve() == Path(skip).resolve():
+            continue
+        try:
+            c = str(json.loads(f.read_text(encoding='utf-8')).get('core') or '')
+        except (OSError, ValueError):
+            continue
+        if c:
+            out.setdefault(f'(in work) {f.parent.parent.name}'[:90], c[:420])
     return list(out.items())
 
 
@@ -61,7 +72,7 @@ def check(d):
     d = Path(d)
     if not (d / 'script.txt').exists():
         return []
-    old = earlier(); dg = digest(d); f = d / 'qa' / 'core.json'
+    old = earlier(d); dg = digest(d); f = d / 'qa' / 'core.json'
     how = f'PY scripts/storycore.py {d.name} prints the brief; a fresh reader agent reads the whole script and writes qa/core.json'
     try:
         j = json.loads(f.read_text(encoding='utf-8'))
@@ -104,7 +115,7 @@ if __name__ == '__main__':
         for lv, i, m in found:
             print(lv, i, m)
         print(f'{len(found)} finding(s)'); sys.exit(1 if found else 0)
-    old = earlier()
+    old = earlier(d)
     print(f'script: {d / "script.txt"}\nscript digest: {digest(d)}\nwrite: {d / "qa" / "core.json"}\ncompared: {len(old)}\n')
     print('Earlier stories and what each turned on:')
     for t, c in old:
