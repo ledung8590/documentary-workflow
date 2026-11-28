@@ -438,3 +438,25 @@ def test_scenes_that_are_an_almost_blank_page(tmp_path, monkeypatch):
     monkeypatch.setattr(T, 'ink', lambda p, at: None)                                 # frames unreadable: no finding, no crash
     (tmp_path / 'qa' / 'ink.json').unlink()
     assert not T.empty(tmp_path, clips)
+
+
+def test_story_core_needs_a_verdict_for_the_current_script(tmp_path, monkeypatch):
+    import json, storycore as C
+    monkeypatch.setattr(C, 'CORES', tmp_path / 'cores.json'); monkeypatch.setattr(C, 'LOG', tmp_path / 'LOG.md')
+    rows = ['| # | Title | Opening | Hero | Prop | Twist |', '|---|---|---|---|---|---|', '| 1 | Old Story | a | b | a slip of paper | a bridge blown two hours early |']
+    (tmp_path / 'LOG.md').write_text(chr(10).join(rows), encoding='utf-8')
+    d = tmp_path / 'p'; (d / 'qa').mkdir(parents=True); (d / 'script.txt').write_text('A story.', encoding='utf-8')
+    assert C.earlier() == [('Old Story', 'a bridge blown two hours early; a slip of paper')]
+    assert [f[1] for f in C.check(d)] == ['story-core']                      # nobody compared
+    core = {'script': C.digest(d), 'core': 'a mortar round kills a farm family and the gunner lets two other men carry the blame for weeks', 'compared': 1, 'same': False}
+    (d / 'qa' / 'core.json').write_text(json.dumps(core), encoding='utf-8')
+    assert C.check(d) == []
+    (d / 'qa' / 'core.json').write_text(json.dumps(dict(core, same=True, **{'with': 'Old Story', 'why': 'x'})), encoding='utf-8')
+    assert [f[1] for f in C.check(d)] == ['story-core-same']                 # the same device: not voiced
+    (d / 'qa' / 'core.json').write_text(json.dumps(dict(core, compared=0)), encoding='utf-8')
+    assert [f[1] for f in C.check(d)] == ['story-core']                      # compared with fewer stories than exist
+    (d / 'qa' / 'core.json').write_text(json.dumps(core), encoding='utf-8')
+    (d / 'script.txt').write_text('A story, edited.', encoding='utf-8')
+    assert [f[1] for f in C.check(d)] == ['story-core']                      # the script changed after the verdict
+    (d / 'script.txt').write_text('A story.', encoding='utf-8')
+    assert C.publish(d, 'New Story') and len(C.earlier()) == 2

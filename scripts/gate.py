@@ -560,6 +560,9 @@ def gate(job, stage, video=None, quiet=False):
             finds += short_renders(d, tl)
         if stage == 'export' or (story and stage != 'deliver'):  # archival plan/studio get these through plan.py check
             finds += overlay_text(d)
+        if story and stage != 'deliver':
+            import storycore   # stories 14/15: other names and frames, the same device; only a reader can compare that
+            finds += storycore.check(d)
         if stage in ('plan', 'studio'):
             finds += shared_code(state)
         if stage == 'studio':

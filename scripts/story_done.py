@@ -76,6 +76,11 @@ def main():
         print('dry run: add --run after the user confirms the upload'); return
     if not logged:
         sys.exit('refused: LOG.md row missing')
+    import storycore   # what the story turned on, kept for the next stories' comparison (before the project is deleted)
+    if storycore.publish(proj, name):
+        print('keep: the story core in stories/published/cores.json')
+    else:
+        print('! no qa/core.json: later stories cannot be compared with this one (scripts/storycore.py)')
 
     for f in local:  # project-only music/SFX into the shared library before the project goes
         t = ROOT / 'assets' / f.relative_to(proj).parts[0] / f'from-{a.job[:40]}' / f.name
