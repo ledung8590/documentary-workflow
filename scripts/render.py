@@ -215,9 +215,32 @@ def exhibit_frame(im, caption=''):
     bg.paste((40, 30, 20) if LOOK['name'] == 'paper' else (0, 0, 0), (x - 14, y - 10), sh.filter(ImageFilter.GaussianBlur(12)))
     bg.paste(mat, (x, y))
     if caption:
-        d = ImageDraw.Draw(bg); f = font('body', 30); c = caption[:90]
-        d.text((x, y + mat.height + 16), c, font=f, fill=_hex(LOOK['fg']))
+        d = ImageDraw.Draw(bg)
+        for ln, f in exhibit_caption_lines(d, caption, W - 160):
+            w = d.textlength(ln, font=f); cx = max(80, min(x, W - 80 - w))  # film 129: long captions ran off the right edge
+            d.text((cx, y + mat.height + 16), ln, font=f, fill=_hex(LOOK['fg'])); y += int(f.size * 1.25)
     return bg
+
+
+def exhibit_caption_lines(d, caption, maxw):
+    """[(line, font)] that fit maxw: one line at 30 px shrinking to 22 px, else two lines at 24 px (words never cut);
+    a caption too long even for two lines ends in an ellipsis."""
+    for size in range(30, 21, -2):
+        f = font('body', size)
+        if d.textlength(caption, font=f) <= maxw:
+            return [(caption, f)]
+    f = font('body', 24); words = caption.split(); lines = ['']
+    for wd in words:
+        cand = (lines[-1] + ' ' + wd).strip()
+        if d.textlength(cand, font=f) <= maxw or not lines[-1]:
+            lines[-1] = cand
+        elif len(lines) < 2:
+            lines.append(wd)
+        else:
+            lines[-1] = lines[-1].rstrip(',;:') + ' …'; break
+    while d.textlength(lines[-1], font=f) > maxw and ' ' in lines[-1]:
+        lines[-1] = lines[-1].rsplit(' ', 2)[0] + ' …'
+    return [(ln, f) for ln in lines]
 
 
 class Photo:
@@ -259,21 +282,29 @@ class Photo:
         pass
 
 
+def video_vf(w, h, clip):
+    """ffmpeg scale/crop of a film clip into the 16:9 frame; shared by render.Video and the studio preview (studio/core.py
+    _video_frame), so a logo crop or a fitted title card looks the same in the studio as in the export (film 129: the
+    studio preview ignored VID_ZOOM/VID_CENTER and still showed the Roscosmos logo and the pillarbox bars)."""
+    if is_print(w, h) or clip.get('fit'):  # plan.py VID_FIT: a title card that fills its 4:3 frame is shown whole, not cropped
+        vf = (f'scale={int(W * 0.8)}:{int(H * 0.86)}:force_original_aspect_ratio=decrease,'
+              f'pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color=0x0c0b0a')
+    else:
+        vf = f'scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}'
+    if clip.get('zoom'):  # plan.py VID_ZOOM: crop a logo or burned-in corner off; keeps the bottom-right part of the frame
+        z = float(clip['zoom']); vf = f'crop=iw/{z}:ih/{z}:iw-iw/{z}:ih-ih/{z},' + vf
+    if clip.get('crop_center'):  # plan.py VID_CENTER: a 4:3 reel inside a 16:9 file (pillarbox) fills the frame
+        z = float(clip['crop_center']); vf = f'crop=iw/{z}:ih/{z},' + vf
+    return vf
+
+
 class Video:
     def __init__(self, path, clip, fps):
         info = json.loads(subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries',
                                           'stream=width,height', '-of', 'json', str(path)], capture_output=True).stdout)
         s = info['streams'][0]
         self.g = clip.get('grade', 'modern'); self.color = clip.get('color')
-        if is_print(s['width'], s['height']):
-            vf = (f'scale={int(W * 0.8)}:{int(H * 0.86)}:force_original_aspect_ratio=decrease,'
-                  f'pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color=0x0c0b0a')
-        else:
-            vf = f'scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}'
-        if clip.get('zoom'):  # plan.py VID_ZOOM: crop a logo or burned-in corner off; keeps the bottom-right part of the frame
-            z = float(clip['zoom']); vf = f'crop=iw/{z}:ih/{z}:iw-iw/{z}:ih-ih/{z},' + vf
-        if clip.get('crop_center'):  # plan.py VID_CENTER: a 4:3 reel inside a 16:9 file (pillarbox) fills the frame
-            z = float(clip['crop_center']); vf = f'crop=iw/{z}:ih/{z},' + vf
+        vf = video_vf(s['width'], s['height'], clip)
         if clip.get('bloom'):  # glow on bright parts (map arrows, fire): threshold, blur, screen-blend back
             vf += (',split[a][b];[b]colorlevels=rimin=0.5:gimin=0.55:bimin=0.55,gblur=sigma=16[g];'
                    '[a][g]blend=all_mode=screen:all_opacity=0.8')

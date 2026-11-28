@@ -45,6 +45,8 @@ INTRO_GAIN = -6.0  # opening music intro level (dB, after the bed levelling): ab
 SUBS_OVER = set()  # scenes with no text of their own: subtitles stay on. Every other scene hides them (films 74-88; user review)
 VID_CENTER = {}  # {'v-tag#K': 1.35}: centred crop that removes pillarbox bars burned into a 16:9 file (film 144)
 VID_ZOOM = {}  # {'v-tag#K': 1.2}: zoom a film in from the bottom-right to crop a logo off its top-left corner
+VID_FIT = set()  # {'v-tag#K'}: show a film whole (inset, dark border) instead of filling and cropping 16:9, e.g. a newsreel title card (film 129)
+SUBS_OFF = set()  # {'pick-or-vid TAG#K'}: subtitles step aside on this photo/film (a subscribe button or burned-in title under them; film 129)
 SCENE_MEDIA = {k: tuple(v) for k, v in json.loads((D / 'qa' / 'scene_media.json').read_text(encoding='utf-8')).items()} if (D / 'qa' / 'scene_media.json').exists() else {}  # JS scenes that draw real photos (film 6): {'scene-name': ('credit line', ['media/x.jpg', ...])}; listed as `uses` so LICENSES/credits keep them
 ORIGINAL = {}  # film clips whose own field sound plays: {'v-tag#K': gain dB}; only after Scribe tags it as no music/speech (docs/SOUND.md)
 
@@ -352,7 +354,11 @@ def apply(sound_only=False):
             tag, _, kk = rest.partition('#'); kk, _, tin = kk.partition('@')
             picks.append((c['id'], tag, int(kk), s['caption'], tin or '0', k == 'vid'))  # '@IN!' = exact in-point, no clean_in
             c.update(src=None, caption=s['caption'])
+            if f'{tag}#{kk}' in SUBS_OFF:
+                c['hide_subtitles'] = True
             if k == 'vid':
+                if f'{tag}#{kk}' in VID_FIT:
+                    c['fit'] = True
                 c['mute'] = True
                 if f'{tag}#{kk}' in VID_ZOOM:  # crop a broadcaster logo / burned-in corner off a film (render.Video 'zoom', anchored away from the top-left)
                     c['zoom'] = VID_ZOOM[f'{tag}#{kk}']

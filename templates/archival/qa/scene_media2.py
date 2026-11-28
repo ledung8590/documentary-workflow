@@ -31,8 +31,11 @@ for f in sorted((D / 'scenes' / 'src').glob('*.js')):
         stem = name.rsplit('.', 1)[0]
         m = re.match(r'^(p-[a-z]2?-[a-z0-9-]+?)-(\d+)$', stem)
         c = None
+        m2 = re.match(r'^(.+)-(\d+)$', stem)  # any search tag (old tags like tau129-ussgw-3.jpg too)
         if m and m.group(1) in bytag:
             c = bytag[m.group(1)][int(m.group(2)) - 1]
+        elif m2 and m2.group(1) in bytag and int(m2.group(2)) <= len(bytag[m2.group(1)]):
+            c = bytag[m2.group(1)][int(m2.group(2)) - 1]
         elif stem in cands:
             c = cands[stem]
         if c is None:

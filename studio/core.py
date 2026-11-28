@@ -765,8 +765,7 @@ class Framer:
         R = self.R; W, H = R.W, R.H  # same scale/crop as render.Video, one frame at in + lt
         info = json.loads(subprocess.run(['ffprobe', '-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=width,height',
                                           '-of', 'json', str(path)], capture_output=True).stdout)['streams'][0]
-        vf = (f'scale={int(W * 0.8)}:{int(H * 0.86)}:force_original_aspect_ratio=decrease,pad={W}:{H}:(ow-iw)/2:(oh-ih)/2:color=0x0c0b0a'
-              if R.is_print(info['width'], info['height']) else f'scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H}')
+        vf = R.video_vf(info['width'], info['height'], c)  # zoom, centre crop and fit like the export
         raw = subprocess.run(['ffmpeg', '-v', 'error', '-ss', f'{c.get("in", 0.0) + max(0.0, lt):.3f}', '-i', str(path), '-an',
                               '-frames:v', '1', '-vf', f'{vf},format=rgb24', '-f', 'rawvideo', '-'], capture_output=True).stdout
         if len(raw) != W * H * 3:
