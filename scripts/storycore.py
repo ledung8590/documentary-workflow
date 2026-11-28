@@ -36,7 +36,7 @@ THE READER'S JOB
 
 Kept in stories/checked-cores.json (per script digest) and, after delivery, in stories/published/cores.json (story_done.py).
 """
-import hashlib, json, sys
+import hashlib, json, re, sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -45,6 +45,7 @@ CORES = ROOT / 'stories' / 'published' / 'cores.json'
 LOG = ROOT / 'stories' / 'published' / 'LOG.md'
 STORE = ROOT / 'stories' / 'checked-cores.json'
 PROJECTS = True   # tests switch the scan of projects/*/qa/core.json off
+SAME_TEXT = 0.6   # share of sampled 8-word windows two texts of one story still share after sentence fixes
 
 
 def text_digest(p):
@@ -54,6 +55,25 @@ def text_digest(p):
 def digest(d):
     p = Path(d) / 'script.txt'
     return text_digest(p) if p.exists() else ''
+
+
+def signature(p):
+    """A sample of the text's 8-word windows. /gentruyen rewrites sentences of a checked script (storycheck findings, the
+    review skill); the story is the same, so the batch verdict must survive that. Two texts that share most of the sample
+    are the same story."""
+    w = re.findall(r"[\w']+", Path(p).read_text(encoding='utf-8', errors='replace').lower())
+    out = set()
+    for i in range(len(w) - 7):
+        h = hashlib.md5(' '.join(w[i:i + 8]).encode()).hexdigest()
+        if h[0] == '0':                      # one window in 16
+            out.add(h[:7])
+    return sorted(out)
+
+
+def same_text(sig_a, sig_b):
+    """Share of the smaller sample found in the other (0..1)."""
+    a, b = set(sig_a or []), set(sig_b or [])
+    return len(a & b) / min(len(a), len(b)) if a and b else 0.0
 
 
 def key(core):
@@ -100,9 +120,18 @@ def entry(d):
     j = load(d / 'qa' / 'core.json')
     if j.get('script') == dg:
         return j
-    b = load(STORE).get(dg)
+    store = load(STORE); b = store.get(dg); how = 'batch check'
+    if not b and (d / 'script.txt').exists():
+        # the same story after sentence fixes: at least 60 % of the sampled windows still there (two different stories share almost none)
+        sig = signature(d / 'script.txt')
+        for cand in ([j] if j.get('core') and j.get('sig') else []) + list(store.values()):
+            share = same_text(sig, cand.get('sig'))
+            if share >= SAME_TEXT:
+                b, how = cand, f'verdict kept after script edits ({share:.0%} of the text unchanged)'
+                break
     if b:
-        j = dict(b, script=dg, adopted='batch check')
+        j = {k: v for k, v in b.items() if k != 'sig'}
+        j.update(script=dg, adopted=how, sig=signature(d / 'script.txt'))
         save(d / 'qa' / 'core.json', j)
         return j
     return {'script': dg}
@@ -187,6 +216,7 @@ def one(job):
             print(lv, i, m)
         print(f'{len(found)} finding(s)'); sys.exit(1 if found else 0)
     if '--set-core' in sys.argv:
+        j['sig'] = signature(d / 'script.txt')
         save(d / 'qa' / 'core.json', set_core(j, arg('--set-core'))); print('core recorded; now compare it and record the verdict'); return
     if '--verdict' in sys.argv:
         save(d / 'qa' / 'core.json', set_verdict(j, old)); print('verdict recorded:', 'SAME as ' + j['with'] if j['same'] else 'different'); return
@@ -223,7 +253,9 @@ def batch(folder):
     def pick(n):
         if n not in dg:
             sys.exit(f'"{n}" is not a script of this folder: ' + ', '.join(dg))
-        return store.setdefault(dg[n], {'title': Path(n).stem})
+        j = store.setdefault(dg[n], {'title': Path(n).stem})
+        j['sig'] = signature(folder / n)
+        return j
 
     if '--set-core' in sys.argv:
         i = sys.argv.index('--set-core'); set_core(pick(sys.argv[i + 1]), sys.argv[i + 2]); save(STORE, store); print('core recorded'); return

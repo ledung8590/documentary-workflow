@@ -463,3 +463,13 @@ def test_story_core_needs_a_verdict_for_the_current_script(tmp_path, monkeypatch
     C.save(C.CORES, {'Newer Story': 'a field telephone line cut by a village boy and the officer who must name the house'})
     assert 'newer stor' in C.check(d)[0][2]
     assert C.publish(d, 'This Story') and len(C.earlier()) == 3
+    # sentence fixes by the workflow keep the verdict; another story does not get it
+    words = ' '.join(f'word{i} goes' for i in range(900))
+    (d / 'script.txt').write_text(words, encoding='utf-8')
+    C.save(C.STORE, {C.digest(d): {'title': 'T', 'core': core['core'], 'same': False, 'against': [C.key(c) for _, c in C.earlier()], 'sig': C.signature(d / 'script.txt')}})
+    (d / 'qa' / 'core.json').unlink()
+    (d / 'script.txt').write_text(words.replace('word450 goes', 'word450 went quietly').replace('word7 goes', 'word7 ran'), encoding='utf-8')
+    assert C.check(d) == [] and 'unchanged' in json.loads((d / 'qa' / 'core.json').read_text(encoding='utf-8'))['adopted']
+    (d / 'qa' / 'core.json').unlink()
+    (d / 'script.txt').write_text(' '.join(f'other{i} stays' for i in range(900)), encoding='utf-8')
+    assert [f[1] for f in C.check(d)] == ['story-core']
