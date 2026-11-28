@@ -21,7 +21,7 @@ STOCK = {  # narrator stock lines that make every episode open/turn the same way
     'de': ['ich möchte die geschichte heute', 'meine damen und herren', 'in der welt der spionage'],
     'es': ['quiero comenzar la historia de hoy', 'señoras y señores', 'en el mundo del espionaje'],
 }
-OUTRO = re.compile(r'tạm biệt|hẹn gặp lại|cảm ơn quý vị|thanks for (listening|watching)|see you|bis zum nächsten|danke fürs|hasta la próxima|gracias por', re.I)
+OUTRO = re.compile(r'tạm biệt|hẹn gặp lại|cảm ơn quý vị|thanks for (listening|watching)|thank you for (listening|watching|staying|sitting|being here)|like and (a )?subscri|subscribe|see you|bis zum nächsten|danke fürs|hasta la próxima|gracias por', re.I)
 STOP = set('khác và của là có không một những các người ông bà anh chị đã đang sẽ được bị cho với trong ra vào lên xuống rồi thì mà này đó ấy '
            'nhưng nếu khi lại cũng còn chỉ như từ tại để vì nên hai ba bốn năm ngày tháng the a an of to and in on at is was he she it'.split())
 
