@@ -47,7 +47,7 @@ Mỹ Việt Nam Pháp Nga Đức Trung Quốc Liên Xô Sư Đoàn Trung Đoàn 
 # videos?" The crewman who knows the railway timetable by heart was in 4 stories (Leo, Kranich, Thiel, Jost), the zoo hippo in 3,
 # a hero with a musical craft in 6. Each family = one regex on the lowercased text; more in stories/motifs.txt ("name = regex").
 MOTIFS = {
-    'the man who knows the railway timetable by heart / railway family': r'timetable|train schedule|reichsbahn|station ?master|signalman|sold tickets|fahrplan|kursbuch|giờ tàu',
+    'the man who knows the railway timetable by heart / railway family': r'timetable|train schedule|reichsbahn|station ?master|railway signalman|signal ?box|sold tickets|fahrplan|kursbuch|giờ tàu',
     'zoo animal / hippo and its keeper': r'\bhippo|\bzoo\b|zoo ?keeper|nilpferd',
     'musical craft or perfect ear (tuner, organ, bells, tuning fork, harmonium)': r'tuning fork|piano tuner|organ builder|organist|harmonium|bell founder|bellows|\bbayan\b|accordion|stimmgabel|orgelbau|lên dây đàn',
     'the stammerer who speaks clearly in action': r'stammer|stutter|stotter',
