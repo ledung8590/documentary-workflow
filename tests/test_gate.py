@@ -473,3 +473,15 @@ def test_story_core_needs_a_verdict_for_the_current_script(tmp_path, monkeypatch
     (d / 'qa' / 'core.json').unlink()
     (d / 'script.txt').write_text(' '.join(f'other{i} stays' for i in range(900)), encoding='utf-8')
     assert [f[1] for f in C.check(d)] == ['story-core']
+
+
+def test_story_pictures_that_repeat_an_earlier_story():
+    import imagerepeat as R
+    names = ['001.png', '002.png', '003.png', '004.png']
+    best = {'001.png': (0.97, 'C:/ComfyUI/output/zimage_1_00001_.png'), '002.png': (0.93, 'x.png'), '003.png': (0.80, 'y.png'), '004.png': (0.951, 'z.png')}
+    own = [(0.96, '003.png', '004.png'), (0.93, '001.png', '002.png')]
+    got = R.judge(names, best, own)
+    assert [f[1] for f in got] == ['image-repeat:001.png', 'image-twin:003.png', 'image-near']
+    assert '2 picture(s)' in got[0][2] and '004.png' in got[0][2] and got[2][0] == '!'
+    assert R.judge(names, {n: (0.85, 'o.png') for n in names}, []) == []
+

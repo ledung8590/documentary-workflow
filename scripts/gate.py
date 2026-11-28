@@ -563,6 +563,10 @@ def gate(job, stage, video=None, quiet=False):
         if story and stage != 'deliver':
             import storycore   # stories 14/15: other names and frames, the same device; only a reader can compare that
             finds += storycore.check(d)
+            if stage in ('studio', 'export'):
+                say('  imagerepeat ...')
+                import imagerepeat   # story 14: 15 newly generated pictures were the same picture as one of an earlier story
+                finds += imagerepeat.check(d)
         if stage in ('plan', 'studio'):
             finds += shared_code(state)
         if stage == 'studio':
