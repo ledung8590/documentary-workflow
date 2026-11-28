@@ -14,6 +14,11 @@ Measure: CLIP image embedding (openai/clip-vit-base-patch32), cosine similarity.
   >= 0.95  the same picture again (same subject, framing, light): !!
   0.92-0.95 the same kind of picture, visibly another one: counted, reported as !
   about 0.90 same subject, different picture
+CLIP alone calls two tank pictures the same when they only share the subject (story 14, second round: a tank seen from the
+front on snow against one in smoke on bare earth, 0.97). So a pair is the same picture when CLIP says >= 0.95 AND the
+arrangement in the frame is the same (grey 32x18 correlation >= 0.45: the 13 pairs that looked like one picture had
+0.50-0.94, the different framings of one subject had 0.36 and less), or when CLIP says >= 0.975. A pair CLIP calls the
+same with another arrangement is counted as the same subject (!), not refused.
 Needs a Python with torch and transformers (the one Whisper uses); the script starts itself there. The index
 (stories/image-index/) is filled once (about 4 minutes for 33,000 pictures) and then only gets the new files.
 
@@ -29,7 +34,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 INDEX = ROOT / 'stories' / 'image-index'
 COMFY = Path(os.environ.get('COMFY_OUTPUT', 'C:/ComfyUI/output'))
-SAME = 0.95      # the same picture again
+SAME = 0.95      # CLIP: the same subject shown the same way
+LAYOUT = 0.45    # ... and the same arrangement in the frame (correlation of the two pictures at 32x18, grey)
+SURE = 0.975     # CLIP alone, whatever the arrangement
 NEAR = 0.92      # the same kind of picture
 MODEL = 'openai/clip-vit-base-patch32'
 
@@ -88,22 +95,43 @@ def update_index():
     return paths, emb
 
 
+def layout(a, b):
+    """How alike two pictures are arranged in the frame: correlation of their 32x18 grey versions (1 = the same layout)."""
+    import numpy as np
+    from PIL import Image
+
+    def small(p):
+        x = np.asarray(Image.open(p).convert('L').resize((32, 18), Image.BILINEAR), dtype='float32')
+        return (x - x.mean()) / (x.std() + 1e-6)
+    try:
+        return float((small(a) * small(b)).mean())
+    except Exception:
+        return 0.0
+
+
+def again(sim, lay):
+    return sim >= SURE or (sim >= SAME and lay >= LAYOUT)
+
+
 def judge(names, best, own):
-    """best: {scene: (similarity, older file)}; own: [(similarity, scene a, scene b)]. Returns findings (level, id, message)."""
-    again = sorted((n for n in names if best.get(n, (0, ''))[0] >= SAME), key=lambda n: -best[n][0])
-    near = [n for n in names if NEAR <= best.get(n, (0, ''))[0] < SAME]
-    twins = [(a, b) for v, a, b in own if v >= SAME]
+    """best: {scene: (similarity, older file, layout)}; own: [(similarity, scene a, scene b, layout)]. Returns findings (level, id, message)."""
+    get = lambda n: (tuple(best.get(n) or (0, '', 0)) + (0,))[:3]
+    rep = sorted((n for n in names if again(get(n)[0], get(n)[2])), key=lambda n: -get(n)[0])
+    subject = [n for n in names if get(n)[0] >= SAME and n not in rep]
+    near = [n for n in names if NEAR <= get(n)[0] < SAME]
+    twins = [(x[1], x[2]) for x in own if again(x[0], (tuple(x) + (0,))[3])]
     out = []
-    how = ('remake each as ANOTHER picture (not another seed of the same prompt): it must still show what the sentence of that beat SAYS (story 14: the remake of "a great flash and a crack" became a quiet lamp-lit alley), seen another way: the thing the sentence names in the foreground, another shot size and angle; '
-           'then run scripts/imagerepeat.py again. qa/imagerepeat-*.jpg shows every pair')
-    if again:
-        out.append(('!!', f'image-repeat:{again[0]}', f'{len(again)} picture(s) are the same picture as one of an earlier story (similarity >= {SAME}): '
-                    + ', '.join(f'{n} ({best[n][0]:.2f} {Path(best[n][1]).name})' for n in again[:40]) + f'. {how}'))
+    how = ('remake each as ANOTHER picture (not another seed of the same prompt): it must still show what the sentence of that beat SAYS (story 14: the remake of "a great flash and a crack" '
+           'became a quiet lamp-lit alley), seen another way: the thing the sentence names in the foreground, another shot size and angle; then run scripts/imagerepeat.py again. '
+           'qa/imagerepeat-*.jpg shows every pair')
+    if rep:
+        out.append(('!!', f'image-repeat:{rep[0]}', f'{len(rep)} picture(s) are the same picture as one of an earlier story (same subject, same arrangement in the frame): '
+                    + ', '.join(f'{n} ({get(n)[0]:.2f}/{get(n)[2]:.2f} {Path(get(n)[1]).name})' for n in rep[:40]) + f'. {how}'))
     if twins:
         out.append(('!!', f'image-twin:{twins[0][0]}', f'{len(twins)} pair(s) inside this story are the same picture twice: ' + ', '.join(f'{a}={b}' for a, b in twins[:30]) + f'. {how}'))
-    if near:
-        out.append(('!', 'image-near', f'{len(near)} of {len(names)} pictures are the same kind of picture as an earlier one ({NEAR}-{SAME}); the model keeps a few stock compositions: '
-                    'for the next story give more beats a subject of their own'))
+    if subject or near:
+        out.append(('!', 'image-near', f'{len(subject)} picture(s) show the same subject as an earlier story in another framing ({", ".join(subject[:12])}) and {len(near)} of {len(names)} are the same kind of picture '
+                    f'({NEAR}-{SAME}); the model keeps a few stock compositions: for the next story give more beats a subject of their own'))
     return out
 
 
@@ -126,14 +154,16 @@ def run(job):
             p = paths[old[j]] if len(old) else ''
             if p and sim[k, j] > 0.995 and os.stat(p).st_size == scenes[k].stat().st_size and hashlib.md5(open(p, 'rb').read()).hexdigest() == hashlib.md5(scenes[k].read_bytes()).hexdigest():
                 continue
-            best[n] = (float(sim[k, j]), p); break
+            best[n] = (float(sim[k, j]), p, layout(scenes[k], p) if sim[k, j] >= SAME else 0.0); break
     self_sim = E @ E.T
-    own = sorted(((float(self_sim[a, b]), names[a], names[b]) for a, b in np.argwhere(np.triu(self_sim, 1) >= NEAR)), reverse=True)
+    own = sorted(((float(self_sim[a, b]), names[a], names[b], layout(scenes[a], scenes[b]) if self_sim[a, b] >= SAME else 0.0)
+                  for a, b in np.argwhere(np.triu(self_sim, 1) >= NEAR)), reverse=True)
     finds = judge(names, best, own)
     (d / 'qa').mkdir(exist_ok=True)
-    key = f'{len(scenes)}|{int(max(s.stat().st_mtime for s in scenes))}'
+    key = f'{len(scenes)}|{int(max(s.stat().st_mtime for s in scenes))}|2'
     (d / 'qa' / 'imagerepeat.json').write_text(json.dumps({'key': key, 'finds': finds, 'best': best, 'own': own[:200]}, ensure_ascii=False), encoding='utf-8')
-    sheets(d, [(n, best[n][1], best[n][0]) for n in names if best.get(n, (0,))[0] >= SAME] + [(a, str(d / 'media' / 'scenes' / b), v) for v, a, b in own if v >= SAME])
+    sheets(d, [(n, best[n][1], best[n][0]) for n in names if n in best and again(best[n][0], best[n][2])]
+           + [(a, str(d / 'media' / 'scenes' / b), v) for v, a, b, lay in own if again(v, lay)])
     return finds
 
 
@@ -160,7 +190,7 @@ def check(d):
     d = Path(d); scenes = sorted((d / 'media' / 'scenes').glob('*.png'))
     if not scenes:
         return []
-    key = f'{len(scenes)}|{int(max(s.stat().st_mtime for s in scenes))}'
+    key = f'{len(scenes)}|{int(max(s.stat().st_mtime for s in scenes))}|2'
     f = d / 'qa' / 'imagerepeat.json'
     try:
         j = json.loads(f.read_text(encoding='utf-8'))

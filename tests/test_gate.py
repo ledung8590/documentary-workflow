@@ -477,11 +477,14 @@ def test_story_core_needs_a_verdict_for_the_current_script(tmp_path, monkeypatch
 
 def test_story_pictures_that_repeat_an_earlier_story():
     import imagerepeat as R
-    names = ['001.png', '002.png', '003.png', '004.png']
-    best = {'001.png': (0.97, 'C:/ComfyUI/output/zimage_1_00001_.png'), '002.png': (0.93, 'x.png'), '003.png': (0.80, 'y.png'), '004.png': (0.951, 'z.png')}
-    own = [(0.96, '003.png', '004.png'), (0.93, '001.png', '002.png')]
+    names = ['001.png', '002.png', '003.png', '004.png', '005.png']
+    best = {'001.png': (0.96, 'C:/ComfyUI/output/zimage_1_00001_.png', 0.65),      # same subject, same arrangement: the picture again
+            '002.png': (0.93, 'x.png', 0.0), '003.png': (0.80, 'y.png', 0.0),
+            '004.png': (0.968, 'tank-on-earth.png', 0.23),                         # a tank again, framed another way: allowed
+            '005.png': (0.98, 'z.png', 0.1)}                                       # CLIP is sure on its own
+    own = [(0.96, '003.png', '004.png', 0.7), (0.96, '001.png', '002.png', 0.2), (0.93, '002.png', '003.png', 0.0)]
     got = R.judge(names, best, own)
-    assert [f[1] for f in got] == ['image-repeat:001.png', 'image-twin:003.png', 'image-near']
-    assert '2 picture(s)' in got[0][2] and '004.png' in got[0][2] and got[2][0] == '!'
-    assert R.judge(names, {n: (0.85, 'o.png') for n in names}, []) == []
-
+    assert [f[1] for f in got] == ['image-repeat:005.png', 'image-twin:003.png', 'image-near']
+    assert '2 picture(s)' in got[0][2] and '001.png' in got[0][2] and '004.png' not in got[0][2]
+    assert '1 pair(s)' in got[1][2] and got[2][0] == '!' and '004.png' in got[2][2]
+    assert R.judge(names, {n: (0.85, 'o.png', 0.0) for n in names}, []) == []
