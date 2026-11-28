@@ -442,22 +442,24 @@ def test_scenes_that_are_an_almost_blank_page(tmp_path, monkeypatch):
 
 def test_story_core_needs_a_verdict_for_the_current_script(tmp_path, monkeypatch):
     import json, storycore as C
-    monkeypatch.setattr(C, 'CORES', tmp_path / 'cores.json'); monkeypatch.setattr(C, 'LOG', tmp_path / 'LOG.md')
-    monkeypatch.setattr(C, 'PROJECTS', False)
+    for k, v in (('CORES', tmp_path / 'cores.json'), ('LOG', tmp_path / 'LOG.md'), ('STORE', tmp_path / 'store.json'), ('PROJECTS', False)):
+        monkeypatch.setattr(C, k, v)
     rows = ['| # | Title | Opening | Hero | Prop | Twist |', '|---|---|---|---|---|---|', '| 1 | Old Story | a | b | a slip of paper | a bridge blown two hours early |']
     (tmp_path / 'LOG.md').write_text(chr(10).join(rows), encoding='utf-8')
     d = tmp_path / 'p'; (d / 'qa').mkdir(parents=True); (d / 'script.txt').write_text('A story.', encoding='utf-8')
-    assert C.earlier() == [('Old Story', 'a bridge blown two hours early; a slip of paper')]
-    assert [f[1] for f in C.check(d)] == ['story-core']                      # nobody compared
-    core = {'script': C.digest(d), 'core': 'a mortar round kills a farm family and the gunner lets two other men carry the blame for weeks', 'compared': 1, 'same': False}
-    (d / 'qa' / 'core.json').write_text(json.dumps(core), encoding='utf-8')
-    assert C.check(d) == []
-    (d / 'qa' / 'core.json').write_text(json.dumps(dict(core, same=True, **{'with': 'Old Story', 'why': 'x'})), encoding='utf-8')
-    assert [f[1] for f in C.check(d)] == ['story-core-same']                 # the same device: not voiced
-    (d / 'qa' / 'core.json').write_text(json.dumps(dict(core, compared=0)), encoding='utf-8')
-    assert [f[1] for f in C.check(d)] == ['story-core']                      # compared with fewer stories than exist
-    (d / 'qa' / 'core.json').write_text(json.dumps(core), encoding='utf-8')
-    (d / 'script.txt').write_text('A story, edited.', encoding='utf-8')
-    assert [f[1] for f in C.check(d)] == ['story-core']                      # the script changed after the verdict
-    (d / 'script.txt').write_text('A story.', encoding='utf-8')
-    assert C.publish(d, 'New Story') and len(C.earlier()) == 2
+    old = C.earlier()
+    assert old == [('Old Story', 'a bridge blown two hours early; a slip of paper')]
+    assert [f[1] for f in C.check(d)] == ['story-core']                      # nobody wrote the core
+    core = {'script': C.digest(d), 'core': 'a mortar round kills a farm family and the gunner lets two other men carry the blame for weeks', 'same': False, 'against': [C.key(old[0][1])]}
+    put = lambda j: (d / 'qa' / 'core.json').write_text(json.dumps(j), encoding='utf-8')
+    put(core); assert C.check(d) == []
+    put(dict(core, same=True, **{'with': 'Old Story', 'why': 'x'})); assert [f[1] for f in C.check(d)] == ['story-core-same']   # the same device: not voiced
+    put(dict(core, against=[])); assert [f[1] for f in C.check(d)] == ['story-core']                                             # a story it was not compared with
+    put(core); (d / 'script.txt').write_text('A story, edited.', encoding='utf-8')
+    assert [f[1] for f in C.check(d)] == ['story-core']                      # the script changed: the verdict is void
+    # a batch check made for exactly this text is taken over, and only newer stories still have to be compared
+    C.save(C.STORE, {C.digest(d): {'title': 'T', 'core': core['core'], 'same': False, 'against': core['against']}})
+    assert C.check(d) == [] and json.loads((d / 'qa' / 'core.json').read_text(encoding='utf-8'))['adopted']
+    C.save(C.CORES, {'Newer Story': 'a field telephone line cut by a village boy and the officer who must name the house'})
+    assert 'newer stor' in C.check(d)[0][2]
+    assert C.publish(d, 'This Story') and len(C.earlier()) == 3
